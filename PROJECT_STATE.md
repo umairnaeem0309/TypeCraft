@@ -5,7 +5,7 @@
 
 ---
 
-**Last updated:** 2026-07-29
+**Last updated:** 2026-07-30
 **Current phase:** Phase 4 — scene flow and core UI completion (TC-012, TC-014, TC-015,
 TC-016 done; TC-017 and TC-023 remain, both P2)
 **Current active task:** none — TC-019 closed. **No open P0 tasks and no open security
@@ -27,10 +27,10 @@ TC-020/TC-021/TC-022.
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
 | 3 — Persistence & recovery | **COMPLETE** — TC-007, TC-008, TC-008b, TC-009, TC-010, TC-013b |
-| 4 — Scenes & core UI | NOT STARTED — TC-012 next |
-| 5 — Teacher tools & settings | NOT STARTED |
-| 6 — Performance | NOT STARTED |
-| 7 — Packaging, docs, release | NOT STARTED |
+| 4 — Scenes & core UI | IN PROGRESS — TC-012, TC-014, TC-015, TC-016 done; TC-017 and TC-023 remain (both P2) |
+| 5 — Teacher tools & settings | **COMPLETE** — TC-011, TC-011b, TC-013 |
+| 6 — Performance | IN PROGRESS — TC-019 done (the regression net); TC-018 outstanding |
+| 7 — Packaging, docs, release | NOT STARTED — TC-020, TC-021, TC-022 |
 
 Tasks: 27 defined — 21 DONE, 0 IN_PROGRESS, 6 TODO. **Open P0: 0.** Open P1: 2.
 Defects: **32 found** (D-32 added and closed by TC-019) — **25 closed**,
