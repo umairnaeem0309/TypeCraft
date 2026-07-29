@@ -39,7 +39,8 @@ class TeacherDashboardScene(Scene):
     def _build_pin_widgets(self) -> None:
         cx = theme.SCREEN_WIDTH // 2
         self.pin_input = TextInput(pygame.Rect(cx - 100, 300, 200, 44), self.ctx.resources,
-                                    placeholder="Enter PIN", max_length=4, is_password=True)
+                                    placeholder="Enter PIN", max_length=4, is_password=True,
+                                    on_submit=self._try_pin)
         self.submit_button = Button(pygame.Rect(cx - 90, 360, 180, 46), "Unlock",
                                      self._try_pin, self.ctx.resources)
         self.back_button = Button(pygame.Rect(20, 20, 100, 44), "Back",

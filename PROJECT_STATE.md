@@ -8,12 +8,13 @@
 **Last updated:** 2026-07-29
 **Current phase:** Phase 4 — scene flow and core UI completion (TC-012, TC-014, TC-015,
 TC-016 done; TC-017 and TC-023 remain, both P2)
-**Current active task:** none — TC-016 closed. **No open P0 tasks and no open security
+**Current active task:** none — TC-019 closed. **No open P0 tasks and no open security
 defects.**
-**Last completed task:** TC-016 — word-wrapped target text and unambiguous cursor (2026-07-30)
-**Next recommended task:** **TC-019** — full application smoke tests (P1). Sequenced before
-TC-018 deliberately (PLAN-02): the dirty-rect refactor needs a regression net first. TC-017
-(assets, notices) and TC-023 (lessons.json warning) are the remaining P2 items and can follow.
+**Last completed task:** TC-019 — full application smoke tests (2026-07-30)
+**Next recommended task:** **TC-017** — assets, notices and graceful fallbacks (P2), then
+**TC-023** (lessons.json warning, clears the last xfail). After those, TC-018 (measured
+dirty-rect rendering — the smoke net it needs now exists) and the release trio
+TC-020/TC-021/TC-022.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -31,10 +32,11 @@ TC-018 deliberately (PLAN-02): the dirty-rect refactor needs a regression net fi
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 20 DONE, 0 IN_PROGRESS, 7 TODO. **Open P0: 0.** Open P1: 3.
-Defects: **31 found** — **24 closed**, 1 partially closed (D-22), 6 open.
+Tasks: 27 defined — 21 DONE, 0 IN_PROGRESS, 6 TODO. **Open P0: 0.** Open P1: 2.
+Defects: **32 found** (D-32 added and closed by TC-019) — **25 closed**,
+1 partially closed (D-22), 6 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
-Tests: **634 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Tests: **697 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
@@ -156,6 +158,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-21 | S3 | `assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent. | no `assets/` directory | TC-017 |
 | D-22 | S3 | **PARTIALLY CLOSED by TC-004.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Still open:** the FR-024/FR-134 call sites do not log yet, so a malformed `lessons.json` or `settings.json` is still rejected silently. | log written on a real app run; no `logging` import in `managers/` yet | TC-011, TC-017, TC-023 |
 | ~~D-31~~ | S2 | ~~The daily streak bonus was never awarded — `metrics.daily_streak_bonus()` had no caller, so FR-057 was unimplemented and a third of the XP economy contributed nothing.~~ **CLOSED by TC-013b.** Awarded once per local calendar day on the first completed lesson, inside the scoring transaction and after the streak is touched. Verified: 5/10/15/20/25 then saturating, once per day only. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
+| ~~D-32~~ | S3 | **Found and closed by TC-019.** `TextInput` consumed the Return key in order to unfocus itself, so the owning scene never saw it — typing a teacher PIN and pressing Enter did **nothing**, and a teacher had to know to click Unlock instead. Fixed with an `on_submit` callback, wired in the dashboard PIN gate and the Settings PIN field. Only a test clicking and typing through real widgets could have found this. | `ui/text_input.py`, `scenes/teacher_dashboard.py`, `scenes/settings.py`; `tests/scenes/test_flow.py` | TC-019 OK |
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
@@ -209,7 +212,23 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-016 (last task, DONE)
+### TC-019 (last task, DONE)
+
+- `tests/scenes/test_app_smoke.py` - **new**, 46 tests: registry matches the documented nine
+  scenes; `Game` starts on the Main Menu and runs real frames; every scene enters/updates/
+  renders, survives stray input, accepts a quit request, and renders against an empty database;
+  scene re-instantiation and lesson re-entry; no-audio-device degradation.
+- `tests/scenes/test_flow.py` - **new**, 17 tests: the full Main Menu → Results journey driven
+  by synthesised clicks and key presses, unlock visible in the grid afterwards, all Results
+  buttons, back-navigation, blank-name rejection, locked cards rejecting clicks, settings
+  round-trip, and the PIN gate typed from the keyboard.
+- `typecraft/ui/text_input.py` - `on_submit` callback (defect D-32).
+- `typecraft/scenes/teacher_dashboard.py`, `typecraft/scenes/settings.py` - wired to it.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 697 passing, 4 skipped, 1 xfail (D-19 only); app smoke-tested.
+
+### TC-016 (DONE)
 
 - `typecraft/ui/target_text.py` - **new.** `TargetTextLayout` computed once per lesson entry:
   token-based word wrapping, wrap test before placement, per-character rects, `caret_rect()`

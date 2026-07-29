@@ -30,7 +30,8 @@ class SettingsScene(Scene):
                                    self._toggle_mute, self.ctx.resources)
 
         self.pin_input = TextInput(pygame.Rect(cx - 100, 420, 200, 44), self.ctx.resources,
-                                    placeholder="New 4-digit PIN", max_length=4, is_password=True)
+                                    placeholder="New 4-digit PIN", max_length=4,
+                                    is_password=True, on_submit=self._set_pin)
         self.set_pin_button = Button(pygame.Rect(cx - 90, 480, 180, 46), "Set Teacher PIN",
                                       self._set_pin, self.ctx.resources)
         self.pin_status = ""

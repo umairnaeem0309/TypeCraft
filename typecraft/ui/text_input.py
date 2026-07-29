@@ -7,12 +7,17 @@ from typecraft.ui.widget import Widget
 
 
 class TextInput(Widget):
-    def __init__(self, rect, resource_manager, placeholder="", max_length=20, is_password=False):
+    def __init__(self, rect, resource_manager, placeholder="", max_length=20,
+                 is_password=False, on_submit=None):
         super().__init__(rect)
         self.resources = resource_manager
         self.placeholder = placeholder
         self.max_length = max_length
         self.is_password = is_password
+        #: Called when Return is pressed while focused. Without it, this widget
+        #: consumed Return to unfocus itself and the owning scene never saw it - so
+        #: typing a PIN and pressing Enter did nothing at all (defect D-32).
+        self.on_submit = on_submit
         self.text = ""
         self.focused = False
         self._cursor_visible = True
@@ -31,6 +36,8 @@ class TextInput(Widget):
                 self.text = self.text[:-1]
             elif event.key in (pygame.K_RETURN, pygame.K_TAB):
                 self.focused = False
+                if event.key == pygame.K_RETURN and self.on_submit:
+                    self.on_submit()
             elif event.unicode and event.unicode.isprintable() and len(self.text) < self.max_length:
                 self.text += event.unicode
             return True

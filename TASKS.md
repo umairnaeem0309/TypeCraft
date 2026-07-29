@@ -8,11 +8,11 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 20 DONE, 0 IN_PROGRESS, 7 TODO. **Open P0: 0 — every
-data-loss-class defect is closed. No open security defects.** Open P1: 3
-(TC-018 performance, TC-019 smoke tests, TC-020 packaging + TC-021/TC-022 release).
-**Phases 1, 2 and 3 complete; Phase 4 needs only TC-017 and TC-023.**
-Test suite: **634 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+**Summary:** 27 tasks — 21 DONE, 0 IN_PROGRESS, 6 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.**
+Remaining: TC-017 + TC-023 (P2 polish), TC-018 (performance), TC-020/TC-021/TC-022 (release).
+**Phases 1, 2 and 3 complete.**
+Test suite: **697 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -39,7 +39,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | DONE | P1 |
 | TC-017 | Assets, logging, and graceful fallbacks | 4 | TODO | P2 |
 | TC-018 | Measured dirty-rect rendering and bounded caches | 6 | TODO | P1 |
-| TC-019 | Full application smoke tests | 6 | TODO | P1 |
+| TC-019 | Full application smoke tests | 6 | DONE | P1 |
 | TC-020 | PyInstaller spec and release build | 7 | TODO | P1 |
 | TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | TODO | P1 |
 | TC-022 | Release acceptance on a clean Windows target | 7 | TODO | P1 |
@@ -744,7 +744,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Notes.** Risk R6 — land only after TC-019 exists.
 
 ## TC-019 — Full application smoke tests
-- **Phase** 6 · **Status** TODO · **Priority** P1
+- **Phase** 6 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-001…FR-006, AC-02
 - **Depends on** TC-013, TC-014, TC-015, TC-016
 - **Goal.** A regression net covering the whole app before the render refactor.
@@ -755,8 +755,26 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Files.** `tests/scenes/test_app_smoke.py`, `tests/scenes/test_flow.py`.
 - **Checks.** `pytest tests/scenes -q` green; the suite runs headless in CI-like conditions
   with no display.
-- **Acceptance.** Every registered scene has an enter+render test; the main flow is covered
-  end to end.
+- **Acceptance.** OK. **697 passing, 4 skipped, 1 xfail.** Two new modules:
+  `tests/scenes/test_app_smoke.py` (46 tests) and `tests/scenes/test_flow.py` (17).
+  Before this, four scenes — `main_menu`, `mode_select`, `results` and `lesson` end to end —
+  had never been constructed by any test, so a crash on entry would first have appeared in
+  front of a class.
+- **Smoke coverage is parametrised over the scene registry**, so a scene added without a test
+  fails the name-set assertion rather than slipping through. Each of the nine is entered,
+  updated and rendered; survives stray input (wheel, right-click in dead space, F1, Tab,
+  clicks at (1,1)); accepts `on_quit_requested()`; and renders against an **empty database**
+  (first launch on a new school PC) where reachable.
+- **The flow test drives clicks and key presses through `handle_event`,** not scene methods —
+  so it exercises button geometry and event dispatch, and fails if a button moves outside its
+  own hit-testing. It walks Main Menu → Profile Select → create and pick a profile → Lesson
+  Select → Mode Select → Lesson → type the whole drill → Results, then asserts the stored
+  attempt is `complete` at 100 % with 3 stars, and that lesson 2's card has become clickable.
+- **New defect found and fixed: D-32.** `TextInput` consumed Return in order to unfocus itself,
+  so the owning scene never saw it — typing a PIN and pressing Enter did **nothing**, and a
+  teacher had to know to click Unlock. Added an `on_submit` callback, wired in the dashboard and
+  the Settings PIN field. This is exactly the class of defect that only a test clicking real
+  widgets can find.
 
 ## TC-020 — PyInstaller spec and release build
 - **Phase** 7 · **Status** TODO · **Priority** P1
