@@ -10,7 +10,7 @@ progress from vanishing between runs.
 """
 
 import sqlite3
-from pathlib import Path
+from contextlib import contextmanager
 
 from typecraft.core.paths import writable_data_dir
 
@@ -78,43 +78,114 @@ CREATE TABLE IF NOT EXISTS profile_badges (
 class Database:
     def __init__(self, db_filename: str = "typecraft.db"):
         db_path = writable_data_dir() / db_filename
-        self._conn = sqlite3.connect(str(db_path))
+
+        # isolation_level=None puts the driver in autocommit mode: a single
+        # statement commits on its own, and a multi-statement change is opened
+        # explicitly by transaction(). With the driver's default isolation level
+        # it opens transactions behind our back and execute()'s commit ended them
+        # early, so begin()/rollback() could not undo anything — defect D-04, the
+        # reason the teacher's reset-progress was never actually atomic.
+        self._conn = sqlite3.connect(str(db_path), isolation_level=None)
         self._conn.row_factory = sqlite3.Row
+        self._in_txn = False
+
         self._conn.execute("PRAGMA foreign_keys = ON")
+        # Durability over write throughput: fsync on every commit, so a power cut
+        # mid-lesson cannot lose an already-committed attempt. There is one local
+        # single-user process, so the cost is irrelevant.
+        self._conn.execute("PRAGMA synchronous = FULL")
+        # Deliberately the default rollback journal, NOT WAL (ADR-012): in WAL mode
+        # recently-committed rows can live in typecraft.db-wal rather than the main
+        # file, so a teacher copying typecraft.db to a USB stick after a crash would
+        # silently lose them. The rollback journal deletes itself on commit, which
+        # keeps the .db file a complete snapshot and DR-014's one-file backup honest.
+        self._conn.execute("PRAGMA journal_mode = DELETE")
+
         self._bootstrap()
 
     def _bootstrap(self) -> None:
+        # executescript() manages its own transaction, so it runs outside ours.
         self._conn.executescript(SCHEMA)
-        self._conn.commit()
         self._reclassify_orphaned_attempts()
 
     def _reclassify_orphaned_attempts(self) -> None:
         """Decision D3: any row still 'in_progress' at startup means the app
         crashed or lost power mid-lesson last time. Reclassify to
         'incomplete' so it's excluded from averages/leaderboard/unlock checks."""
-        self._conn.execute(
+        self.execute(
             "UPDATE lesson_attempts SET status = 'incomplete' WHERE status = 'in_progress'"
         )
-        self._conn.commit()
 
     def query(self, sql: str, params: tuple = ()) -> list:
         cur = self._conn.execute(sql, params)
         return [dict(row) for row in cur.fetchall()]
 
     def execute(self, sql: str, params: tuple = ()) -> int:
-        """Runs an INSERT/UPDATE/DELETE, commits, returns lastrowid (for INSERT)."""
+        """Runs one INSERT/UPDATE/DELETE and returns lastrowid (for INSERT).
+
+        Outside a transaction the statement commits on its own. Inside one it
+        does not — that is what makes transaction() able to roll the whole group
+        back.
+        """
         cur = self._conn.execute(sql, params)
-        self._conn.commit()
         return cur.lastrowid
 
+    @contextmanager
+    def transaction(self):
+        """Run a group of statements as one all-or-nothing change (DR-010).
+
+            with db.transaction():
+                db.execute(...)
+                db.execute(...)
+
+        Commits on a clean exit; rolls back and re-raises on any exception, so a
+        caller can never accidentally swallow a half-applied write. Refuses to
+        nest, because a nested `with` would silently commit the outer block early
+        and reintroduce exactly the bug this replaces.
+        """
+        if self._in_txn:
+            raise RuntimeError(
+                "Database.transaction() cannot be nested — the inner block would "
+                "commit the outer one early. Pass the work down inside one transaction."
+            )
+
+        self._conn.execute("BEGIN IMMEDIATE")
+        self._in_txn = True
+        try:
+            yield
+        except BaseException:
+            self._conn.execute("ROLLBACK")
+            self._in_txn = False
+            raise
+        self._conn.execute("COMMIT")
+        self._in_txn = False
+
+    @property
+    def in_transaction(self) -> bool:
+        return self._in_txn
+
+    # --- Explicit transaction control -------------------------------------
+    # transaction() is the preferred API. These remain for call sites that
+    # cannot use a `with` block, and unlike the originals they actually work.
+
     def begin(self) -> None:
-        self._conn.execute("BEGIN")
+        if self._in_txn:
+            raise RuntimeError("a transaction is already open")
+        self._conn.execute("BEGIN IMMEDIATE")
+        self._in_txn = True
 
     def commit(self) -> None:
-        self._conn.commit()
+        if self._in_txn:
+            self._conn.execute("COMMIT")
+            self._in_txn = False
 
     def rollback(self) -> None:
-        self._conn.rollback()
+        if self._in_txn:
+            self._conn.execute("ROLLBACK")
+            self._in_txn = False
 
     def close(self) -> None:
+        # An open transaction at shutdown means something went wrong mid-write;
+        # discard it rather than letting sqlite decide.
+        self.rollback()
         self._conn.close()

@@ -20,9 +20,44 @@ class ProgressionService:
         self.streak_manager = streak_manager
         self.profile_manager = profile_manager
 
+    #: Profile fields score() mutates in memory. Snapshotted so a rolled-back
+    #: transaction cannot leave the live Profile object disagreeing with the row on
+    #: disk — otherwise the next successful save() would persist phantom XP.
+    _MUTATED_PROFILE_FIELDS = (
+        "total_xp", "level", "current_streak", "longest_streak", "last_active_date",
+    )
+
     def score(self, attempt: AttemptResult, profile) -> AttemptResult:
-        """Persists the attempt (complete or incomplete per D3), and if
-        complete, updates progress cache, XP/level, streak, and badges."""
+        """Persist the attempt and, if it is complete, apply everything that
+        follows from it — progress cache, XP, level, streak, unlock, badges.
+
+        All of it in **one transaction** (DR-010). These are not independent
+        writes: an attempt row with no XP, or wiped progress with an intact level,
+        is a state no screen can explain and no teacher can repair.
+        """
+        snapshot = {f: getattr(profile, f) for f in self._MUTATED_PROFILE_FIELDS}
+        try:
+            with self.db.transaction():
+                self._insert_attempt(attempt)
+
+                if attempt.status != AttemptStatus.COMPLETE:
+                    # D3: incomplete rows stop here — no progress/xp/streak/badges.
+                    return attempt
+
+                self._update_progress_cache(attempt)
+                self._award_xp(profile, attempt.xp_awarded)
+                self.streak_manager.touch(profile, _today())
+                self.lesson_manager.unlock_next(profile, attempt.lesson_id, attempt.accuracy)
+                self.badge_manager.evaluate(profile, attempt)
+                self.profile_manager.save(profile)
+        except BaseException:
+            for field, value in snapshot.items():
+                setattr(profile, field, value)
+            raise
+
+        return attempt
+
+    def _insert_attempt(self, attempt: AttemptResult) -> None:
         self.db.execute(
             """INSERT INTO lesson_attempts
                (profile_id, lesson_id, status, mode, wpm_net, wpm_gross, accuracy,
@@ -33,17 +68,6 @@ class ProgressionService:
              attempt.max_combo, attempt.duration_sec, attempt.stars, attempt.xp_awarded,
              attempt.started_at, attempt.completed_at),
         )
-
-        if attempt.status != AttemptStatus.COMPLETE:
-            return attempt  # D3: incomplete rows stop here — no progress/xp/streak/badges
-
-        self._update_progress_cache(attempt)
-        self._award_xp(profile, attempt.xp_awarded)
-        self.streak_manager.touch(profile, _today())
-        self.lesson_manager.unlock_next(profile, attempt.lesson_id, attempt.accuracy)
-        self.badge_manager.evaluate(profile, attempt)
-        self.profile_manager.save(profile)
-        return attempt
 
     def _update_progress_cache(self, attempt: AttemptResult) -> None:
         rows = self.db.query(

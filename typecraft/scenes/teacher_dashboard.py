@@ -45,10 +45,14 @@ class TeacherDashboardScene(Scene):
         self.pin_input.text = ""
 
     def _reset_progress(self, profile) -> None:
-        """Transactional reset: wipes this student's attempts/progress/badges,
-        keeps their profile row (name/avatar) so they don't have to re-create it."""
-        self.ctx.db.begin()
-        try:
+        """Wipe this student's attempts/progress/badges and zero their XP, level
+        and streaks, keeping the profile row (id/name/avatar) so the child does not
+        have to be re-created, and re-unlocking lesson 1 (FR-126, FR-127).
+
+        One transaction, all of it. A reset that half-applied would leave a child
+        with no history and a level they can no longer have earned.
+        """
+        with self.ctx.db.transaction():
             self.ctx.db.execute("DELETE FROM lesson_attempts WHERE profile_id=?", (profile.id,))
             self.ctx.db.execute("DELETE FROM lesson_progress WHERE profile_id=?", (profile.id,))
             self.ctx.db.execute("DELETE FROM profile_badges WHERE profile_id=?", (profile.id,))
@@ -63,10 +67,14 @@ class TeacherDashboardScene(Scene):
                     "INSERT INTO lesson_progress (profile_id, lesson_id, is_unlocked) VALUES (?,?,1)",
                     (profile.id, first.id),
                 )
-            self.ctx.db.commit()
-        except Exception:
-            self.ctx.db.rollback()
-            raise
+
+        # Keep the in-memory Profile consistent with the row we just wrote, or a
+        # later save() would resurrect the XP this reset just cleared.
+        profile.total_xp = 0
+        profile.level = 1
+        profile.current_streak = 0
+        profile.longest_streak = 0
+        profile.last_active_date = None
 
     def handle_event(self, event) -> None:
         if self.back_button.handle_event(event):

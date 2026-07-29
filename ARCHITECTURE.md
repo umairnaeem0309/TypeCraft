@@ -401,8 +401,8 @@ rows and zero profiles/attempts/progress rows.
 - `lesson_attempts.corrections_made INTEGER NOT NULL DEFAULT 0` — OQ-001 display counter.
 - `schema_meta(key TEXT PRIMARY KEY, value TEXT)` holding `schema_version` so DR-009
   migrations are ordered and idempotent.
-- `PRAGMA journal_mode = WAL` + `PRAGMA synchronous = FULL` for power-loss durability of
-  the FR-073 checkpoint row.
+- `PRAGMA synchronous = FULL` for power-loss durability of the FR-073 checkpoint row, with
+  the **default rollback journal, deliberately not WAL** (see ADR-012).
 - `lesson_progress` gains no columns; the leaderboard filter uses `times_completed > 0`
   (FR-112).
 
@@ -561,24 +561,24 @@ their XP, recompute level, save the profile. All-or-nothing.
 **B. Reset one student** — delete attempts, delete progress, delete badges, zero
 XP/level/streaks, re-insert the first unlocked lesson. All-or-nothing.
 
-**CURRENT: both are non-transactional.** `Database.execute()` calls `self._conn.commit()`
-after *every* statement. `Database.begin()` issues a bare `BEGIN`, but the very first
-`execute()` inside that block commits it, so the enclosing `try/except: rollback()` in
-`TeacherDashboardScene._reset_progress` can never roll anything back. A failure part-way
-through a reset leaves a student with deleted attempts but intact XP, or vice versa.
-`ProgressionService.score()` has the same exposure across six separate commits, and
-`BadgeManager.award()` adds `xp_bonus` to the in-memory profile *after*
-`_award_xp` already recomputed the level, so badge XP does not raise the level until the
-next attempt (breaking FR-083 and making the `rising_star`/`keyboard_master` predicates
-evaluate a stale level).
+**CURRENT (after TC-008): both are atomic.** `Database` opens with `isolation_level=None`
+(autocommit), so a single `execute()` commits on its own and a group is opened explicitly by
+`with db.transaction():` — `BEGIN IMMEDIATE`, commit on clean exit, rollback and **re-raise**
+on any exception, and a hard refusal to nest (a nested `with` would commit the outer block
+early, which is exactly the bug this replaced). `execute()` never commits while `_in_txn`.
+`ProgressionService.score()` and `TeacherDashboardScene._reset_progress()` each wrap their
+whole body in one transaction. `close()` discards any open transaction rather than leaving the
+outcome to sqlite. Proven by forced failures — a Python exception, a SQL error, and a failure
+injected into badge evaluation — each leaving every table unchanged.
 
-**TARGET:** `Database` opens with `isolation_level=None` (explicit control), exposes
-`execute()`/`query()` for autocommit single statements and a
-`with db.transaction():` context manager that issues `BEGIN IMMEDIATE`, commits on clean
-exit, rolls back and re-raises on any exception, and refuses to nest. Inside a transaction,
-`execute()` must not commit — enforced by a `_in_txn` flag. `ProgressionService.score()`
-and the reset operation each wrap their whole body in one `with db.transaction():`.
-Tests inject a failing statement to prove rollback.
+One subtlety the tests pin down: `_award_xp()` and `BadgeManager.award()` mutate the **live
+Profile object**, not only its row. A rolled-back transaction therefore used to leave the
+in-memory profile holding XP that was never earned, which the next successful `save()` would
+persist — a rollback that leaks. `score()` now snapshots and restores those fields on failure.
+
+**Still open here:** `BadgeManager.award()` adds `xp_bonus` after `_award_xp()` has already
+recomputed the level, so badge XP does not raise the level until the next attempt (D-11,
+FR-083), and the daily streak bonus is never awarded at all (D-31, FR-057). Both are TC-013b.
 
 ---
 
@@ -731,8 +731,10 @@ TypingEngine(target, mode, profile_id, lesson_id, mode_key, tier, clock=time.mon
 # managers/database.py
 Database(db_filename: str = "typecraft.db")
     query(sql: str, params: tuple = ()) -> list[dict]
-    execute(sql: str, params: tuple = ()) -> int
-    transaction() -> ContextManager[None]            # TARGET, replaces begin/commit/rollback
+    execute(sql: str, params: tuple = ()) -> int     # commits unless inside transaction()
+    transaction() -> ContextManager[None]            # preferred; refuses to nest
+    begin() / commit() / rollback() -> None          # for call sites that cannot use `with`
+    in_transaction -> bool                           # property
     close() -> None
 
 # managers/progression.py
@@ -763,7 +765,7 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 |---|---|---|---|
 | ADR-001 | Move code into a lowercase `typecraft/` package at the repo root; `main.py` launcher at root | **Accepted — implemented TC-002** | Repo now imports and tests from its own root; cost was an 88-statement import rewrite across 27 files |
 | ADR-002 | `assets/` and `data/` live *inside* the package; `_dev_data/` stays outside it | **Accepted — implemented TC-002** | One stable anchor for `resource_path()` in both dev and frozen modes; dev data cannot be swept into a build |
-| ADR-003 | `Database` uses `isolation_level=None` + an explicit `transaction()` context manager | Proposed (TC-008) | Current per-statement autocommit makes DR-010 unachievable |
+| ADR-003 | `Database` uses `isolation_level=None` + an explicit `transaction()` context manager | **Accepted — implemented TC-008** | Per-statement autocommit made DR-010 unachievable; nesting is refused so an inner block cannot commit an outer one early |
 | ADR-004 | One row per attempt, reserved on the first keystroke, promoted from `in_progress` to `complete`/`incomplete` | Proposed (TC-009) | Prevents duplicate rows once checkpointing exists |
 | ADR-005 | Ledger-style keystroke accounting; delete `_error_counted`; Backspace never edits a counter | **Accepted — implemented TC-006** | FR-043/044/045 now hold by construction; fixed D-07, D-08, D-29, D-30 |
 | ADR-006 | PIN uses `pbkdf2_hmac` with a per-install random salt, verified with `compare_digest` | Proposed (TC-011b) | A 4-digit unsalted SHA-256 has only 10 000 preimages |
@@ -772,13 +774,14 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | ADR-009 | Badge criteria in code, badge text/XP in JSON | Accepted (in code) | Teachers edit wording safely; criteria stay verifiable |
 | ADR-010 | Scenes are re-instantiated on every transition | Accepted (in code) | No stale state; re-entry cost measured in TC-018 |
 | ADR-011 | Leaderboard reads the `lesson_progress` cache, filtered by `times_completed > 0` | Proposed (TC-012) | One indexed row per lesson instead of scanning attempts; fixes FR-112 |
+| ADR-012 | `synchronous = FULL` with the **default rollback journal — not WAL** | **Accepted — implemented TC-008** | WAL was specified in an earlier draft of §8.2 and is wrong for this deployment. In WAL mode recently-committed data can live in `typecraft.db-wal` rather than the main file, so after a crash **copying `typecraft.db` alone would silently lose it** — breaking DR-014's single-file backup story and the blueprint's "copy typecraft.db to your USB stick" instruction to teachers. The rollback journal deletes itself on commit, so the `.db` file is always a complete snapshot, and `synchronous = FULL` still fsyncs every commit. The cost is slower concurrent writes, which is irrelevant for one local single-user process. |
 
 ## 19. Architecture risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
 | ~~R1 — the import-path/package defect blocks every test and the build~~ | — | **CLOSED by TC-002.** Both entry points resolve the full internal import graph from the repo root |
-| R2 — auto-commit `Database` silently defeats every transaction | Corrupt half-reset student records | TC-008 before any new multi-write feature |
+| ~~R2 — auto-commit `Database` silently defeats every transaction~~ | — | **CLOSED by TC-008.** `transaction()` context manager; `score()` and the teacher reset are each atomic, proven by forced-failure rollback tests |
 | ~~R3 — keystroke accounting is wrong in two modes~~ | — | **CLOSED by TC-006.** Four defects fixed (D-07, D-08, D-29, D-30) and verified; `engine/` at 99 % coverage. Metrics are now trustworthy; persisting them is not yet (R2, R4) |
 | R4 — no `in_progress` checkpoint and no window-close save | Silent data loss on a school power cut | TC-009, TC-010 |
 | R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |

@@ -8,8 +8,8 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 8 DONE, 0 IN_PROGRESS, 19 TODO. Open P0: 4. Open P1: 11.
-**Phases 1 and 2 complete.** Test suite: **367 passing, 9 strict-xfail defect
+**Summary:** 27 tasks — 9 DONE, 0 IN_PROGRESS, 18 TODO. Open P0: 3. Open P1: 11.
+**Phases 1 and 2 complete.** Test suite: **382 passing, 6 strict-xfail defect
 reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
 (AC-02 target ≥ 85 % — met).
 
@@ -23,7 +23,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 | TC-005 | Baseline tests for metrics and the three modes | 2 | DONE | P0 |
 | TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | DONE | P0 |
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | DONE | P0 |
-| TC-008 | Real transaction support in `Database` | 3 | TODO | P0 |
+| TC-008 | Real transaction support in `Database` | 3 | DONE | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | TODO | P0 |
 | TC-009 | Active-attempt checkpoint and crash recovery | 3 | TODO | P0 |
 | TC-010 | Esc and window-close persist incomplete attempts | 3 | TODO | P0 |
@@ -304,8 +304,8 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
   SQL in a test here would have let the scene stay broken while the test passed.
 
 ## TC-008 — Real transaction support in `Database`
-- **Phase** 3 · **Status** TODO · **Priority** P0
-- **Requirements** DR-010, FR-126, NFR-012, NFR-013, ADR-003
+- **Phase** 3 · **Status** DONE (2026-07-29) · **Priority** P0
+- **Requirements** DR-010, FR-126, NFR-012, NFR-013, ADR-003, ADR-012
 - **Depends on** TC-007
 - **Goal.** Make multi-statement mutations genuinely atomic. Today `execute()` commits after
   every statement, so `begin()`/`rollback()` are inert and a failed reset leaves a
@@ -313,17 +313,36 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 - **Scope.** Open the connection with `isolation_level=None`; add
   `transaction()` as a context manager issuing `BEGIN IMMEDIATE`, committing on clean exit,
   rolling back and re-raising on exception, and refusing to nest; make `execute()` skip its
-  commit while `_in_txn`; remove `begin`/`commit`/`rollback` from the public surface (or keep
-  them raising a clear error); wrap `ProgressionService.score()` and the dashboard reset in
-  one transaction each; add `PRAGMA journal_mode=WAL` and `synchronous=FULL`.
+  commit while `_in_txn`; keep `begin`/`commit`/`rollback` but make them actually work; wrap
+  `ProgressionService.score()` and the dashboard reset in one transaction each; add
+  `synchronous=FULL`.
 - **Files.** `typecraft/managers/database.py`, `typecraft/managers/progression.py`,
   `typecraft/scenes/teacher_dashboard.py`, `tests/db/test_transactions.py`,
-  `ARCHITECTURE.md` §13.
+  `ARCHITECTURE.md` §8.2/§13/§18.
 - **Checks.** A test injects a failing statement mid-transaction and asserts every table is
   byte-for-byte unchanged; a nested-transaction attempt raises; `score()` failure leaves no
   attempt row; full `pytest`.
-- **Acceptance.** DR-010 and FR-126 pass; no student-data write occurs outside a transaction.
-- **Notes.** Risk R2 — must land before TC-009.
+- **Acceptance.** ✅ Met. **382 passing, 6 xfail, 0 unexpected failures.** All three D-04
+  markers removed. `database.py` 93 %, `progression.py` 94 %; `engine/` + `managers/` 97 %.
+  App smoke-tested. 12 new tests cover the contract: commit on clean exit, rollback and
+  re-raise on both a Python exception and a SQL error, refusal to nest, the outer transaction
+  still rolling back cleanly after a refused nesting, single statements still auto-committing,
+  a committed transaction surviving a reopen, `close()` discarding an open transaction, and the
+  real dashboard `_reset_progress` being atomic while preserving the child's profile row.
+- **ADR-012 — one specification corrected.** An earlier draft of ARCHITECTURE §8.2 called for
+  `journal_mode = WAL`. That is **wrong for this deployment**: in WAL mode recently-committed
+  rows can live in `typecraft.db-wal` rather than the main file, so a teacher copying
+  `typecraft.db` to a USB stick after a crash would silently lose them — breaking DR-014's
+  one-file backup story and the blueprint's own instruction to teachers. Implemented with the
+  default rollback journal (which deletes itself on commit, keeping the `.db` a complete
+  snapshot) plus `synchronous = FULL` for per-commit fsync. Asserted by two tests, and verified
+  by the absence of any `-wal`/`-shm` file in `_dev_data/` after a real run.
+- **Extra fix, in scope.** `score()` snapshots the Profile fields it mutates and restores them
+  if the transaction rolls back. `_award_xp()` and `BadgeManager.award()` mutate the live
+  Profile object, so without this a rolled-back attempt left the in-memory profile holding XP
+  that was never earned, which the next successful `save()` would have persisted. Same
+  treatment for `_reset_progress`, which now zeroes the in-memory profile to match the row.
+- **Notes.** Closes risk R2 and unblocks TC-008b and TC-009.
 
 ## TC-008b — Schema migration: keystroke columns + `schema_meta`
 - **Phase** 3 · **Status** TODO · **Priority** P0

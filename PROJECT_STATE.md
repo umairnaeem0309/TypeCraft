@@ -7,11 +7,12 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 3 — persistence, progression, badges, streaks, and recovery
-**Current active task:** none — TC-007 closed, awaiting the go-ahead for TC-008
-**Last completed task:** TC-007 — progression, unlock, streak, badge service tests (2026-07-29)
-**Next recommended task:** **TC-008** — real transaction support in `Database` (P0). The
-highest-value remaining fix: it clears 3 strict-xfail tests and is a hard prerequisite for
-TC-008b (schema migration) and TC-009 (crash checkpoint).
+**Current active task:** none — TC-008 closed, awaiting the go-ahead for TC-008b
+**Last completed task:** TC-008 — real transaction support in `Database` (2026-07-29)
+**Next recommended task:** **TC-008b** — schema migration adding
+`total_keystrokes` / `correct_keystrokes` / `corrections_made` plus a `schema_meta` version
+table (P0). Now unblocked by TC-008's `transaction()`; clears 1 strict-xfail. Then TC-009
+(crash checkpoint), which needs both.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -23,28 +24,28 @@ TC-008b (schema migration) and TC-009 (crash checkpoint).
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
-| 3 — Persistence & recovery | IN PROGRESS — TC-007 done (tests pin the defects); TC-008, TC-008b, TC-009, TC-010, TC-013b outstanding |
+| 3 — Persistence & recovery | IN PROGRESS — TC-007, TC-008 done; TC-008b, TC-009, TC-010, TC-013b outstanding |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 8 DONE, 0 IN_PROGRESS, 19 TODO. Open P0: 4. Open P1: 11.
-Defects: **31 found** (D-31 added by TC-007) — **8 closed** (D-01, D-02, D-03, D-07, D-08,
-D-28, D-29, D-30), 1 partially closed (D-22), 22 open.
-Tests: **367 passing, 9 strict-xfail defect reproductions, 0 unexpected failures.**
+Tasks: 27 defined — 9 DONE, 0 IN_PROGRESS, 18 TODO. Open P0: 3. Open P1: 11.
+Defects: **31 found** — **9 closed** (D-01, D-02, D-03, D-04, D-07, D-08, D-28, D-29, D-30),
+1 partially closed (D-22), 21 open.
+Tests: **382 passing, 6 strict-xfail defect reproductions, 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
 93 %: `progression.py`. 77 %: `profile_manager.py`.
 
-**Metrics are trustworthy; the rules layer is now proven too.** TC-006 fixed the four
-keystroke-accounting defects, and TC-007 established by test that the unlock gate, progress
-cache, badge criteria and idempotency, streak state machine, and first-run seeding all behave
-correctly as inherited. What remains broken is **durability**: writes are not atomic (D-04),
-there is no crash checkpoint (D-05), window-close loses an attempt (D-06), the schema cannot
-store the keystroke counts (D-09), and the XP economy is missing a third of its sources
-(D-11, D-31).
+**Metrics are trustworthy, the rules layer is proven, and writes are now atomic.** TC-006
+fixed the four keystroke-accounting defects; TC-007 established by test that the unlock gate,
+progress cache, badge criteria, streak machine and seeding are all correct as inherited;
+TC-008 made scoring an attempt and resetting a student genuinely all-or-nothing. What remains
+broken: no crash checkpoint (D-05), window-close loses an attempt (D-06), the schema cannot
+store the keystroke counts (D-09), the leaderboard lists students who never finished a lesson
+(D-10), and the XP economy is missing two of its pieces (D-11, D-31).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -131,7 +132,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-01~~ | S1 | ~~Package/import layout is unrunnable from the repo root.~~ **CLOSED by TC-002.** Code moved to a `typecraft/` package with a root `main.py` launcher; 88 imports rewritten. Both `python main.py` and `python -m typecraft` now resolve the full internal graph from the repo root. | see §7 TC-002 | TC-002 ✅ |
 | ~~D-02~~ | S4 | ~~`requirements.txt` is 0 bytes; no dev/test/build manifest; no venv.~~ **CLOSED by TC-003.** `requirements.txt`, `requirements-dev.txt`, `pyproject.toml` written; `.venv` installs pygame 2.6.1, pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, PyInstaller 6.21.0. | see §7 TC-003 | TC-003 ✅ |
 | ~~D-03~~ | S2 | ~~No automated tests and no test infrastructure at all.~~ **CLOSED by TC-004.** `tests/conftest.py` with 6 fixtures + 154 passing tests covering imports, layering rules, data isolation, and logging. Behavioural coverage of the engine and managers is still absent — that is TC-005/TC-007, not this defect. | see §7 TC-004 | TC-004 ✅ |
-| D-04 | S1 | `Database.execute()` commits after **every** statement, so `begin()`/`rollback()` are inert. The teacher's reset-progress is therefore **non-atomic** despite its `try/except: rollback(); raise` — a failure part-way leaves a student with deleted attempts but intact XP (or vice versa). `ProgressionService.score()` has the same exposure across six separate commits. | `managers/database.py:104-108`; `scenes/teacher_dashboard.py:47-69` | TC-008 |
+| ~~D-04~~ | S1 | ~~`Database.execute()` committed after **every** statement, so `begin()`/`rollback()` were inert and the teacher's reset-progress was non-atomic despite its `try/except: rollback(); raise`.~~ **CLOSED by TC-008.** Connection now opens with `isolation_level=None` (autocommit) plus a `transaction()` context manager that issues `BEGIN IMMEDIATE`, commits on clean exit, rolls back and re-raises on any exception, and refuses to nest. `score()` and `_reset_progress()` are each one transaction. Verified by forced mid-operation failures leaving every table unchanged. | `managers/database.py`, `managers/progression.py`, `scenes/teacher_dashboard.py`; `tests/db/test_transactions.py` | TC-008 ✅ |
 | D-05 | S1 | No `in_progress` checkpoint is ever written. `AttemptStatus.IN_PROGRESS` exists and startup reclassification exists, but nothing produces such a row — so a power cut mid-lesson loses the entire attempt with no recovery record. | grep: no writer of `'in_progress'` | TC-009 |
 | D-06 | S1 | Closing the window mid-lesson silently discards the attempt. `Game._process_events()` handles `pygame.QUIT` by setting `running = False` and returning; the active scene is never notified. | `core/game.py:64-68` | TC-010 |
 | ~~D-07~~ | S2 | ~~`BackspaceMode` erases errors and credits keystrokes that were never pressed.~~ **CLOSED by TC-006.** `_apply_backspace()` is now counter-neutral — Backspace moves the cursor, clears the character it uncovers, increments the non-scoring `corrections_made`, and touches no metric. **Verified:** wrong key + Backspace now reports `total=1 correct=0 errors=1` → **0 %** (was 1/1/0 → 100 %); wrong + Backspace + right reports **50 %** with 1 mistake and 1 correction (was 100 %, 0 mistakes). *Audit note corrected during TC-005: `total_keystrokes` was never inflated and FR-043's equation always balanced — the values were semantically wrong, not arithmetically inconsistent, which is why exact expected counters were the real gate.* | `engine/typing_engine.py`; `test_D07_*` | TC-006 ✅ |
@@ -206,7 +207,24 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-007 (last task, DONE) — tests only, zero production changes
+### TC-008 (last task, DONE)
+
+- `typecraft/managers/database.py` — `isolation_level=None`; `transaction()` context manager
+  (`BEGIN IMMEDIATE`, commit on clean exit, rollback + re-raise on exception, refuses to nest);
+  `execute()` no longer commits; `begin`/`commit`/`rollback` kept but now actually work and are
+  guarded by an `_in_txn` flag; `in_transaction` property; `close()` discards an open
+  transaction; `PRAGMA synchronous = FULL` and an explicit `PRAGMA journal_mode = DELETE`
+  (ADR-012 — deliberately not WAL).
+- `typecraft/managers/progression.py` — `score()` wrapped in one transaction; attempt INSERT
+  extracted to `_insert_attempt()`; snapshots and restores the Profile fields it mutates so a
+  rollback cannot leave the in-memory object holding XP that was never earned.
+- `typecraft/scenes/teacher_dashboard.py` — `_reset_progress()` uses `with db.transaction()`
+  instead of the ineffective `begin`/`try`/`except`; also zeroes the in-memory profile to match.
+- `tests/db/test_transactions.py` — 3 xfail markers removed; 12 new tests for the contract.
+- `ARCHITECTURE.md` §8.2 (WAL → rollback journal), §18 (ADR-012 added, ADR-003 accepted),
+  §19 (R2 closed); `TASKS.md`; `PROJECT_STATE.md`.
+
+### TC-007 (DONE) — tests only, zero production changes
 
 - `tests/conftest.py` — added the `attempt_factory` fixture, which derives stars and XP
   through the real formulas so a test states a performance rather than hard-coding numbers.
@@ -505,6 +523,31 @@ the rule: "the backspace did nothing" must never be expressed as "this was not a
 2-character target, so its second keystroke completed the text and the new finished-guard
 correctly ignored the Backspaces. The target was widened to 3 characters; the assertions are
 unchanged and now also check `corrections_made`.
+
+### TC-008 (2026-07-29)
+
+| Command | Result |
+|---|---|
+| `pytest -q -rxX` | **382 passed, 6 xfail, 0 unexpected failures** in 27 s. All three D-04 markers removed |
+| `pytest --cov=typecraft.engine --cov=typecraft.managers` | 97 % overall; `database.py` 93 %, `progression.py` 94 % |
+| `SDL_VIDEODRIVER=dummy timeout 5 python main.py` | Ran clean — every write in the app now goes through the changed `Database` |
+| `ls _dev_data/` after a real run | No `typecraft.db-wal` or `-shm` file, confirming ADR-012's journal choice |
+
+**ADR-012 — I corrected one of my own specifications.** ARCHITECTURE §8.2 originally called
+for `journal_mode = WAL`. That is wrong for this deployment: in WAL mode recently-committed
+rows can sit in `typecraft.db-wal` rather than the main file, so a teacher copying
+`typecraft.db` to a USB stick after a crash would **silently lose them** — breaking DR-014's
+one-file backup story and the blueprint's own instruction to teachers. Implemented with the
+default rollback journal (deletes itself on commit, so the `.db` is always a complete
+snapshot) plus `synchronous = FULL` for per-commit fsync. Two tests assert the journal mode is
+not WAL and that `synchronous` is FULL.
+
+**Extra fix, in scope and worth noting.** `_award_xp()` and `BadgeManager.award()` mutate the
+**live** Profile object, not just the database row. Without intervention a rolled-back
+`score()` left the in-memory profile holding XP that was never earned, and the next successful
+`save()` would have written it to disk — a rollback that leaks. `score()` now snapshots and
+restores those fields, and `_reset_progress()` zeroes the in-memory profile to match the row it
+wrote. Covered by `test_a_rolled_back_score_leaves_the_in_memory_profile_unchanged`.
 
 ### TC-007 (2026-07-29)
 
