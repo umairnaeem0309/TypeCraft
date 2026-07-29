@@ -7,12 +7,11 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 4 — scene flow and core UI completion
-**Current active task:** none — TC-013b closed. **Phase 3 complete; no open P0 tasks.**
-**Last completed task:** TC-013b — XP economy: badge-XP level recompute + daily streak bonus
-(2026-07-30)
-**Next recommended task:** **TC-012** — leaderboard completed-attempt filtering (P1, D-10).
-Small and self-contained: it stops every student who has never finished a lesson from occupying
-a leaderboard slot. Then TC-011/TC-011b (settings + PIN) and TC-013 (dashboard).
+**Current active task:** none — TC-012 closed. **No open P0 tasks.**
+**Last completed task:** TC-012 — leaderboard completed-attempt filtering (2026-07-30)
+**Next recommended task:** **TC-011** then **TC-011b** — settings load/apply/persist, then PIN
+hardening (P1, D-14 and D-15). D-15 is the last security defect: the teacher PIN is an unsalted
+SHA-256 of four digits and a test currently recovers it from `settings.json` in milliseconds.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -30,10 +29,10 @@ a leaderboard slot. Then TC-011/TC-011b (settings + PIN) and TC-013 (dashboard).
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 13 DONE, 0 IN_PROGRESS, 14 TODO. **Open P0: 0.** Open P1: 10.
-Defects: **31 found** — **14 closed** (D-01…D-09, D-11, D-28…D-31), 1 partially closed (D-22),
-16 open. **Every S1 (data-loss) defect is closed, and Phases 1–3 are complete.**
-Tests: **413 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
+Tasks: 27 defined — 14 DONE, 0 IN_PROGRESS, 13 TODO. **Open P0: 0.** Open P1: 9.
+Defects: **31 found** — **15 closed** (D-01…D-11 except D-10 now also closed, D-28…D-31),
+1 partially closed (D-22), 15 open. **Every S1 (data-loss) defect is closed; Phases 1–3 done.**
+Tests: **428 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
@@ -140,7 +139,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-29~~ | S3 | ~~Input after completion raised `IndexError` because the `cursor >= len(target)` guard sat *after* `mode.resolve()`, which indexes `target[cursor]`.~~ **CLOSED by TC-006.** The guard moved ahead of `resolve()` and now covers Backspace too, so a finished attempt is genuinely immutable (FR-047). **Verified:** a key after completion is ignored and leaves the counters untouched. | `engine/typing_engine.py`; `test_D29_input_after_completion_is_ignored` | TC-006 ✅ |
 | ~~D-30~~ | S2 | ~~**Accuracy could be farmed with Backspace.** `resolve()` returned `is_backspace=False` at cursor 0, so `feed_key()` scored the Backspace as a **correct keystroke** — 20 presses before typing anything gave 100 % accuracy, combo 20, 3 stars and an unlock with nothing typed.~~ **CLOSED by TC-006.** A no-op backspace now reports `is_backspace=True` in all three modes, so it can never reach the scoring path. **Verified:** 20 presses now report `total=0 correct=0 combo=0` → **0 %**. Guarded by `test_a_no_op_backspace_is_still_flagged_as_one`, parametrised over all three modes. | `engine/input_modes.py`; `test_D30_*`, `test_only_typing_can_produce_accuracy` | TC-006 ✅ |
 | ~~D-09~~ | S2 | ~~`lesson_attempts` had no `total_keystrokes` / `correct_keystrokes` columns, so `score()` silently dropped them and no stored accuracy was auditable.~~ **CLOSED by TC-008b.** Migration to `SCHEMA_VERSION = 2` adds `total_keystrokes`, `correct_keystrokes` and `corrections_made`; `score()` writes all three. Additive-only and idempotent, run in one transaction, versioned via a new `schema_meta` table (DR-009). The real inherited `_dev_data/typecraft.db` upgraded in place with its 10 badge rows preserved. | `managers/database.py`, `managers/progression.py`; `tests/db/test_schema.py` | TC-008b ✅ |
-| D-10 | S2 | Leaderboard includes every profile with score 0: `ProfileManager.create()` inserts a zero-valued `lesson_progress` row and the leaderboard query has no completion filter, so a brand-new student outranks nobody but still occupies a slot. Violates FR-112. | `scenes/leaderboard.py:35-44`; `managers/profile_manager.py:28-31` | TC-012 |
+| ~~D-10~~ | S2 | ~~Every profile appeared on the leaderboard with score 0: profile creation seeds a zero-valued `lesson_progress` row and the query had no completion filter, so in a class of thirty the ten slots went to whoever was created first.~~ **CLOSED by TC-012.** Query moved to `ProgressionService.leaderboard()` with `times_completed > 0` and `HAVING score > 0`, a stable score→`created_at`→id tie-break, and the sort column taken from a fixed allow-list (SR-006). | `managers/progression.py`, `scenes/leaderboard.py`; `tests/db/test_leaderboard.py` | TC-012 ✅ |
 | ~~D-11~~ | S2 | ~~`BadgeManager.award()` added `xp_bonus` after `_award_xp()` had already recomputed the level, so badge XP did not count until a later attempt and the `rising_star`/`keyboard_master` predicates read a stale level.~~ **CLOSED by TC-013b.** `_award_xp()` split into `_add_xp()` + `_recompute_level()`; the level is derived after *all* XP, and one bounded extra badge pass catches level-dependent badges. Verified: badge XP crossing level 5 awards `rising_star` in the same attempt. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
 | D-12 | S2 | Teacher dashboard shows only name, level, and current streak. Average net WPM, average accuracy, lessons completed, XP, badge count, and longest streak are all missing (FR-122). | `scenes/teacher_dashboard.py:111-116` | TC-013 |
 | D-13 | S2 | Reset progress fires immediately on click with no confirmation step (FR-125). | `scenes/teacher_dashboard.py:34-37` | TC-013 |
@@ -157,7 +156,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
-| D-26 | S4 | Leaderboard interpolates a column name into SQL with an f-string. The value is currently drawn from a two-element internal whitelist so it is not injectable today, but it violates SR-006's "allow-list, never interpolate" rule. | `scenes/leaderboard.py:36-44` | TC-012 |
+| ~~D-26~~ | S4 | ~~Leaderboard interpolated a column name into SQL with an f-string.~~ **CLOSED by TC-012.** The column now comes from `ProgressionService.LEADERBOARD_COLUMNS`, a fixed dict keyed by a UI tab name; an unknown key raises `KeyError`. Covered by a test that passes `'; DROP TABLE profiles; --` as the board name. | `managers/progression.py` | TC-012 ✅ |
 | ~~D-28~~ | S4 | ~~No `.gitattributes`, and `core.autocrlf` is enabled.~~ **CLOSED by TC-002.** `.gitattributes` pins `* text=auto eol=lf` and marks binary types; verified to introduce no renormalisation churn. | `git diff --stat` empty after adding it | TC-002 ✅ |
 | D-27 | S4 | Dead code: `LessonSelectScene._unused_prevent_lint()`; `KeyboardRenderer.highlight()` accepts a `finger` argument it ignores; `StarRating._draw_star()` imports `math` inside the function on every call. | `scenes/lesson_select.py:83`; `ui/keyboard_renderer.py:65`; `ui/star_rating.py:21` | TC-015 / TC-018 |
 
@@ -207,7 +206,18 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-013b (last task, DONE)
+### TC-012 (last task, DONE)
+
+- `typecraft/managers/progression.py` — `LEADERBOARD_COLUMNS` allow-list and
+  `leaderboard(board, limit=10)`.
+- `typecraft/scenes/leaderboard.py` — `_load_rows()` delegates to the service; the FR-113 tie
+  rule is now stated on screen.
+- `tests/db/test_leaderboard.py` — **new**, 15 tests.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 428 passing, 3 xfail; app smoke-tested.
+
+### TC-013b (DONE)
 
 - `typecraft/managers/progression.py` — `_award_xp()` split into `_add_xp()` (adds XP only) and
   `_recompute_level()` (returns whether the level moved). `score()` now orders the work: attempt

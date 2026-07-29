@@ -170,6 +170,37 @@ class ProgressionService:
         profile.level = new_level
         return changed
 
+    #: Allow-list of leaderboard sort columns. The key comes from the UI, the value
+    #: never does — an identifier cannot be parameterised in SQL, so the only safe
+    #: pattern is to map a fixed key onto a fixed column name (SR-006).
+    LEADERBOARD_COLUMNS = {"wpm": "best_wpm_net", "accuracy": "best_accuracy"}
+
+    def leaderboard(self, board: str, limit: int = 10) -> list:
+        """Top `limit` students on one board (FR-110..FR-113).
+
+        Reads the `lesson_progress` cache — one indexed row per lesson rather than
+        a scan of every attempt (ADR-011) — and counts **only students who have
+        actually completed something**. `times_completed` is incremented solely by
+        a completed attempt, so it is the filter that makes FR-112 true: without it
+        every profile appeared with a score of 0, because a row is seeded at profile
+        creation, and a child who had never typed a word occupied a leaderboard slot.
+
+        Ties break on score, then the earlier-created profile, then id — total and
+        stable, so the board does not reshuffle between openings (FR-113).
+        """
+        column = self.LEADERBOARD_COLUMNS[board]   # KeyError = programmer error
+        return self.db.query(
+            f"""SELECT p.id AS profile_id, p.name AS name, MAX(lp.{column}) AS score
+                FROM lesson_progress lp
+                JOIN profiles p ON p.id = lp.profile_id
+                WHERE lp.times_completed > 0
+                GROUP BY lp.profile_id
+                HAVING score > 0
+                ORDER BY score DESC, p.created_at ASC, p.id ASC
+                LIMIT ?""",
+            (limit,),
+        )
+
     def xp_for(self, attempt: AttemptResult) -> int:
         return attempt.xp_awarded
 

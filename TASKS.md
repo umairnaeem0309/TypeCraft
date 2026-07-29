@@ -8,9 +8,9 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 13 DONE, 0 IN_PROGRESS, 14 TODO. **Open P0: 0 — every
-data-loss-class defect is closed.** Open P1: 10. **Phases 1, 2 and 3 complete.**
-Test suite: **413 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
+**Summary:** 27 tasks — 14 DONE, 0 IN_PROGRESS, 13 TODO. **Open P0: 0 — every
+data-loss-class defect is closed.** Open P1: 9. **Phases 1, 2 and 3 complete.**
+Test suite: **428 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -29,7 +29,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-010 | Esc and window-close persist incomplete attempts | 3 | DONE | P0 |
 | TC-011 | Settings load, apply, and persist | 5 | TODO | P1 |
 | TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
-| TC-012 | Leaderboard completed-attempt filtering | 4 | TODO | P1 |
+| TC-012 | Leaderboard completed-attempt filtering | 4 | DONE | P1 |
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | TODO | P1 |
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | TODO | P1 |
@@ -470,7 +470,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Acceptance.** SR-001/002/003, FR-133, FR-135 pass.
 
 ## TC-012 — Leaderboard completed-attempt filtering
-- **Phase** 4 · **Status** TODO · **Priority** P1
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-112, FR-113, FR-114, SR-006, ADR-011
 - **Depends on** TC-007
 - **Goal.** Every profile currently appears on the leaderboard with score 0, because profile
@@ -483,7 +483,19 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** A profile with only incomplete attempts is absent; a fresh profile is absent; a
   profile with one completed attempt appears with the right score; ties order deterministically
   across repeated runs.
-- **Acceptance.** FR-112/113/114 pass.
+- **Acceptance.** ✅ Met. **428 passing, 3 xfail.** 15 new tests in
+  `tests/db/test_leaderboard.py`. The query moved out of the scene into
+  `ProgressionService.leaderboard(board, limit)` — which attempts count is a rule, not a
+  display concern, and it needed to be testable without a window. Filters
+  `times_completed > 0` plus `HAVING score > 0`; ties break score → earlier `created_at` → id,
+  asserted stable across five repeated calls. The f-string column is now chosen from a fixed
+  `LEADERBOARD_COLUMNS` allow-list, and an unknown board name raises `KeyError` rather than
+  silently defaulting — covered by passing `'; DROP TABLE profiles; --` as the board name.
+  FR-113's tie rule is stated on screen. Scene tests cover both tabs and the empty state.
+- **Scenario test worth naming.** `test_only_students_who_finished_something_are_listed` builds
+  the real classroom case: one child who finished, three who just have profiles, and one who
+  abandoned an attempt. Only the first is listed. Previously all five were, ordered by who was
+  created first.
 
 ## TC-013 — Teacher dashboard statistics + confirmed atomic reset
 - **Phase** 5 · **Status** TODO · **Priority** P1

@@ -33,15 +33,9 @@ class LeaderboardScene(Scene):
         self._load_rows()
 
     def _load_rows(self) -> None:
-        column = "best_wpm_net" if self.tab == TAB_WPM else "best_accuracy"
-        self.rows = self.ctx.db.query(
-            f"""SELECT p.name as name, MAX(lp.{column}) as score
-                FROM lesson_progress lp
-                JOIN profiles p ON p.id = lp.profile_id
-                GROUP BY lp.profile_id
-                ORDER BY score DESC
-                LIMIT 10"""
-        )
+        # The query lives in ProgressionService: it is a rule about which attempts
+        # count, not a display concern, and it needs to be testable without a window.
+        self.rows = self.ctx.progression.leaderboard(self.tab)
 
     def handle_event(self, event) -> None:
         if self.back_button.handle_event(event):
@@ -76,3 +70,13 @@ class LeaderboardScene(Scene):
             empty = self.ctx.resources.text_surface(
                 "No completed lessons yet.", font_body, theme.COLOR_TEXT_MUTED)
             surface.blit(empty, empty.get_rect(center=(theme.SCREEN_WIDTH // 2, 300)))
+            return
+
+        # FR-113: the tie rule is stated on screen so a child can see why two equal
+        # scores are ordered the way they are.
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        note = self.ctx.resources.text_surface(
+            "Best score per student, completed lessons only. Equal scores: longest-joined first.",
+            font_small, theme.COLOR_TEXT_MUTED)
+        surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                 theme.SCREEN_HEIGHT - 40)))
