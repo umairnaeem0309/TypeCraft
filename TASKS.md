@@ -8,10 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 18 DONE, 0 IN_PROGRESS, 9 TODO. **Open P0: 0 — every
-data-loss-class defect is closed. No open security defects.** Open P1: 5.
+**Summary:** 27 tasks — 19 DONE, 0 IN_PROGRESS, 8 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.** Open P1: 4.
 **Phases 1, 2 and 3 complete.**
-Test suite: **502 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Test suite: **596 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -34,7 +34,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | DONE | P1 |
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | DONE | P1 |
-| TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | TODO | P1 |
+| TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | DONE | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | TODO | P1 |
 | TC-017 | Assets, logging, and graceful fallbacks | 4 | TODO | P2 |
 | TC-018 | Measured dirty-rect rendering and bounded caches | 6 | TODO | P1 |
@@ -624,7 +624,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   visible while its centre is outside, so the click tests now pick a fully-visible item.
 
 ## TC-015 — Keyboard: Space, Shift, punctuation, next-key, finger guidance
-- **Phase** 4 · **Status** TODO · **Priority** P1
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-090…FR-096
 - **Depends on** TC-004
 - **Goal.** The keyboard has 40 keys, no Space, no Shift, no `?` or `'`, highlights the key
@@ -640,7 +640,29 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** A test iterates every character of every bundled lesson and asserts a key rect
   and a finger name exist; capitals highlight the opposite-hand Shift; Space is highlighted
   for a space; `prerender()` is called once per lesson entry.
-- **Acceptance.** FR-090…FR-096 pass.
+- **Acceptance.** OK. **596 passing, 1 xfail.** 94 new tests in `tests/db/test_keyboard.py`.
+  The board is now a full 5-row QWERTY (61 keys) including Space, both Shifts, the number row
+  and all punctuation, laid out from a single `ROWS` table of
+  `(label, char, width, finger)`. `CHAR_TO_KEY` is *derived* from that table rather than
+  hand-maintained, so a key cannot exist without a mapping or vice versa.
+- **The test that matters.** `test_every_character_in_every_lesson_has_a_key_and_a_finger`
+  walks every character of all 20 bundled lessons and asserts each resolves to a drawn key **and**
+  a named finger. It is a coverage proof over real content: adding a lesson with an unsupported
+  character now fails the suite instead of silently leaving a child with no guidance.
+- **Guidance is now ahead of the student, not behind.** `highlight_expected()` points at the
+  next character; the old `highlight()` lit the key just *pressed*, which taught nothing since by
+  then the child had already found it. A capital highlights the letter **and the opposite hand's
+  Shift** (FR-095) — reaching across is the technique being taught. The finger is named in words
+  ("use your left index finger"), because colour alone is not actionable and is no guidance at
+  all for a colour-blind student. Space gets a ninth `thumb` colour rather than being left
+  uncoloured — the old code passed `None` for Space, so the busiest key in the course was never
+  shown.
+- **Also fixed.** The Backspace path did not refresh the hint, so after a correction the board
+  pointed one character ahead of the cursor. In `lock_on_error` a wrong key must *not* move the
+  hint, or the child is told to press a key that will be rejected — both asserted.
+- **Performance.** `prerender_count` proves the 61 keys are drawn once per lesson entry, not per
+  frame, and a cache-size assertion proves `render()` rasterises no new text after the first
+  frame (NFR-007, §5.3).
 
 ## TC-016 — Word-wrapped target text and unambiguous cursor
 - **Phase** 4 · **Status** TODO · **Priority** P1

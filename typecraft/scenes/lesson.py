@@ -37,12 +37,15 @@ class LessonScene(Scene):
             lesson_id=lesson.id, mode_key=mode_key, tier=lesson.tier,
         )
 
-        self.keyboard = KeyboardRenderer(self.ctx.resources, origin=(340, 500))
+        kb_w, _kb_h = KeyboardRenderer.size()
+        self.keyboard = KeyboardRenderer(
+            self.ctx.resources, origin=((theme.SCREEN_WIDTH - kb_w) // 2, 440))
         self.keyboard.prerender()
 
         self.hud = HUD(pygame.Rect(60, 60, 800, 40), self.ctx.resources)
 
         self._quit_requested = False
+        self._update_keyboard_hint()
 
         # Crash recovery (FR-073): the row id reserved by the first checkpoint, and
         # the time since the last one. Both reset per attempt.
@@ -51,6 +54,16 @@ class LessonScene(Scene):
 
     def on_exit(self) -> None:
         pass
+
+    def _update_keyboard_hint(self) -> None:
+        """Point the keyboard at the character the student must type next (FR-092).
+
+        The inherited code highlighted the character just *pressed*, which taught
+        nothing: by the time the key lit up the student had already found it.
+        """
+        engine = self.engine
+        expected = None if engine.is_finished() else engine.target[engine.cursor]
+        self.keyboard.highlight_expected(expected)
 
     def _has_started(self) -> bool:
         return self.engine.total_keystrokes > 0
@@ -91,15 +104,15 @@ class LessonScene(Scene):
             if event.key == pygame.K_BACKSPACE:
                 self.engine.feed_key("\b")
                 self.hud.update_metrics(self.engine.metrics())
+                # A backspace moves the cursor, so the expected key changes too.
+                self._update_keyboard_hint()
                 return
 
             char = event.unicode
             if char in TYPABLE:
                 self.engine.feed_key(char)
                 self.hud.update_metrics(self.engine.metrics())
-                # Keyboard highlight always shows the physical (lowercase) key,
-                # regardless of whether Shift was held for a capital.
-                self.keyboard.highlight(char.lower() if char != " " else None)
+                self._update_keyboard_hint()
 
                 if self.engine.is_finished():
                     scored = self._finish(AttemptStatus.COMPLETE)

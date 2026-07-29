@@ -34,4 +34,7 @@ FINGER_COLORS = {
     "right_middle": (63, 81, 181),
     "right_ring": (156, 39, 176),
     "right_pinky": (233, 30, 99),
+    # Space is typed with a thumb, so it needs a ninth colour distinct from the
+    # eight fingers rather than being left uncoloured.
+    "thumb": (120, 144, 156),
 }
