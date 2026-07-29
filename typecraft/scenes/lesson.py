@@ -44,14 +44,33 @@ class LessonScene(Scene):
 
         self._quit_requested = False
 
+        # Crash recovery (FR-073): the row id reserved by the first checkpoint, and
+        # the time since the last one. Both reset per attempt.
+        self._attempt_row_id = None
+        self._since_checkpoint = 0.0
+
     def on_exit(self) -> None:
         pass
 
+    def _has_started(self) -> bool:
+        return self.engine.total_keystrokes > 0
+
+    def _checkpoint(self) -> None:
+        """Write the in-flight attempt so a power cut leaves a recoverable row."""
+        self._attempt_row_id = self.ctx.progression.checkpoint(
+            self.engine, self._attempt_row_id)
+        self._since_checkpoint = 0.0
+
+    def _finish(self, status: AttemptStatus):
+        """Single exit point for an attempt, so Esc, window-close and completion
+        cannot drift apart in how they persist (FR-070, FR-071, FR-076)."""
+        attempt = self.engine.result(status=status)
+        return self.ctx.progression.score(attempt, self.profile, self._attempt_row_id)
+
     def _quit_lesson(self) -> None:
         """Esc mid-lesson (decision D3): persist as incomplete, return to lesson select."""
-        if self.engine.total_keystrokes > 0 and not self.engine.is_finished():
-            attempt = self.engine.result(status=AttemptStatus.INCOMPLETE)
-            self.ctx.progression.score(attempt, self.profile)
+        if self._has_started() and not self.engine.is_finished():
+            self._finish(AttemptStatus.INCOMPLETE)
         self.ctx.states.change("lesson_select")
 
     def handle_event(self, event) -> None:
@@ -74,14 +93,20 @@ class LessonScene(Scene):
                 self.keyboard.highlight(char.lower() if char != " " else None)
 
                 if self.engine.is_finished():
-                    attempt = self.engine.result(status=AttemptStatus.COMPLETE)
-                    scored = self.ctx.progression.score(attempt, self.profile)
+                    scored = self._finish(AttemptStatus.COMPLETE)
                     self.ctx.states.change("results", attempt=scored, lesson=self.lesson)
 
     def update(self, dt: float) -> None:
         # Timer display should keep advancing even without a keystroke, so
         # refresh the elapsed-time field each frame — cheap, no rasterisation.
         self.hud.update_metrics(self.engine.metrics())
+
+        # Checkpoint on a timer, not per keystroke: database I/O on the keystroke
+        # path would be felt as stutter on the target hardware (NFR-007).
+        if self._has_started() and not self.engine.is_finished():
+            self._since_checkpoint += dt
+            if self._since_checkpoint >= self.ctx.progression.CHECKPOINT_INTERVAL_SEC:
+                self._checkpoint()
 
     def render(self, surface) -> None:
         self.hud.render(surface)

@@ -7,11 +7,11 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 3 — persistence, progression, badges, streaks, and recovery
-**Current active task:** none — TC-008b closed, awaiting the go-ahead for TC-009
-**Last completed task:** TC-008b — schema migration + `schema_meta` (2026-07-29)
-**Next recommended task:** **TC-009** — active-attempt checkpoint and crash recovery (P0).
-Both prerequisites (real transactions, the migration mechanism) are now in place. Fixes D-05,
-the last data-loss defect that a school power cut would expose.
+**Current active task:** none — TC-009 closed, awaiting the go-ahead for TC-010
+**Last completed task:** TC-009 — active-attempt checkpoint and crash recovery (2026-07-30)
+**Next recommended task:** **TC-010** — Esc and window-close persist incomplete attempts
+(P0, the **last open P0**). `LessonScene._finish()` already exists as the single exit point, so
+this is mostly wiring `Scene.on_quit_requested()` through `Game`'s QUIT handler.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -23,17 +23,17 @@ the last data-loss defect that a school power cut would expose.
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
-| 3 — Persistence & recovery | IN PROGRESS — TC-007, TC-008, TC-008b done; TC-009, TC-010, TC-013b outstanding |
+| 3 — Persistence & recovery | IN PROGRESS — TC-007, TC-008, TC-008b, TC-009 done; TC-010, TC-013b outstanding |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 10 DONE, 0 IN_PROGRESS, 17 TODO. Open P0: **2** (TC-009, TC-010).
+Tasks: 27 defined — 11 DONE, 0 IN_PROGRESS, 16 TODO. Open P0: **1** (TC-010).
 Open P1: 11.
-Defects: **31 found** — **10 closed** (D-01…D-04, D-07, D-08, D-09, D-28, D-29, D-30),
-1 partially closed (D-22), 20 open.
-Tests: **387 passing, 5 strict-xfail defect reproductions, 0 unexpected failures.**
+Defects: **31 found** — **11 closed** (D-01…D-05, D-07…D-09, D-28…D-30),
+1 partially closed (D-22), 19 open.
+Tests: **396 passing, 5 strict-xfail defect reproductions, 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
@@ -133,7 +133,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-02~~ | S4 | ~~`requirements.txt` is 0 bytes; no dev/test/build manifest; no venv.~~ **CLOSED by TC-003.** `requirements.txt`, `requirements-dev.txt`, `pyproject.toml` written; `.venv` installs pygame 2.6.1, pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, PyInstaller 6.21.0. | see §7 TC-003 | TC-003 ✅ |
 | ~~D-03~~ | S2 | ~~No automated tests and no test infrastructure at all.~~ **CLOSED by TC-004.** `tests/conftest.py` with 6 fixtures + 154 passing tests covering imports, layering rules, data isolation, and logging. Behavioural coverage of the engine and managers is still absent — that is TC-005/TC-007, not this defect. | see §7 TC-004 | TC-004 ✅ |
 | ~~D-04~~ | S1 | ~~`Database.execute()` committed after **every** statement, so `begin()`/`rollback()` were inert and the teacher's reset-progress was non-atomic despite its `try/except: rollback(); raise`.~~ **CLOSED by TC-008.** Connection now opens with `isolation_level=None` (autocommit) plus a `transaction()` context manager that issues `BEGIN IMMEDIATE`, commits on clean exit, rolls back and re-raises on any exception, and refuses to nest. `score()` and `_reset_progress()` are each one transaction. Verified by forced mid-operation failures leaving every table unchanged. | `managers/database.py`, `managers/progression.py`, `scenes/teacher_dashboard.py`; `tests/db/test_transactions.py` | TC-008 ✅ |
-| D-05 | S1 | No `in_progress` checkpoint is ever written. `AttemptStatus.IN_PROGRESS` exists and startup reclassification exists, but nothing produces such a row — so a power cut mid-lesson loses the entire attempt with no recovery record. | grep: no writer of `'in_progress'` | TC-009 |
+| ~~D-05~~ | S1 | ~~No `in_progress` checkpoint was ever written, so a power cut mid-lesson lost the whole attempt.~~ **CLOSED by TC-009.** `ProgressionService.checkpoint()` reserves one row on the first checkpoint and UPSERTs it thereafter, driven from `LessonScene.update()` on a 10 s timer (**0 database writes across 100 keystrokes**, asserted). `score()` promotes that same row instead of inserting a second, so one attempt is always one row (ADR-004). Simulated power cut verified end to end: exactly one `incomplete` row, retaining the work done, excluded from every aggregate. | `managers/progression.py`, `scenes/lesson.py`; `tests/db/test_recovery.py` | TC-009 ✅ |
 | D-06 | S1 | Closing the window mid-lesson silently discards the attempt. `Game._process_events()` handles `pygame.QUIT` by setting `running = False` and returning; the active scene is never notified. | `core/game.py:64-68` | TC-010 |
 | ~~D-07~~ | S2 | ~~`BackspaceMode` erases errors and credits keystrokes that were never pressed.~~ **CLOSED by TC-006.** `_apply_backspace()` is now counter-neutral — Backspace moves the cursor, clears the character it uncovers, increments the non-scoring `corrections_made`, and touches no metric. **Verified:** wrong key + Backspace now reports `total=1 correct=0 errors=1` → **0 %** (was 1/1/0 → 100 %); wrong + Backspace + right reports **50 %** with 1 mistake and 1 correction (was 100 %, 0 mistakes). *Audit note corrected during TC-005: `total_keystrokes` was never inflated and FR-043's equation always balanced — the values were semantically wrong, not arithmetically inconsistent, which is why exact expected counters were the real gate.* | `engine/typing_engine.py`; `test_D07_*` | TC-006 ✅ |
 | ~~D-08~~ | S2 | ~~`_error_counted[]` suppressed repeat errors, so `correct + errors != total`.~~ **CLOSED by TC-006.** `_error_counted` deleted; every wrong keystroke posts its own error. **Verified:** 4 wrong keys then the right one now reports `total=5 correct=1 errors=4`, sum 5 = total (was sum 2 ≠ 5). Was the only defect that unbalanced FR-043's equation, and only in `lock_on_error`. | `engine/typing_engine.py`; `test_D08_*`, `test_ledger_holds_over_randomised_sequences[lock_on_error]` | TC-006 ✅ |
@@ -207,7 +207,23 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-008b (last task, DONE)
+### TC-009 (last task, DONE)
+
+- `typecraft/managers/progression.py` — `CHECKPOINT_INTERVAL_SEC = 10.0`;
+  `checkpoint(engine, row_id)` building its row from `engine.result(IN_PROGRESS)` so the
+  checkpoint and the final write share one code path; `_insert_attempt()` generalised to
+  `_write_attempt(attempt, row_id)` (INSERT, or UPDATE to promote a reserved row);
+  `score()` takes an optional `row_id`.
+- `typecraft/scenes/lesson.py` — `_attempt_row_id` / `_since_checkpoint` per attempt;
+  `_has_started()`, `_checkpoint()`, and `_finish(status)` as the **single exit point** for an
+  attempt so Esc, completion and (next) window-close cannot diverge; `update()` checkpoints on
+  the timer.
+- `tests/db/test_recovery.py` — **new**, 9 tests.
+- `TASKS.md`, `PROJECT_STATE.md`, `ARCHITECTURE.md` §12/§17.
+
+**Evidence:** 396 passing, 5 xfail; app smoke-tested.
+
+### TC-008b (DONE)
 
 - `typecraft/managers/database.py` — `SCHEMA_VERSION = 2`; `schema_meta` table; `_migrate()`
   (one transaction, additive-only, guarded by `PRAGMA table_info` so it is idempotent);

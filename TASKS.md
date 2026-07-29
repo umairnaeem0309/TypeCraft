@@ -8,7 +8,7 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 10 DONE, 0 IN_PROGRESS, 17 TODO. Open P0: 2 (TC-009, TC-010).
+**Summary:** 27 tasks — 11 DONE, 0 IN_PROGRESS, 16 TODO. Open P0: **1** (TC-010).
 Open P1: 11.
 **Phases 1 and 2 complete.** Test suite: **382 passing, 6 strict-xfail defect
 reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
@@ -26,7 +26,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | DONE | P0 |
 | TC-008 | Real transaction support in `Database` | 3 | DONE | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | DONE | P0 |
-| TC-009 | Active-attempt checkpoint and crash recovery | 3 | TODO | P0 |
+| TC-009 | Active-attempt checkpoint and crash recovery | 3 | DONE | P0 |
 | TC-010 | Esc and window-close persist incomplete attempts | 3 | TODO | P0 |
 | TC-011 | Settings load, apply, and persist | 5 | TODO | P1 |
 | TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
@@ -372,7 +372,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
   v2 with its 10 badge rows preserved.
 
 ## TC-009 — Active-attempt checkpoint and crash recovery
-- **Phase** 3 · **Status** TODO · **Priority** P0
+- **Phase** 3 · **Status** DONE (2026-07-30) · **Priority** P0
 - **Requirements** FR-073, FR-074, FR-075, DR-010, ADR-004
 - **Depends on** TC-008, TC-008b
 - **Goal.** A power cut mid-lesson must leave a recoverable, correctly-classified record and
@@ -388,8 +388,20 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
   a new `Database`, and asserts exactly one row now `incomplete`; a completed attempt after
   checkpoints yields exactly one `complete` row; no database write occurs on the keystroke
   path (assert by counting `execute` calls across 100 keystrokes).
-- **Acceptance.** FR-073/074/075 pass; a simulated kill loses at most the last 10 s of
-  progress and never corrupts aggregates.
+- **Acceptance.** ✅ Met. **396 passing, 5 xfail.** 9 new tests in `tests/db/test_recovery.py`:
+  a checkpoint reserves exactly one `in_progress` row; repeated checkpoints update that same
+  row; an in-flight row awards no XP/badges/unlocks; completing and abandoning each **promote**
+  the reserved row instead of inserting a second (the double-counting bug ADR-004 exists to
+  prevent); a simulated power cut — checkpoint, close without scoring, reopen — yields exactly
+  one `incomplete` row that still records the work done and stays out of every aggregate;
+  recovery leaves an already-completed attempt untouched; **0 database writes across 100
+  keystrokes**; and a scene-level test proving the interval is time-based (nothing before the
+  first keystroke, nothing below the interval, one row on crossing it, still one row on
+  crossing again).
+- **Design note.** `checkpoint()` builds its row via `engine.result(IN_PROGRESS)`, so the
+  checkpoint and the final write share one code path and cannot disagree.
+  `LessonScene._finish()` is now the single exit point for an attempt, so Esc, completion and
+  (in TC-010) window-close cannot drift apart in how they persist.
 
 ## TC-010 — Esc and window-close persist incomplete attempts
 - **Phase** 3 · **Status** TODO · **Priority** P0

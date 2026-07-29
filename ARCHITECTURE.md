@@ -543,13 +543,19 @@ Key design points:
 - Aggregates are protected by construction: a single `completed_attempts_where()` SQL
   fragment helper is the only way any manager filters attempts.
 
-**CURRENT:** startup reclassification is implemented (`Database._reclassify_orphaned_attempts`),
-`AttemptStatus.IN_PROGRESS` exists, and Esc-with-keystrokes saves an `incomplete` row.
-Nothing ever writes an `in_progress` row (FR-073 unimplemented), and `pygame.QUIT` sets
-`running = False` in `Game._process_events()` with no notification to the active scene, so
-a window-close mid-lesson silently loses the attempt (FR-071 unimplemented). The final
-write is an INSERT, so once checkpointing exists it would duplicate rows unless the UPSERT
-design above is adopted.
+**CURRENT (after TC-009):** all of the above is implemented except the window-close path.
+`ProgressionService.checkpoint()` reserves one row and UPSERTs it, driven from
+`LessonScene.update()` on a 10 s timer — verified to cost **zero** database writes across 100
+keystrokes. `score(attempt, profile, row_id)` promotes that same row, so one attempt is always
+one row. `checkpoint()` builds its row from `engine.result(IN_PROGRESS)`, so the checkpoint and
+the final write cannot disagree about an attempt's shape. `LessonScene._finish(status)` is the
+single exit point for an attempt. Startup reclassification runs in `Database._bootstrap()`
+before any aggregate is read.
+
+**Still open:** `pygame.QUIT` sets `running = False` in `Game._process_events()` without
+notifying the active scene, so a window-close mid-lesson still loses whatever happened since
+the last checkpoint (D-06, FR-071 — TC-010). The damage is now bounded to 10 seconds rather
+than the whole attempt.
 
 ---
 
@@ -741,8 +747,9 @@ Database(db_filename: str = "typecraft.db")
     close() -> None
 
 # managers/progression.py
-ProgressionService.score(attempt: AttemptResult, profile: Profile) -> AttemptResult
-ProgressionService.checkpoint(engine: TypingEngine, profile: Profile) -> None   # TARGET
+ProgressionService.score(attempt, profile, row_id: int | None = None) -> AttemptResult
+ProgressionService.checkpoint(engine: TypingEngine, row_id: int | None = None) -> int
+ProgressionService.CHECKPOINT_INTERVAL_SEC: float
 
 # managers/lesson_manager.py
 LessonManager.load_file() -> None

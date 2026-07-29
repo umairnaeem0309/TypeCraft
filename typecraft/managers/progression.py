@@ -27,7 +27,26 @@ class ProgressionService:
         "total_xp", "level", "current_streak", "longest_streak", "last_active_date",
     )
 
-    def score(self, attempt: AttemptResult, profile) -> AttemptResult:
+    #: How often an active attempt is written to disk (FR-073). Long enough that
+    #: typing never waits on the database, short enough that a power cut costs a
+    #: child at most this many seconds of work.
+    CHECKPOINT_INTERVAL_SEC = 10.0
+
+    def checkpoint(self, engine, row_id: int = None) -> int:
+        """Persist the in-flight attempt as `in_progress` and return its row id.
+
+        Called on a timer from LessonScene.update(), never from feed_key() — a
+        database write on the keystroke path would show up as stutter on a 4th-gen
+        Intel machine (NFR-007).
+
+        The first call reserves the row; later calls update that same row, so a
+        crash can leave at most **one** row per attempt (ADR-004). score() then
+        promotes the same row rather than inserting a second one.
+        """
+        attempt = engine.result(status=AttemptStatus.IN_PROGRESS)
+        return self._write_attempt(attempt, row_id)
+
+    def score(self, attempt: AttemptResult, profile, row_id: int = None) -> AttemptResult:
         """Persist the attempt and, if it is complete, apply everything that
         follows from it — progress cache, XP, level, streak, unlock, badges.
 
@@ -38,7 +57,7 @@ class ProgressionService:
         snapshot = {f: getattr(profile, f) for f in self._MUTATED_PROFILE_FIELDS}
         try:
             with self.db.transaction():
-                self._insert_attempt(attempt)
+                self._write_attempt(attempt, row_id)
 
                 if attempt.status != AttemptStatus.COMPLETE:
                     # D3: incomplete rows stop here — no progress/xp/streak/badges.
@@ -57,8 +76,24 @@ class ProgressionService:
 
         return attempt
 
-    def _insert_attempt(self, attempt: AttemptResult) -> None:
-        self.db.execute(
+    def _write_attempt(self, attempt: AttemptResult, row_id: int = None) -> int:
+        """Insert the attempt, or promote the row a checkpoint already reserved."""
+        if row_id is not None:
+            self.db.execute(
+                """UPDATE lesson_attempts SET
+                   status=?, mode=?, wpm_net=?, wpm_gross=?, accuracy=?, errors=?,
+                   max_combo=?, duration_sec=?, stars=?, xp_awarded=?, completed_at=?,
+                   total_keystrokes=?, correct_keystrokes=?, corrections_made=?
+                   WHERE id=?""",
+                (attempt.status.value, attempt.mode, attempt.wpm_net, attempt.wpm_gross,
+                 attempt.accuracy, attempt.errors, attempt.max_combo, attempt.duration_sec,
+                 attempt.stars, attempt.xp_awarded, attempt.completed_at,
+                 attempt.total_keystrokes, attempt.correct_keystrokes,
+                 attempt.corrections_made, row_id),
+            )
+            return row_id
+
+        return self.db.execute(
             """INSERT INTO lesson_attempts
                (profile_id, lesson_id, status, mode, wpm_net, wpm_gross, accuracy,
                 errors, max_combo, duration_sec, stars, xp_awarded, started_at, completed_at,
