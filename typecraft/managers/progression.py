@@ -64,10 +64,35 @@ class ProgressionService:
                     return attempt
 
                 self._update_progress_cache(attempt)
-                self._award_xp(profile, attempt.xp_awarded)
-                self.streak_manager.touch(profile, _today())
+                self._add_xp(profile, attempt.xp_awarded)
+
+                # Blueprint §2.4's XP economy has three sources, and level 10
+                # (2 250 XP) is only reachable with all three. The streak bonus was
+                # the missing one (defect D-31): metrics.daily_streak_bonus() existed
+                # but nothing called it.
+                today = _today()
+                first_lesson_today = profile.last_active_date != today
+                self.streak_manager.touch(profile, today)
+                if first_lesson_today:
+                    self._add_xp(profile, m.daily_streak_bonus(profile.current_streak))
+
                 self.lesson_manager.unlock_next(profile, attempt.lesson_id, attempt.accuracy)
+
+                # Level must be current *before* badges are judged, because
+                # rising_star and keyboard_master test it.
+                self._recompute_level(profile)
                 self.badge_manager.evaluate(profile, attempt)
+
+                # Badge bonuses are XP too, so the level may have moved again. That
+                # used to be missed entirely (defect D-11): _award_xp() computed the
+                # level and BadgeManager.award() then added its bonus behind it, so
+                # badge XP did not count until some later attempt happened to
+                # recompute. One extra pass — deliberately not a loop, so a badge
+                # cannot cascade forever.
+                if self._recompute_level(profile):
+                    self.badge_manager.evaluate(profile, attempt)
+                    self._recompute_level(profile)
+
                 self.profile_manager.save(profile)
         except BaseException:
             for field, value in snapshot.items():
@@ -133,9 +158,17 @@ class ProgressionService:
             (best_wpm, best_acc, best_stars, attempt.profile_id, attempt.lesson_id),
         )
 
-    def _award_xp(self, profile, xp: int) -> None:
+    def _add_xp(self, profile, xp: int) -> None:
+        """Add XP without touching the level — the caller decides when to recompute,
+        because badges add XP after the fact."""
         profile.total_xp += xp
-        profile.level = m.level_for(profile.total_xp)
+
+    def _recompute_level(self, profile) -> bool:
+        """Set the level from total XP. Returns True if it changed."""
+        new_level = m.level_for(profile.total_xp)
+        changed = new_level != profile.level
+        profile.level = new_level
+        return changed
 
     def xp_for(self, attempt: AttemptResult) -> int:
         return attempt.xp_awarded

@@ -6,12 +6,13 @@
 ---
 
 **Last updated:** 2026-07-29
-**Current phase:** Phase 3 — persistence, progression, badges, streaks, and recovery
-**Current active task:** none — TC-010 closed. **No open P0 tasks remain.**
-**Last completed task:** TC-010 — Esc and window-close persist incomplete attempts (2026-07-30)
-**Next recommended task:** **TC-013b** — XP economy (badge-XP level recompute + the missing
-daily streak bonus, D-11/D-31, P1). It finishes Phase 3 and clears 2 strict-xfails. Then
-TC-011/TC-011b (settings + PIN) and TC-012 (leaderboard).
+**Current phase:** Phase 4 — scene flow and core UI completion
+**Current active task:** none — TC-013b closed. **Phase 3 complete; no open P0 tasks.**
+**Last completed task:** TC-013b — XP economy: badge-XP level recompute + daily streak bonus
+(2026-07-30)
+**Next recommended task:** **TC-012** — leaderboard completed-attempt filtering (P1, D-10).
+Small and self-contained: it stops every student who has never finished a lesson from occupying
+a leaderboard slot. Then TC-011/TC-011b (settings + PIN) and TC-013 (dashboard).
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -23,16 +24,16 @@ TC-011/TC-011b (settings + PIN) and TC-012 (leaderboard).
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
-| 3 — Persistence & recovery | IN PROGRESS — TC-007…TC-010 done (all P0); TC-013b (P1) outstanding |
-| 4 — Scenes & core UI | NOT STARTED |
+| 3 — Persistence & recovery | **COMPLETE** — TC-007, TC-008, TC-008b, TC-009, TC-010, TC-013b |
+| 4 — Scenes & core UI | NOT STARTED — TC-012 next |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 12 DONE, 0 IN_PROGRESS, 15 TODO. **Open P0: 0.** Open P1: 11.
-Defects: **31 found** — **12 closed** (D-01…D-09, D-28…D-30), 1 partially closed (D-22),
-18 open. **Every S1 (data-loss) defect is closed.**
-Tests: **406 passing, 5 strict-xfail defect reproductions, 0 unexpected failures.**
+Tasks: 27 defined — 13 DONE, 0 IN_PROGRESS, 14 TODO. **Open P0: 0.** Open P1: 10.
+Defects: **31 found** — **14 closed** (D-01…D-09, D-11, D-28…D-31), 1 partially closed (D-22),
+16 open. **Every S1 (data-loss) defect is closed, and Phases 1–3 are complete.**
+Tests: **413 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
@@ -140,7 +141,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-30~~ | S2 | ~~**Accuracy could be farmed with Backspace.** `resolve()` returned `is_backspace=False` at cursor 0, so `feed_key()` scored the Backspace as a **correct keystroke** — 20 presses before typing anything gave 100 % accuracy, combo 20, 3 stars and an unlock with nothing typed.~~ **CLOSED by TC-006.** A no-op backspace now reports `is_backspace=True` in all three modes, so it can never reach the scoring path. **Verified:** 20 presses now report `total=0 correct=0 combo=0` → **0 %**. Guarded by `test_a_no_op_backspace_is_still_flagged_as_one`, parametrised over all three modes. | `engine/input_modes.py`; `test_D30_*`, `test_only_typing_can_produce_accuracy` | TC-006 ✅ |
 | ~~D-09~~ | S2 | ~~`lesson_attempts` had no `total_keystrokes` / `correct_keystrokes` columns, so `score()` silently dropped them and no stored accuracy was auditable.~~ **CLOSED by TC-008b.** Migration to `SCHEMA_VERSION = 2` adds `total_keystrokes`, `correct_keystrokes` and `corrections_made`; `score()` writes all three. Additive-only and idempotent, run in one transaction, versioned via a new `schema_meta` table (DR-009). The real inherited `_dev_data/typecraft.db` upgraded in place with its 10 badge rows preserved. | `managers/database.py`, `managers/progression.py`; `tests/db/test_schema.py` | TC-008b ✅ |
 | D-10 | S2 | Leaderboard includes every profile with score 0: `ProfileManager.create()` inserts a zero-valued `lesson_progress` row and the leaderboard query has no completion filter, so a brand-new student outranks nobody but still occupies a slot. Violates FR-112. | `scenes/leaderboard.py:35-44`; `managers/profile_manager.py:28-31` | TC-012 |
-| D-11 | S2 | `BadgeManager.award()` adds `xp_bonus` to `profile.total_xp` **after** `ProgressionService._award_xp()` already recomputed the level, so badge XP does not raise the level until the next attempt — and the `rising_star` / `keyboard_master` predicates evaluate a stale level. Violates FR-083. | `managers/progression.py:40-45`; `managers/badge_manager.py:53-59` | TC-013b |
+| ~~D-11~~ | S2 | ~~`BadgeManager.award()` added `xp_bonus` after `_award_xp()` had already recomputed the level, so badge XP did not count until a later attempt and the `rising_star`/`keyboard_master` predicates read a stale level.~~ **CLOSED by TC-013b.** `_award_xp()` split into `_add_xp()` + `_recompute_level()`; the level is derived after *all* XP, and one bounded extra badge pass catches level-dependent badges. Verified: badge XP crossing level 5 awards `rising_star` in the same attempt. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
 | D-12 | S2 | Teacher dashboard shows only name, level, and current streak. Average net WPM, average accuracy, lessons completed, XP, badge count, and longest streak are all missing (FR-122). | `scenes/teacher_dashboard.py:111-116` | TC-013 |
 | D-13 | S2 | Reset progress fires immediately on click with no confirmation step (FR-125). | `scenes/teacher_dashboard.py:34-37` | TC-013 |
 | D-14 | S2 | Settings UI neither loads nor persists: volume is hard-coded to 0.7 and mute to `False` on entry, and neither is ever written to `settings.json`. Startup never applies stored values to `AudioManager`. Only the PIN persists. | `scenes/settings.py:19-47` | TC-011 |
@@ -152,7 +153,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
 | D-21 | S3 | `assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent. | no `assets/` directory | TC-017 |
 | D-22 | S3 | **PARTIALLY CLOSED by TC-004.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Still open:** the FR-024/FR-134 call sites do not log yet, so a malformed `lessons.json` or `settings.json` is still rejected silently. | log written on a real app run; no `logging` import in `managers/` yet | TC-011, TC-017, TC-023 |
-| **D-31** | S2 | **The daily streak bonus is never awarded.** `metrics.daily_streak_bonus()` is implemented, correct, and unit-tested — and has **no caller anywhere in the application**, so FR-057 is unimplemented. Blueprint §2.4 states that level 10 (2 250 XP) is only reachable because lessons, badges *and* a daily streak bonus all contribute, so roughly a third of the intended XP economy contributes nothing and the top levels may be unreachable for a dedicated student. | `grep daily_streak_bonus` finds only the definition; xfail `test_first_completed_lesson_of_the_day_awards_the_streak_bonus` | TC-013b |
+| ~~D-31~~ | S2 | ~~The daily streak bonus was never awarded — `metrics.daily_streak_bonus()` had no caller, so FR-057 was unimplemented and a third of the XP economy contributed nothing.~~ **CLOSED by TC-013b.** Awarded once per local calendar day on the first completed lesson, inside the scoring transaction and after the streak is touched. Verified: 5/10/15/20/25 then saturating, once per day only. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
@@ -206,7 +207,21 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-010 (last task, DONE)
+### TC-013b (last task, DONE)
+
+- `typecraft/managers/progression.py` — `_award_xp()` split into `_add_xp()` (adds XP only) and
+  `_recompute_level()` (returns whether the level moved). `score()` now orders the work: attempt
+  XP → streak touch → **streak bonus if this is the first completed lesson of the local calendar
+  day** → unlock → recompute level → badges → recompute → one *bounded* extra badge pass when
+  the level moved.
+- `tests/db/test_progression.py` — 2 xfail markers removed; 6 new tests. Three existing XP
+  assertions updated for the newly-awarded streak bonus.
+- `tests/db/test_badges.py` — one XP assertion updated likewise.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 413 passing, 3 xfail; app smoke-tested.
+
+### TC-010 (DONE)
 
 - `typecraft/core/scene.py` — `on_quit_requested()` hook (default no-op).
 - `typecraft/core/state_manager.py` — `notify_quit()`.

@@ -178,7 +178,8 @@ def test_badge_bonus_xp_is_persisted(profile, attempt_factory):
 
     ctx.progression.score(attempt, student)
 
-    first_steps_bonus = 25
+    from typecraft.engine import metrics as m
+
     stored = ctx.db.query(
         "SELECT total_xp FROM profiles WHERE id=?", (student.id,))[0]["total_xp"]
-    assert stored == attempt.xp_awarded + first_steps_bonus
+    assert stored == attempt.xp_awarded + 25 + m.daily_streak_bonus(1)

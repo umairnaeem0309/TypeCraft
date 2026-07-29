@@ -197,17 +197,14 @@ def test_failed_attempt_still_counts_as_completed_and_earns_participation_xp(
     assert ctx.lessons.is_unlocked(student, "t1l2") is False
 
 
-# --------------------------------------------------------------------- known defects
+# --------------------------------------------------------------------- XP economy
 
-@pytest.mark.xfail(strict=True, reason="defect D-11: badge XP is added after the level has "
-                                      "already been recomputed, so it does not take effect "
-                                      "until the next attempt")
 def test_badge_xp_raises_the_level_in_the_same_attempt(profile, attempt_factory):
     """FR-083. Sequence: 30 XP on the profile, then a completed attempt at 84 %
-    (4 participation XP) which also earns First Steps (+25). 30+4+25 = 59, which
-    is level 2. ProgressionService._award_xp() computes the level from 34 and
-    BadgeManager.award() then adds the 25 behind its back, so the stored level
-    stays 1 until some later attempt happens to recompute it."""
+    (4 participation XP) which also earns First Steps (+25) and the first-of-day
+    streak bonus (+5). 30+4+25+5 = 64, which is level 2. The old code computed the
+    level from 34 and let BadgeManager.award() add the 25 behind its back, so the
+    stored level stayed 1 until some later attempt happened to recompute it."""
     ctx, student = profile
     student.total_xp = 30
     ctx.profiles.save(student)
@@ -215,12 +212,11 @@ def test_badge_xp_raises_the_level_in_the_same_attempt(profile, attempt_factory)
     ctx.progression.score(attempt_factory(student.id, accuracy=84.0), student)
 
     stored = _xp(ctx, student.id)
-    assert stored["total_xp"] == 59, "First Steps (+25) should have been awarded"
+    assert stored["total_xp"] == 30 + 4 + 25 + 5, (
+        "30 start + 4 participation + 25 First Steps + 5 first-lesson-of-the-day streak bonus")
     assert stored["level"] == 2, f"level {stored['level']} disagrees with {stored['total_xp']} XP"
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-31: the daily streak bonus is never awarded "
-                                      "- metrics.daily_streak_bonus() has no caller")
 def test_first_completed_lesson_of_the_day_awards_the_streak_bonus(profile, attempt_factory):
     """FR-057. The blueprint's own XP economy depends on this: level 10 (2 250 XP)
     is only reachable because lessons, badges *and* a daily streak bonus all
@@ -236,3 +232,114 @@ def test_first_completed_lesson_of_the_day_awards_the_streak_bonus(profile, atte
 
     assert student.current_streak == 1, "streak should have been touched"
     assert _xp(ctx, student.id)["total_xp"] == 4 + 25 + m.daily_streak_bonus(1)
+
+
+def test_the_streak_bonus_is_awarded_only_once_a_day(profile, attempt_factory):
+    """FR-057: the bonus rewards showing up, not grinding. A second lesson on the
+    same day earns its own XP and nothing extra."""
+    ctx, student = profile
+    ctx.progression.score(attempt_factory(student.id, accuracy=84.0), student)
+    after_first = _xp(ctx, student.id)["total_xp"]
+
+    second = attempt_factory(student.id, "t1l2", accuracy=84.0)
+    ctx.progression.score(second, student)
+
+    assert _xp(ctx, student.id)["total_xp"] == after_first + second.xp_awarded
+
+
+def test_the_streak_bonus_grows_with_the_streak_and_saturates(profile, attempt_factory):
+    """FR-057: +5 per day up to 5 days. Days are simulated by rewinding
+    last_active_date, which is the same thing the calendar does."""
+    ctx, student = profile
+    from datetime import date, timedelta
+
+    awarded = []
+    # The same lesson every day, and only six days: replaying one lesson avoids
+    # earning Home Row Hero (all of tier 1) and stops short of Perfect Week
+    # (a 7-day streak), either of which would add badge XP and confuse the
+    # arithmetic this test is actually about.
+    for _ in range(6):
+        before = _xp(ctx, student.id)["total_xp"]
+        attempt = attempt_factory(student.id, "t1l1", accuracy=84.0)
+        ctx.progression.score(attempt, student)
+        awarded.append(_xp(ctx, student.id)["total_xp"] - before - attempt.xp_awarded)
+
+        # Pretend the next lesson happens tomorrow.
+        student.last_active_date = str(
+            date.fromisoformat(student.last_active_date) - timedelta(days=1))
+        ctx.profiles.save(student)
+
+    awarded[0] -= 25            # day one also pays First Steps
+    assert awarded == [5, 10, 15, 20, 25, 25], awarded
+    assert student.current_streak == 6
+
+
+def test_badge_xp_that_crosses_a_level_awards_the_level_badge_immediately(
+        profile, attempt_factory):
+    """FR-081/FR-083 together, the case that needed the second evaluation pass:
+    480 XP + 4 participation + 5 streak = 489 (level 4). First Steps (+25) takes
+    it to 514, which is level 5 — so `rising_star` becomes true *because of* the
+    badge XP and must be awarded in the same attempt, not the next one."""
+    ctx, student = profile
+    student.total_xp = 480
+    ctx.profiles.save(student)
+
+    ctx.progression.score(attempt_factory(student.id, accuracy=84.0), student)
+
+    earned = {r["code"] for r in ctx.db.query(
+        """SELECT b.code FROM profile_badges pb JOIN badges b ON b.id = pb.badge_id
+           WHERE pb.profile_id=?""", (student.id,))}
+    assert {"first_steps", "rising_star"} <= earned
+
+    stored = _xp(ctx, student.id)
+    assert stored["total_xp"] == 480 + 4 + 5 + 25 + 40
+    assert stored["level"] == 5
+    assert stored["level"] == m.level_for(stored["total_xp"])
+
+
+def test_the_second_badge_pass_is_bounded(profile, attempt_factory):
+    """A badge award changes XP, which can change the level, which can award
+    another badge. Exactly one extra pass is run — a loop could not terminate on a
+    catalogue where a badge's bonus unlocks the next tier."""
+    ctx, student = profile
+    calls = []
+    original = ctx.badges.evaluate
+    ctx.badges.evaluate = lambda p, a: (calls.append(1), original(p, a))[1]
+
+    student.total_xp = 480
+    ctx.profiles.save(student)
+    ctx.progression.score(attempt_factory(student.id, accuracy=84.0), student)
+
+    assert len(calls) <= 2, f"badge evaluation ran {len(calls)} times"
+
+
+def test_level_ten_is_reachable_only_with_all_three_xp_sources(app_ctx):
+    """Blueprint §2.4 claims level 10 (2 250 XP) is reachable because lessons,
+    badges *and* streaks all contribute — "~2,000 XP from clearing **and
+    replaying** the 20+ lessons toward 3★, plus ~625 from badges, plus a streak
+    bonus". This pins that arithmetic, and pins how tight it is.
+
+    Measured here: a single 3★ pass of all 20 lessons is only ~1 050 XP, so
+    replaying really is required — and with the streak bonus missing (D-31) the
+    target was out of reach for a student who cleared everything once.
+    """
+    lessons = app_ctx.lessons._ordered
+    one_pass = sum(m.xp_for(97.0, l.target_wpm, 3, l.tier) for l in lessons)
+    badge_xp = sum(r["xp_bonus"] for r in app_ctx.db.query("SELECT xp_bonus FROM badges"))
+    # Twenty school days of practice; the bonus saturates after five.
+    streak_xp = sum(m.daily_streak_bonus(min(d, 5)) for d in range(1, 21))
+
+    needed = m.xp_to_reach(10)
+    assert one_pass + badge_xp < needed, (
+        "if one pass of every lesson plus every badge already reached level 10, the "
+        "curve would be too generous to be an achievement"
+    )
+
+    # Clearing each lesson then replaying it once to 3★ — the blueprint's model.
+    two_passes = one_pass + sum(m.xp_for(88.0, l.target_wpm * 0.8, 1, l.tier) for l in lessons)
+    total = two_passes + badge_xp + streak_xp
+    assert total >= needed, (
+        f"level 10 needs {needed}; lessons {two_passes} + badges {badge_xp} "
+        f"+ streaks {streak_xp} = {total}"
+    )
+    assert streak_xp == 450, "the streak source must actually contribute (D-31)"

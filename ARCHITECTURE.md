@@ -591,9 +591,13 @@ Profile object**, not only its row. A rolled-back transaction therefore used to 
 in-memory profile holding XP that was never earned, which the next successful `save()` would
 persist — a rollback that leaks. `score()` now snapshots and restores those fields on failure.
 
-**Still open here:** `BadgeManager.award()` adds `xp_bonus` after `_award_xp()` has already
-recomputed the level, so badge XP does not raise the level until the next attempt (D-11,
-FR-083), and the daily streak bonus is never awarded at all (D-31, FR-057). Both are TC-013b.
+**XP ordering inside that transaction (TC-013b).** Badges add XP, and XP determines the level,
+so the sequence matters: attempt XP → streak touch → streak bonus (first completed lesson of the
+local calendar day, FR-057) → unlock → recompute level → evaluate badges → recompute level → one
+**bounded** extra badge pass if the level moved. `_add_xp()` and `_recompute_level()` are
+separate for exactly this reason. The extra pass is deliberately not a loop: a badge bonus can
+raise the level, which can qualify another badge, and a catalogue could otherwise cascade
+without terminating.
 
 ---
 

@@ -8,11 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 12 DONE, 0 IN_PROGRESS, 15 TODO. **Open P0: 0 — every
-data-loss-class defect is closed.** Open P1: 11.
-**Phases 1 and 2 complete.** Test suite: **382 passing, 6 strict-xfail defect
-reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
-(AC-02 target ≥ 85 % — met).
+**Summary:** 27 tasks — 13 DONE, 0 IN_PROGRESS, 14 TODO. **Open P0: 0 — every
+data-loss-class defect is closed.** Open P1: 10. **Phases 1, 2 and 3 complete.**
+Test suite: **413 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
+Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
@@ -32,7 +31,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 | TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
 | TC-012 | Leaderboard completed-attempt filtering | 4 | TODO | P1 |
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | TODO | P1 |
-| TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | TODO | P1 |
+| TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | TODO | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | TODO | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | TODO | P1 |
@@ -507,7 +506,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 - **Acceptance.** FR-120…FR-127 pass.
 
 ## TC-013b — XP economy: badge XP ordering + missing daily streak bonus
-- **Phase** 3 · **Status** TODO · **Priority** P1
+- **Phase** 3 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-081, FR-083, FR-057
 - **Depends on** TC-008
 - **Goal.** Two XP-economy defects. **D-11:** `BadgeManager.award()` adds `xp_bonus` after
@@ -530,8 +529,19 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
   Add: a second completed lesson on the same day awards **no** further streak bonus; the bonus
   saturates at 5 days; `rising_star` is awarded in the very attempt whose badge XP crosses
   level 5; no infinite award loop.
-- **Acceptance.** FR-057, FR-081, FR-083 pass; a 20-lesson playthrough plus the badge
-  catalogue plus daily streaks can reach 2 250 XP (assert the arithmetic, not by simulation).
+- **Acceptance.** ✅ Met. **413 passing, 3 xfail.** Both markers removed. `_award_xp()` split
+  into `_add_xp()` and `_recompute_level()` so the caller controls *when* the level is derived;
+  scoring order is now attempt XP → streak touch → streak bonus → unlock → recompute level →
+  badges → recompute → one bounded extra badge pass. 6 new tests: the bonus is paid once a day
+  (a second lesson the same day earns only its own XP); it grows 5/10/15/20/25 and saturates at
+  25; `rising_star` is awarded in the very attempt whose *badge* XP crosses level 5; badge
+  evaluation runs at most twice; and the level-10 reachability arithmetic.
+- **Finding worth keeping.** The reachability test measures the economy rather than asserting a
+  slogan: a single 3★ pass of all 20 lessons is only **1 051 XP**, badges add **625**, and 20
+  school days of streaks add **450**. So level 10 (2 250) genuinely requires *replaying*
+  lessons, exactly as blueprint §2.4 says — and with D-31 unfixed it was out of reach for a
+  student who cleared everything once. The test also asserts one pass + all badges stays *under*
+  2 250, so the curve cannot silently become too generous either.
 
 ## TC-014 — Classroom-scale scrolling for profiles, lessons, dashboard
 - **Phase** 4 · **Status** TODO · **Priority** P1
