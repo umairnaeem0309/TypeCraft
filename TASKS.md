@@ -8,9 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 7 DONE, 0 IN_PROGRESS, 20 TODO. Open P0: 5. Open P1: 11.
-**Phases 1 and 2 complete.** Test suite: **284 passing, 0 failing, 0 xfail.**
-`engine/` coverage 99 % (`typing_engine.py` and `metrics.py` both 100 %).
+**Summary:** 27 tasks — 8 DONE, 0 IN_PROGRESS, 19 TODO. Open P0: 4. Open P1: 11.
+**Phases 1 and 2 complete.** Test suite: **367 passing, 9 strict-xfail defect
+reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
+(AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
@@ -21,7 +22,7 @@ cover.
 | TC-004 | pytest infrastructure with isolated data paths | 1 | DONE | P0 |
 | TC-005 | Baseline tests for metrics and the three modes | 2 | DONE | P0 |
 | TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | DONE | P0 |
-| TC-007 | Progression, unlock, streak, badge service tests | 3 | TODO | P0 |
+| TC-007 | Progression, unlock, streak, badge service tests | 3 | DONE | P0 |
 | TC-008 | Real transaction support in `Database` | 3 | TODO | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | TODO | P0 |
 | TC-009 | Active-attempt checkpoint and crash recovery | 3 | TODO | P0 |
@@ -30,7 +31,7 @@ cover.
 | TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
 | TC-012 | Leaderboard completed-attempt filtering | 4 | TODO | P1 |
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | TODO | P1 |
-| TC-013b | Badge XP applied before level recompute | 3 | TODO | P1 |
+| TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | TODO | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | TODO | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | TODO | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | TODO | P1 |
@@ -263,7 +264,7 @@ cover.
   exact expected counter assertions were the real gate.
 
 ## TC-007 — Progression, unlock, streak, badge service tests
-- **Phase** 3 · **Status** TODO · **Priority** P0
+- **Phase** 3 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** FR-010…FR-016, FR-060…FR-066, FR-080…FR-087, DR-002…DR-008
 - **Depends on** TC-006
 - **Goal.** Characterise the persistence services against a real temp database before
@@ -279,8 +280,28 @@ cover.
 - **Checks.** `pytest tests/db tests/unit -q`. Expected failures document TC-008/TC-012/
   TC-013b defects (non-atomic reset, leaderboard including zero-completion profiles, badge XP
   not raising the level).
-- **Acceptance.** Every requirement listed has a test; each expected failure is named in
-  `PROJECT_STATE.md` and mapped to its fixing task.
+- **Acceptance.** ✅ Met. **367 passing, 9 strict-xfail, 0 unexpected failures.** Coverage of
+  `engine/` + `managers/` **97 %**, clearing AC-02's ≥ 85 % bar: `lesson_manager.py`,
+  `config_manager.py`, `streak_manager.py` and `metrics.py` at 100 %, `badge_manager.py` 98 %,
+  `database.py` 97 %, `progression.py` 93 %. Six new test modules — `tests/db/test_schema.py`,
+  `test_transactions.py`, `test_progression.py`, `test_unlocking.py`, `test_badges.py`,
+  `test_config_and_seeding.py`, plus `tests/unit/test_streaks.py`.
+- **Confirmed working as inherited** (no defect): schema bootstrap idempotency and the
+  reopen-without-data-loss property; orphan `in_progress` → `incomplete` reclassification;
+  first-lesson-only unlock on profile creation; the 85.0 unlock boundary exact at
+  84.99/85.0/85.01 and unaffected by WPM; incomplete attempts excluded from unlocks, XP,
+  badges, streaks and averages; the progress cache keeping per-metric bests per lesson; badge
+  award idempotency including no double-paid XP; all ten badge criteria; the entire streak
+  state machine including the clock-rollback guard, month/year/leap-day boundaries and the
+  `longest_streak` high-water mark; first-run seeding never overwriting an edited file; the
+  `lessons.json` fallback surviving four kinds of corruption without touching the teacher's file.
+- **New defect found: D-31** — `metrics.daily_streak_bonus()` is implemented and correct but
+  **has no caller**, so FR-057 is unimplemented and one of the blueprint's three XP sources
+  contributes nothing. Assigned to TC-013b.
+- **Scope note.** The leaderboard exclusion rule is asserted here only at its root cause (a
+  fresh profile gets a zero-valued `lesson_progress` row). The query itself lives in
+  `scenes/leaderboard.py`, so testing it belongs with the fix in **TC-012** — duplicating the
+  SQL in a test here would have let the scene stay broken while the test passed.
 
 ## TC-008 — Real transaction support in `Database`
 - **Phase** 3 · **Status** TODO · **Priority** P0
@@ -430,21 +451,32 @@ cover.
   survives and lesson 1 is unlocked.
 - **Acceptance.** FR-120…FR-127 pass.
 
-## TC-013b — Badge XP applied before level recompute
+## TC-013b — XP economy: badge XP ordering + missing daily streak bonus
 - **Phase** 3 · **Status** TODO · **Priority** P1
-- **Requirements** FR-083, FR-081
+- **Requirements** FR-081, FR-083, FR-057
 - **Depends on** TC-008
-- **Goal.** `BadgeManager.award()` adds `xp_bonus` after `_award_xp()` already computed the
-  level, so badge XP does not raise the level until the next attempt — and the
-  `rising_star` / `keyboard_master` predicates then evaluate a stale level.
-- **Scope.** Recompute the level after badge XP inside the same transaction; re-evaluate the
-  level-dependent predicates once after the recompute (bounded to one extra pass, no loop).
+- **Goal.** Two XP-economy defects. **D-11:** `BadgeManager.award()` adds `xp_bonus` after
+  `_award_xp()` already computed the level, so badge XP does not raise the level until the
+  next attempt, and the `rising_star`/`keyboard_master` predicates then read a stale level.
+  **D-31:** the daily streak bonus is never awarded at all — `metrics.daily_streak_bonus()`
+  is implemented, correct and unit-tested, but has no caller. Blueprint §2.4 states that
+  level 10 (2 250 XP) is only reachable because lessons, badges *and* the streak bonus all
+  contribute, so a third of the economy is missing.
+- **Scope.** Award `daily_streak_bonus(current_streak)` once per local calendar day, on the
+  first completed lesson of that day, inside the scoring transaction and after
+  `StreakManager.touch()` has set the new streak. Then recompute the level once after all XP
+  (attempt + badges + streak bonus) has been applied, and re-run the level-dependent badge
+  predicates a single time (bounded — no loop).
 - **Files.** `typecraft/managers/progression.py`, `typecraft/managers/badge_manager.py`,
-  `tests/db/test_badges.py`.
-- **Checks.** A profile brought to 49 XP that then earns a 25 XP badge ends at level 2 in the
-  same attempt; `rising_star` is awarded in the attempt that crosses level 5 via badge XP;
-  no infinite award loop.
-- **Acceptance.** FR-081/083 pass.
+  `tests/db/test_progression.py`, `tests/db/test_badges.py`.
+- **Checks.** Clear the two strict-xfail tests
+  `test_badge_xp_raises_the_level_in_the_same_attempt` and
+  `test_first_completed_lesson_of_the_day_awards_the_streak_bonus`, and remove their markers.
+  Add: a second completed lesson on the same day awards **no** further streak bonus; the bonus
+  saturates at 5 days; `rising_star` is awarded in the very attempt whose badge XP crosses
+  level 5; no infinite award loop.
+- **Acceptance.** FR-057, FR-081, FR-083 pass; a 20-lesson playthrough plus the badge
+  catalogue plus daily streaks can reach 2 250 XP (assert the arithmetic, not by simulation).
 
 ## TC-014 — Classroom-scale scrolling for profiles, lessons, dashboard
 - **Phase** 4 · **Status** TODO · **Priority** P1

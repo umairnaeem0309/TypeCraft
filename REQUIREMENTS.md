@@ -348,6 +348,7 @@ The project is accepted when all of the following are objectively evidenced in
 | FR-060…FR-066 | TC-007 |
 | FR-070…FR-076 | TC-008, TC-009, TC-010 |
 | FR-080…FR-087 | TC-007, TC-013b |
+| FR-057 (daily streak bonus — unimplemented, D-31) | TC-013b |
 | FR-090…FR-096 | TC-015 |
 | FR-100…FR-104 | TC-016 |
 | FR-110…FR-114 | TC-012 |

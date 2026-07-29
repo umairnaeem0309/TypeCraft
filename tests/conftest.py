@@ -121,6 +121,40 @@ def app_ctx(writable_dir, display):
 
 
 @pytest.fixture
+def attempt_factory():
+    """Build an AttemptResult the way TypingEngine.result() would.
+
+    Stars and XP are derived through the real formulas rather than hard-coded, so
+    a test states the performance ("95 % at 20 wpm") and cannot drift out of step
+    with engine/metrics.py.
+    """
+    from typecraft.engine import metrics as m
+    from typecraft.models.attempt import AttemptResult, AttemptStatus
+
+    def make(profile_id, lesson_id="t1l1", *, accuracy=95.0, wpm_net=20.0, tier=1,
+             status=AttemptStatus.COMPLETE, total_keystrokes=100, max_combo=30,
+             mode="lock_on_error", duration_sec=60.0):
+        complete = status is AttemptStatus.COMPLETE
+        stars = m.stars_for(accuracy) if complete else 0
+        errors = round(total_keystrokes * (100.0 - accuracy) / 100.0)
+        return AttemptResult(
+            profile_id=profile_id, lesson_id=lesson_id, status=status, mode=mode,
+            wpm_net=wpm_net, wpm_gross=wpm_net / (accuracy / 100.0) if accuracy else 0.0,
+            accuracy=accuracy,
+            total_keystrokes=total_keystrokes,
+            errors=errors,
+            correct_keystrokes=total_keystrokes - errors,
+            combo=0, max_combo=max_combo, duration_sec=duration_sec,
+            stars=stars,
+            xp_awarded=m.xp_for(accuracy, wpm_net, stars, tier) if complete else 0,
+            started_at="2026-07-29T10:00:00",
+            completed_at="2026-07-29T10:01:00" if complete else "",
+        )
+
+    return make
+
+
+@pytest.fixture
 def profile(app_ctx):
     """One student profile with the first lesson unlocked, as ProfileManager
     creates it. Returns (ctx, profile) so a test needs only this one fixture."""

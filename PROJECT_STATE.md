@@ -7,13 +7,11 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 3 — persistence, progression, badges, streaks, and recovery
-**Current active task:** none — TC-006 closed, **Phase 2 complete**, awaiting the go-ahead
-for TC-007
-**Last completed task:** TC-006 — fix keystroke accounting (2026-07-29)
-**Next recommended task:** **TC-007** — progression, unlock, streak, badge service tests
-(P0). Characterisation again: expect it to surface D-04 (non-atomic reset), D-10 (leaderboard
-includes zero-completion profiles) and D-11 (badge XP applied after the level recompute) as
-strict-xfail reproductions for TC-008/TC-012/TC-013b.
+**Current active task:** none — TC-007 closed, awaiting the go-ahead for TC-008
+**Last completed task:** TC-007 — progression, unlock, streak, badge service tests (2026-07-29)
+**Next recommended task:** **TC-008** — real transaction support in `Database` (P0). The
+highest-value remaining fix: it clears 3 strict-xfail tests and is a hard prerequisite for
+TC-008b (schema migration) and TC-009 (crash checkpoint).
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -25,23 +23,28 @@ strict-xfail reproductions for TC-008/TC-012/TC-013b.
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
-| 3 — Persistence & recovery | NOT STARTED — TC-007 next |
+| 3 — Persistence & recovery | IN PROGRESS — TC-007 done (tests pin the defects); TC-008, TC-008b, TC-009, TC-010, TC-013b outstanding |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 7 DONE, 0 IN_PROGRESS, 20 TODO. Open P0: 5. Open P1: 11.
-Defects: **30 found** — **8 closed** (D-01, D-02, D-03, D-07, D-08, D-28, D-29, D-30),
-1 partially closed (D-22), 21 open.
-Tests: **284 passing, 0 failing, 0 xfail.** Coverage: `engine/typing_engine.py` **100 %**,
-`engine/metrics.py` **100 %**, `engine/input_modes.py` 96 %, `engine/` overall **99 %**.
-`managers/` is still largely uncovered — TC-007.
+Tasks: 27 defined — 8 DONE, 0 IN_PROGRESS, 19 TODO. Open P0: 4. Open P1: 11.
+Defects: **31 found** (D-31 added by TC-007) — **8 closed** (D-01, D-02, D-03, D-07, D-08,
+D-28, D-29, D-30), 1 partially closed (D-22), 22 open.
+Tests: **367 passing, 9 strict-xfail defect reproductions, 0 unexpected failures.**
+Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
+100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
+`streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
+93 %: `progression.py`. 77 %: `profile_manager.py`.
 
-**Metrics are now trustworthy.** The four keystroke-accounting defects are fixed and
-verified, so accuracy, WPM, stars, XP, combo and the unlock gate can be relied on for the
-first time. Everything downstream of *persisting* those numbers is still suspect (D-04, D-05,
-D-06, D-09, D-10, D-11).
+**Metrics are trustworthy; the rules layer is now proven too.** TC-006 fixed the four
+keystroke-accounting defects, and TC-007 established by test that the unlock gate, progress
+cache, badge criteria and idempotency, streak state machine, and first-run seeding all behave
+correctly as inherited. What remains broken is **durability**: writes are not atomic (D-04),
+there is no crash checkpoint (D-05), window-close loses an attempt (D-06), the schema cannot
+store the keystroke counts (D-09), and the XP economy is missing a third of its sources
+(D-11, D-31).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -149,6 +152,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
 | D-21 | S3 | `assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent. | no `assets/` directory | TC-017 |
 | D-22 | S3 | **PARTIALLY CLOSED by TC-004.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Still open:** the FR-024/FR-134 call sites do not log yet, so a malformed `lessons.json` or `settings.json` is still rejected silently. | log written on a real app run; no `logging` import in `managers/` yet | TC-011, TC-017, TC-023 |
+| **D-31** | S2 | **The daily streak bonus is never awarded.** `metrics.daily_streak_bonus()` is implemented, correct, and unit-tested — and has **no caller anywhere in the application**, so FR-057 is unimplemented. Blueprint §2.4 states that level 10 (2 250 XP) is only reachable because lessons, badges *and* a daily streak bonus all contribute, so roughly a third of the intended XP economy contributes nothing and the top levels may be unreachable for a dedicated student. | `grep daily_streak_bonus` finds only the definition; xfail `test_first_completed_lesson_of_the_day_awards_the_streak_bonus` | TC-013b |
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
@@ -202,7 +206,31 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-006 (last task, DONE)
+### TC-007 (last task, DONE) — tests only, zero production changes
+
+- `tests/conftest.py` — added the `attempt_factory` fixture, which derives stars and XP
+  through the real formulas so a test states a performance rather than hard-coding numbers.
+- `tests/db/test_schema.py` — **new**: table set, bootstrap idempotency, reopen-without-loss,
+  the attempt-lookup index, composite-key and unique-code enforcement, orphan `in_progress`
+  reclassification (and that it leaves `complete`/`incomplete` rows alone), plus the D-09 xfail.
+- `tests/db/test_transactions.py` — **new**: three D-04 xfails, including a forced mid-reset
+  failure and a forced failure inside `score()`.
+- `tests/db/test_progression.py` — **new**: profile seeding, complete vs incomplete
+  persistence, exclusion from averages, progress-cache bests, XP accumulation and level
+  recompute, participation XP; D-11 and D-31 xfails.
+- `tests/db/test_unlocking.py` — **new**: 20 lessons in 5 tiers, chain ordering, unique ids,
+  the exact 85.0 boundary, WPM-independence, incomplete attempts never unlocking, idempotency,
+  no re-locking, one-step-only advance, tier crossing, final-lesson no-op.
+- `tests/db/test_badges.py` — **new**: catalogue sync and non-duplication, all ten criteria
+  incl. the 100 %/30 wpm/50 combo boundaries and distinct-lesson counting, award idempotency
+  with no double-paid XP, and no badges from incomplete attempts.
+- `tests/db/test_config_and_seeding.py` — **new**: first-run seeding, never overwriting an
+  edited file, gap-filling, the teacher's file winning, fallback across four kinds of
+  corruption without touching their file, PIN set/verify/persist; D-19 and two D-15 xfails.
+- `tests/unit/test_streaks.py` — **new**: the full D4 state machine with injected dates.
+- `TASKS.md`, `PROJECT_STATE.md`, `REQUIREMENTS.md`.
+
+### TC-006 (DONE)
 
 - `typecraft/engine/typing_engine.py` — `_error_counted` deleted (D-08); the
   `cursor >= len(target)` guard moved to the top of `feed_key()` as an
@@ -478,7 +506,53 @@ the rule: "the backspace did nothing" must never be expressed as "this was not a
 correctly ignored the Backspaces. The target was widened to 3 characters; the assertions are
 unchanged and now also check `corrections_made`.
 
-**New product question raised, deliberately not decided here (see OQ-006).** Because
+### TC-007 (2026-07-29)
+
+| Command | Result |
+|---|---|
+| `pytest -q -rxX` | **367 passed, 9 xfail, 0 unexpected failures** in 24 s |
+| `pytest --cov=typecraft.engine --cov=typecraft.managers` | **97 %** — AC-02's ≥ 85 % bar met. 100 % for `metrics`, `typing_engine`, `lesson_manager`, `config_manager`, `streak_manager`; 98 % `badge_manager`; 97 % `database`; 93 % `progression`; 77 % `profile_manager` |
+
+**Zero production files were changed.** This was pure characterisation.
+
+**Confirmed correct as inherited** — worth recording, because it narrows where the remaining
+risk is: schema bootstrap idempotency and reopen-without-loss; orphan `in_progress` recovery
+(and that it leaves other statuses alone); first-lesson-only unlock on profile creation; the
+85.0 gate exact at 84.99 / 85.0 / 85.01 and independent of WPM; incomplete attempts excluded
+from unlocks, XP, badges, streaks and averages; progress-cache bests per lesson; badge
+idempotency with no double-paid XP; all ten badge criteria including distinct-lesson counting;
+the entire streak state machine including the clock-rollback guard, month/year/leap-day
+boundaries and the high-water mark; seeding never overwriting an edited file; and the
+`lessons.json` fallback surviving four kinds of corruption without touching the teacher's file.
+
+**The 9 strict-xfail reproductions — the acceptance lists for the next tasks:**
+
+| Test id | Defect | Fixed by |
+|---|---|---|
+| `test_transactions.py::test_rollback_undoes_every_statement_since_begin` | D-04 | TC-008 |
+| `test_transactions.py::test_a_failure_midway_through_a_reset_changes_nothing` | D-04 | TC-008 |
+| `test_transactions.py::test_a_failure_while_scoring_leaves_no_partial_attempt` | D-04 | TC-008 |
+| `test_schema.py::test_attempts_table_stores_the_keystroke_counts` | D-09 | TC-008b |
+| `test_progression.py::test_badge_xp_raises_the_level_in_the_same_attempt` | D-11 | TC-013b |
+| `test_progression.py::test_first_completed_lesson_of_the_day_awards_the_streak_bonus` | D-31 | TC-013b |
+| `test_config_and_seeding.py::test_the_pin_hash_is_salted` | D-15 | TC-011b |
+| `test_config_and_seeding.py::test_the_pin_cannot_be_recovered_by_brute_force` | D-15 | TC-011b |
+| `test_config_and_seeding.py::test_a_broken_lessons_file_is_reported` | D-19 | TC-023 |
+
+**One of my test premises was wrong again, not the code.**
+`test_completing_the_final_lesson_…` asserted that only one lesson would ever be unlocked.
+In fact `_update_progress_cache()` inserts an `is_unlocked=1` row for the lesson just
+completed, which is sound — you cannot complete a locked lesson through the UI. Assertion
+corrected to check that the unlocked set is exactly {lesson 1, the final lesson} and is a
+subset of the real lesson ids.
+
+**Scope note on the leaderboard.** TC-007's brief listed "leaderboard exclusion rules", but
+the query lives in `scenes/leaderboard.py`. Duplicating that SQL in a test here would have let
+the scene stay broken while the test passed, so this task asserts only the root cause (a fresh
+profile gets a zero-valued `lesson_progress` row) and the query test moves to **TC-012**,
+where its `tests/db/test_leaderboard.py` was already assigned.
+
+**New product question raised by TC-006, deliberately not decided (see OQ-006).** Because
 completion fires the instant the cursor reaches the end, a wrong *final* character in
 `BackspaceMode` can never be corrected — FR-033 promises revisiting, FR-047 ends the attempt.
 Not a regression (the inherited `LessonScene` already transitioned on the finishing keystroke)
