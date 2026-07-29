@@ -8,10 +8,11 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 19 DONE, 0 IN_PROGRESS, 8 TODO. **Open P0: 0 — every
-data-loss-class defect is closed. No open security defects.** Open P1: 4.
-**Phases 1, 2 and 3 complete.**
-Test suite: **596 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+**Summary:** 27 tasks — 20 DONE, 0 IN_PROGRESS, 7 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.** Open P1: 3
+(TC-018 performance, TC-019 smoke tests, TC-020 packaging + TC-021/TC-022 release).
+**Phases 1, 2 and 3 complete; Phase 4 needs only TC-017 and TC-023.**
+Test suite: **634 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -35,7 +36,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | DONE | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | DONE | P1 |
-| TC-016 | Word-wrapped target text and unambiguous cursor | 4 | TODO | P1 |
+| TC-016 | Word-wrapped target text and unambiguous cursor | 4 | DONE | P1 |
 | TC-017 | Assets, logging, and graceful fallbacks | 4 | TODO | P2 |
 | TC-018 | Measured dirty-rect rendering and bounded caches | 6 | TODO | P1 |
 | TC-019 | Full application smoke tests | 6 | TODO | P1 |
@@ -665,7 +666,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   frame (NFR-007, §5.3).
 
 ## TC-016 — Word-wrapped target text and unambiguous cursor
-- **Phase** 4 · **Status** TODO · **Priority** P1
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-100…FR-104, NFR-007
 - **Depends on** TC-004
 - **Goal.** Target text currently wraps mid-word by pixel width, uses `x > max_width + 60`
@@ -678,7 +679,29 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** For the longest bundled lesson, every glyph rect lies inside the text area; no
   word is split; the caret index matches the engine cursor for a scripted sequence; layout is
   computed once (assert the layout function is not called during `render`).
-- **Acceptance.** FR-100…FR-104 pass.
+- **Acceptance.** OK. **634 passing, 1 xfail.** 35 new tests in
+  `tests/db/test_target_text.py`. New `ui/target_text.py` computes a
+  `TargetTextLayout` once per lesson entry — the target is fixed for the whole
+  attempt, so only the per-character colours change per frame. Widths come from
+  `font.size()`, which measures without rasterising, so building the layout adds
+  nothing to the text cache.
+- **Wrapping is token-based.** The text is split into runs of one word or one space,
+  and a run is placed whole — so "practice" can no longer break as "practi"/"ce". The
+  wrap test runs **before** a glyph is placed rather than after, which is what let the
+  old `x > max_width + 60` slack push the last character on each line past the right
+  edge. A single word longer than a line is broken deliberately rather than allowed to
+  overflow, because a teacher can type anything.
+- **The cursor is unambiguous.** The caret is a bar on the **left edge** of the
+  character about to be typed (the old code drew it after `x` had advanced, so it
+  marked the gap to the right), plus a soft block behind that character — two
+  independent cues, so the position is readable even where a glyph is narrow. At the
+  end of the text the caret rests just after the final glyph rather than vanishing.
+- **Spaces are visible and measured.** Drawn as a middle dot (FR-103), and the layout
+  measures the *displayed* glyph, so the caret and the text can never disagree about
+  where a character sits.
+- **Bounds proved over real content.** Every one of the 20 bundled lessons is asserted
+  to lay out entirely inside the real `TEXT_AREA` — parametrised per lesson, so a
+  teacher's longer edit that would clip fails the suite by name.
 
 ## TC-017 — Assets, logging, and graceful fallbacks
 - **Phase** 4 · **Status** TODO · **Priority** P2

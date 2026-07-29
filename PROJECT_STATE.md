@@ -6,15 +6,14 @@
 ---
 
 **Last updated:** 2026-07-29
-**Current phase:** Phase 4 — scene flow and core UI completion
-**Current active task:** none — TC-015 closed. **No open P0 tasks and no open security
+**Current phase:** Phase 4 — scene flow and core UI completion (TC-012, TC-014, TC-015,
+TC-016 done; TC-017 and TC-023 remain, both P2)
+**Current active task:** none — TC-016 closed. **No open P0 tasks and no open security
 defects.**
-**Last completed task:** TC-015 — teaching keyboard: Space, Shift, punctuation, next-key and
-finger guidance (2026-07-30)
-**Next recommended task:** **TC-016** — word-wrapped target text and an unambiguous cursor
-(P1, D-17). The last core-UI defect: text wraps mid-word by pixel width, the wrap test lets the
-final glyph on a line overhang the text area, and the caret is drawn after `x` has already
-advanced.
+**Last completed task:** TC-016 — word-wrapped target text and unambiguous cursor (2026-07-30)
+**Next recommended task:** **TC-019** — full application smoke tests (P1). Sequenced before
+TC-018 deliberately (PLAN-02): the dirty-rect refactor needs a regression net first. TC-017
+(assets, notices) and TC-023 (lessons.json warning) are the remaining P2 items and can follow.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -32,10 +31,10 @@ advanced.
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 19 DONE, 0 IN_PROGRESS, 8 TODO. **Open P0: 0.** Open P1: 4.
-Defects: **31 found** — **23 closed**, 1 partially closed (D-22), 7 open.
+Tasks: 27 defined — 20 DONE, 0 IN_PROGRESS, 7 TODO. **Open P0: 0.** Open P1: 3.
+Defects: **31 found** — **24 closed**, 1 partially closed (D-22), 6 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
-Tests: **596 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Tests: **634 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
@@ -150,7 +149,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-14~~ | S2 | ~~Settings neither loaded nor persisted: volume hard-coded to 0.7 and mute to `False` on entry, never written back, and startup never applied stored values.~~ **CLOSED by TC-011.** `AppContext` applies stored volume/mute to `AudioManager`; `SettingsScene` initialises from it and writes every change; a corrupt file falls back with a visible notice + log and is healed by the next change. | `core/app_context.py`, `scenes/settings.py`, `managers/config_manager.py`; `tests/db/test_settings.py` | TC-011 ✅ |
 | ~~D-15~~ | S2 | ~~Teacher PIN was a bare unsalted SHA-256 of four digits — 10 000 preimages, recoverable from `settings.json` in milliseconds — compared with `==`.~~ **CLOSED by TC-011b.** PBKDF2-HMAC-SHA256, 200 000 rounds, 16-byte per-install salt, self-describing `pbkdf2_sha256$rounds$salt$digest` format, verified with `hmac.compare_digest`. The brute-force test that used to recover the PIN now finds nothing. Legacy hashes are accepted once and upgraded in place. | `managers/config_manager.py`; `tests/db/test_config_and_seeding.py` | TC-011b ✅ |
 | ~~D-16~~ | S3 | ~~Keyboard was 4x10 letter keys: no Space (the most-typed character in the course), no Shift, none of the punctuation Tier 4 is built from; it highlighted the key just *pressed* rather than the next expected one, and never named a finger.~~ **CLOSED by TC-015.** Full 5-row 61-key board from a single `ROWS` table with `CHAR_TO_KEY` derived from it; `highlight_expected()` guides the next character; a capital lights the letter plus the opposite hand's Shift; the finger is named in words. Coverage proved over every character of all 20 lessons. | `ui/keyboard_renderer.py`, `ui/theme.py`, `scenes/lesson.py`; `tests/db/test_keyboard.py` | TC-015 OK |
-| D-17 | S3 | Target text wraps mid-word by pixel width, the wrap test `x > max_width + 60` lets the last glyph overhang the text area, and the caret is drawn after `x` has already advanced. | `scenes/lesson.py:96-119` | TC-016 |
+| ~~D-17~~ | S3 | ~~Target text wrapped mid-word by pixel width; the `x > max_width + 60` test fired only after the offending glyph was drawn, so the last character on each line overhung the area; and the caret was drawn after `x` had advanced, marking the gap to the right of the character it meant.~~ **CLOSED by TC-016.** New `ui/target_text.py` with token-based wrapping (words placed whole), the wrap test before placement, a caret on the character's left edge plus a block behind it, and visible measured space markers. Bounds asserted for all 20 lessons in the real text area. | `ui/target_text.py`, `scenes/lesson.py`; `tests/db/test_target_text.py` | TC-016 OK |
 | ~~D-18~~ | S3 | ~~No pagination or scrolling: Profile Select ran off the window from the 9th child, Lesson Select clipped its 4th row of cards (so the last five lessons could not be started), and the dashboard list was unbounded.~~ **CLOSED by TC-014.** New `ui/scroll_panel.py` adopted by all three. Children keep content coordinates; the panel translates rendering up and input back down, so layout and hit-testing cannot drift apart. Verified at 40 students: everything visible is inside the window, everything is reachable, and a scrolled click hits the item under the cursor. | `ui/scroll_panel.py`, `scenes/profile_select.py`, `scenes/lesson_select.py`, `scenes/teacher_dashboard.py`; `tests/db/test_scrolling.py` | TC-014 OK |
 | D-19 | S3 | Malformed `lessons.json` falls back to the bundled default in **total silence** — no notice, no log. A teacher's broken edit looks like it simply had no effect. Violates FR-024. | `managers/lesson_manager.py:37-42` | TC-023 |
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
@@ -210,7 +209,21 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-015 (last task, DONE)
+### TC-016 (last task, DONE)
+
+- `typecraft/ui/target_text.py` - **new.** `TargetTextLayout` computed once per lesson entry:
+  token-based word wrapping, wrap test before placement, per-character rects, `caret_rect()`
+  on the left edge (resting after the final glyph when finished), `bounds()`, `line_count()`,
+  and a visible measured space marker.
+- `typecraft/scenes/lesson.py` - `TEXT_AREA` constant; layout built in `on_enter`;
+  `_render_target_text()` now only recolours and blits, drawing a block behind the current
+  character plus the caret.
+- `tests/db/test_target_text.py` - **new**, 35 tests.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 634 passing, 1 xfail (D-19 only); app smoke-tested.
+
+### TC-015 (DONE)
 
 - `typecraft/ui/keyboard_renderer.py` - rewritten. Single `ROWS` table of
   `(label, char, width, finger)` describing a 5-row 61-key QWERTY including Space, both Shifts,

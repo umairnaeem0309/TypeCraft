@@ -19,10 +19,15 @@ from typecraft.models.attempt import AttemptStatus, CharStatus
 from typecraft.ui import theme
 from typecraft.ui.hud import HUD
 from typecraft.ui.keyboard_renderer import KeyboardRenderer
+from typecraft.ui.target_text import TargetTextLayout
 
 # Full printable set: lessons.json content includes capitals (Shift keys),
 # commas, periods, question marks — not just lowercase home-row characters.
 TYPABLE = set(string.ascii_letters + string.digits + string.punctuation + " ")
+
+#: Where the drill text is laid out. Sits between the HUD and the keyboard, and the
+#: layout is clamped to it so nothing can be drawn past the window edge (FR-102).
+TEXT_AREA = pygame.Rect(60, 150, theme.SCREEN_WIDTH - 120, 250)
 
 
 class LessonScene(Scene):
@@ -43,6 +48,14 @@ class LessonScene(Scene):
         self.keyboard.prerender()
 
         self.hud = HUD(pygame.Rect(60, 60, 800, 40), self.ctx.resources)
+
+        # Computed once: the target text is fixed for the whole attempt, so only the
+        # per-character colours change from frame to frame (NFR-007).
+        self.layout = TargetTextLayout(
+            self.engine.target,
+            self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TARGET_TEXT),
+            TEXT_AREA,
+        )
 
         self._quit_requested = False
         self._update_keyboard_hint()
@@ -141,13 +154,20 @@ class LessonScene(Scene):
         surface.blit(hint, (60, theme.SCREEN_HEIGHT - 40))
 
     def _render_target_text(self, surface) -> None:
+        """Draw the pre-computed layout. Positions never change during an attempt \u2014
+        only the per-character colours \u2014 so nothing is measured here."""
         font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TARGET_TEXT)
-        x, y = 60, 200
-        max_width = theme.SCREEN_WIDTH - 120
-        line_height = font.get_height() + 8
+        cursor = self.engine.cursor
 
-        for i, ch in enumerate(self.engine.target):
-            status = self.engine.char_status[i]
+        # A soft block behind the current character, plus the caret on its left
+        # edge: two independent cues, so the position is unambiguous even where a
+        # glyph is narrow (FR-101).
+        current = self.layout.rect_for(cursor)
+        if current is not None:
+            pygame.draw.rect(surface, theme.COLOR_CARD_BG, current, border_radius=4)
+
+        for index, glyph_char, rect in self.layout.glyphs:
+            status = self.engine.char_status[index]
             if status == CharStatus.CORRECT:
                 color = theme.COLOR_CORRECT
             elif status == CharStatus.ERROR:
@@ -155,12 +175,7 @@ class LessonScene(Scene):
             else:
                 color = theme.COLOR_PENDING
 
-            glyph = self.ctx.resources.text_surface(ch if ch != " " else "\u00b7", font, color)
-            surface.blit(glyph, (x, y))
-            x += glyph.get_width()
-            if x > max_width + 60:
-                x = 60
-                y += line_height
+            glyph = self.ctx.resources.text_surface(glyph_char, font, color)
+            surface.blit(glyph, (rect.x, rect.y))
 
-            if i == self.engine.cursor:
-                pygame.draw.line(surface, theme.COLOR_ACCENT, (x, y), (x, y + font.get_height()), 3)
+        pygame.draw.rect(surface, theme.COLOR_ACCENT, self.layout.caret_rect(cursor))
