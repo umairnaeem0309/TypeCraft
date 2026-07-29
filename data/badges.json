@@ -1,0 +1,14 @@
+{
+  "badges": [
+    {"code": "first_steps", "name": "First Steps", "description": "Complete your first lesson", "xp_bonus": 25},
+    {"code": "home_row_hero", "name": "Home Row Hero", "description": "Complete every Tier 1 lesson", "xp_bonus": 50},
+    {"code": "sharp_shooter", "name": "Sharp Shooter", "description": "Finish a lesson at 100% accuracy", "xp_bonus": 60},
+    {"code": "speed_demon", "name": "Speed Demon", "description": "Reach 30 net WPM in any lesson", "xp_bonus": 50},
+    {"code": "combo_king", "name": "Combo King", "description": "Hit a 50-keystroke combo", "xp_bonus": 50},
+    {"code": "perfect_week", "name": "Perfect Week", "description": "7-day streak", "xp_bonus": 75},
+    {"code": "triple_star", "name": "Triple Star", "description": "Earn 3 stars on 5 different lessons", "xp_bonus": 75},
+    {"code": "rising_star", "name": "Rising Star", "description": "Reach Level 5", "xp_bonus": 40},
+    {"code": "keyboard_master", "name": "Keyboard Master", "description": "Reach Level 10", "xp_bonus": 100},
+    {"code": "marathon", "name": "Marathon", "description": "Complete 25 lessons total", "xp_bonus": 100}
+  ]
+}
