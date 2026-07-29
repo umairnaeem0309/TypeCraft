@@ -201,6 +201,47 @@ class ProgressionService:
             (limit,),
         )
 
+    #: One SQL fragment for "attempts that count", so no aggregate can forget it
+    #: (FR-064). Every average, count and ranking in the app filters on this.
+    COMPLETED = "status = 'complete'"
+
+    def student_summary(self, profile_id: int) -> dict:
+        """Everything the teacher dashboard shows for one student (FR-122).
+
+        Averages are over **completed attempts only** and come back as `None` when
+        there are none, so the UI can say so explicitly rather than printing a
+        misleading 0 % for a child who has not finished a lesson yet (FR-123).
+
+        `lessons_completed` counts *distinct* lessons: replaying lesson 1 twenty
+        times is one lesson learned, not twenty.
+        """
+        rows = self.db.query(
+            f"""SELECT p.id AS profile_id, p.name, p.avatar_key, p.total_xp, p.level,
+                       p.current_streak, p.longest_streak,
+                       (SELECT COUNT(*) FROM profile_badges pb
+                          WHERE pb.profile_id = p.id) AS badge_count,
+                       (SELECT COUNT(DISTINCT a.lesson_id) FROM lesson_attempts a
+                          WHERE a.profile_id = p.id AND a.{self.COMPLETED})
+                          AS lessons_completed,
+                       (SELECT COUNT(*) FROM lesson_attempts a
+                          WHERE a.profile_id = p.id AND a.{self.COMPLETED})
+                          AS completed_attempts,
+                       (SELECT AVG(a.wpm_net) FROM lesson_attempts a
+                          WHERE a.profile_id = p.id AND a.{self.COMPLETED}) AS avg_wpm_net,
+                       (SELECT AVG(a.accuracy) FROM lesson_attempts a
+                          WHERE a.profile_id = p.id AND a.{self.COMPLETED}) AS avg_accuracy
+                FROM profiles p WHERE p.id = ?""",
+            (profile_id,),
+        )
+        if not rows:
+            raise ValueError(f"no profile with id {profile_id}")
+        return rows[0]
+
+    def class_summary(self) -> list:
+        """`student_summary` for every profile, ordered by name for a register."""
+        ids = [r["id"] for r in self.db.query("SELECT id FROM profiles ORDER BY name, id")]
+        return [self.student_summary(pid) for pid in ids]
+
     def xp_for(self, attempt: AttemptResult) -> int:
         return attempt.xp_awarded
 

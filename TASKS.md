@@ -8,10 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 16 DONE, 0 IN_PROGRESS, 11 TODO. **Open P0: 0 — every
-data-loss-class defect is closed. No open security defects.** Open P1: 7.
+**Summary:** 27 tasks — 17 DONE, 0 IN_PROGRESS, 10 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.** Open P1: 6.
 **Phases 1, 2 and 3 complete.**
-Test suite: **458 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Test suite: **480 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -31,7 +31,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-011 | Settings load, apply, and persist | 5 | DONE | P1 |
 | TC-011b | PIN hardening and atomic settings writes | 5 | DONE | P1 |
 | TC-012 | Leaderboard completed-attempt filtering | 4 | DONE | P1 |
-| TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | TODO | P1 |
+| TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | DONE | P1 |
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | TODO | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | TODO | P1 |
@@ -519,7 +519,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   created first.
 
 ## TC-013 — Teacher dashboard statistics + confirmed atomic reset
-- **Phase** 5 · **Status** TODO · **Priority** P1
+- **Phase** 5 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-120…FR-127
 - **Depends on** TC-008, TC-014
 - **Goal.** The dashboard shows only level and streak today, and reset fires immediately with
@@ -536,7 +536,20 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   profile and a mixed complete/incomplete profile; reset without confirming changes nothing;
   reset with a forced failure rolls back completely; after a successful reset the profile row
   survives and lesson 1 is unlocked.
-- **Acceptance.** FR-120…FR-127 pass.
+- **Acceptance.** OK. **480 passing, 1 xfail.** 22 new tests in `tests/db/test_dashboard.py`.
+  `student_summary()`/`class_summary()` return all nine FR-122 fields; averages cover completed
+  attempts only and come back as `None` (rendered as a dash) when nothing is finished, so a child
+  who has not started is not shown as 0 %, which would read as "tried and failed".
+  `lessons_completed` counts **distinct** lessons. The table is a `COLUMNS` list.
+- **Reset is now two steps.** The first click only arms a **modal** confirmation naming the
+  student and stating what will be erased and what is kept. While it is open nothing behind it is
+  clickable, so a stray click cannot reset the wrong child; Escape cancels. Confirming runs the
+  existing single transaction, then rebuilds the table so the teacher sees the zeroes.
+- **Two things the tests pinned down.** Reset buttons are unreachable before PIN authentication.
+  And resetting the *active* profile updates the in-memory object, or a later `save()` would
+  write back the XP the reset had just cleared.
+- **Not addressed here:** the table has no scrolling, so a class larger than ~12 overflows the
+  window. That is TC-014.
 
 ## TC-013b — XP economy: badge XP ordering + missing daily streak bonus
 - **Phase** 3 · **Status** DONE (2026-07-30) · **Priority** P1
