@@ -91,9 +91,11 @@ cover.
   `.gitkeep`; add root `main.py` shim and `typecraft/__main__.py`; mechanically rewrite every
   `TypeCraft.` import to `typecraft.`; update `core/paths.py::_project_root()` so
   `resource_path` anchors on the package directory and `writable_data_dir()` (dev mode)
-  anchors on the repo root's `_dev_data`. **No logic changes of any other kind in this task.**
+  anchors on the repo root's `_dev_data`. Add `.gitattributes` (`* text=auto eol=lf`,
+  `*.pdf binary`) **first, as the opening step**, so the D-28 line-ending flip cannot corrupt
+  the diff of the move. **No logic changes of any other kind in this task.**
 - **Files.** every `.py`; `main.py` (new); `typecraft/__main__.py` (new); `core/paths.py`;
-  `ARCHITECTURE.md` §1.2.
+  `.gitattributes` (new); `ARCHITECTURE.md` §1.2.
 - **Checks.** `python -m compileall .` clean; `python main.py` reaches the Main Menu (manual,
   or headless with SDL dummy); `python -c "import typecraft.core.game"` from the repo root;
   a grep proves zero remaining `TypeCraft.` imports; `resource_path("data/lessons.json")`

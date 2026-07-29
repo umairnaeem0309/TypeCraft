@@ -114,6 +114,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
 | D-26 | S4 | Leaderboard interpolates a column name into SQL with an f-string. The value is currently drawn from a two-element internal whitelist so it is not injectable today, but it violates SR-006's "allow-list, never interpolate" rule. | `scenes/leaderboard.py:36-44` | TC-012 |
+| D-28 | S4 | No `.gitattributes`, and `core.autocrlf` is enabled — git warned "LF will be replaced by CRLF" for all 51 committed text files. The next git operation that rewrites the working tree will flip every file's line endings and produce spurious whole-file diffs, which would make TC-002's import rewrite unreviewable. | `git add` output during TC-001 | TC-002 |
 | D-27 | S4 | Dead code: `LessonSelectScene._unused_prevent_lint()`; `KeyboardRenderer.highlight()` accepts a `finger` argument it ignores; `StarRating._draw_star()` imports `math` inside the function on every call. | `scenes/lesson_select.py:83`; `ui/keyboard_renderer.py:65`; `ui/star_rating.py:21` | TC-015 / TC-018 |
 
 ### Audit hypotheses — verdicts
