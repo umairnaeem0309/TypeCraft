@@ -13,9 +13,25 @@ from typecraft.models.attempt import AttemptStatus
 from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
 
 
-def click(button):
-    """Synthesise the click a teacher would make."""
-    return pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=button.rect.center)
+def click(rect):
+    """Synthesise the click a teacher would make, in SCREEN coordinates."""
+    return pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pygame.Rect(rect).center)
+
+
+def row_click(scene, index=0):
+    """Click a student's Reset button as it currently appears on screen.
+
+    The rows live in the scroll panel's content space, so a test that clicked the
+    stored rect directly would be testing the wrong pixel — exactly the mistake a
+    scrolled UI invites.
+    """
+    _summary, button = scene.reset_buttons[index]
+    return click(scene.panel.screen_rect(button.rect))
+
+
+def row_click_for(scene, name):
+    index = next(i for i, (s, _b) in enumerate(scene.reset_buttons) if s["name"] == name)
+    return row_click(scene, index)
 
 
 @pytest.fixture
@@ -166,8 +182,8 @@ def test_reset_buttons_are_unreachable_before_authentication(app_ctx, display, a
     scene.on_enter()
     assert scene.authenticated is False
 
-    for _summary, btn in scene.reset_buttons:
-        scene.handle_event(click(btn))
+    for index in range(len(scene.reset_buttons)):
+        scene.handle_event(row_click(scene, index))
 
     assert scene.pending_reset is None
     assert app_ctx.db.query("SELECT COUNT(*) AS c FROM lesson_attempts")[0]["c"] == 1
@@ -183,7 +199,7 @@ def test_clicking_reset_only_asks_and_writes_nothing(app_ctx, display, attempt_f
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    scene.handle_event(click(scene.reset_buttons[0][1]))
+    scene.handle_event(row_click(scene))
 
     assert scene.pending_reset is not None
     assert scene.pending_reset["name"] == "Amina"
@@ -199,8 +215,8 @@ def test_cancelling_leaves_everything_untouched(app_ctx, display, attempt_factor
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    scene.handle_event(click(scene.reset_buttons[0][1]))
-    scene.handle_event(click(scene.cancel_button))
+    scene.handle_event(row_click(scene))
+    scene.handle_event(click(scene.cancel_button.rect))
 
     assert scene.pending_reset is None
     assert app_ctx.db.query("SELECT * FROM profiles WHERE id=?", (student.id,))[0] == before
@@ -213,7 +229,7 @@ def test_escape_cancels_the_confirmation(app_ctx, display, attempt_factory):
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    scene.handle_event(click(scene.reset_buttons[0][1]))
+    scene.handle_event(row_click(scene))
     scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE, unicode=""))
 
     assert scene.pending_reset is None
@@ -229,9 +245,8 @@ def test_confirming_resets_that_student_only(app_ctx, display, attempt_factory):
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    row = next(r for r in scene.reset_buttons if r[0]["name"] == "Amina")
-    scene.handle_event(click(row[1]))
-    scene.handle_event(click(scene.confirm_button))
+    scene.handle_event(row_click_for(scene, "Amina"))
+    scene.handle_event(click(scene.confirm_button.rect))
 
     assert scene.pending_reset is None
     reset = app_ctx.progression.student_summary(amina.id)
@@ -251,8 +266,8 @@ def test_a_reset_student_starts_again_at_lesson_one(app_ctx, display, attempt_fa
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    scene.handle_event(click(scene.reset_buttons[0][1]))
-    scene.handle_event(click(scene.confirm_button))
+    scene.handle_event(row_click(scene))
+    scene.handle_event(click(scene.confirm_button.rect))
 
     fresh = app_ctx.profiles.load(student.id)
     assert app_ctx.lessons.is_unlocked(fresh, app_ctx.lessons.first_lesson().id) is True
@@ -268,8 +283,8 @@ def test_the_table_refreshes_after_a_reset(app_ctx, display, attempt_factory):
     scene.on_enter()
     assert scene.summaries[0]["total_xp"] > 0
 
-    scene.handle_event(click(scene.reset_buttons[0][1]))
-    scene.handle_event(click(scene.confirm_button))
+    scene.handle_event(row_click(scene))
+    scene.handle_event(click(scene.confirm_button.rect))
 
     assert scene.summaries[0]["total_xp"] == 0
     assert scene.summaries[0]["avg_accuracy"] is None
@@ -295,8 +310,8 @@ def test_resetting_the_active_profile_updates_the_live_object(app_ctx, display, 
 
     scene = TeacherDashboardScene(app_ctx)
     scene.on_enter()
-    scene.handle_event(click(scene.reset_buttons[0][1]))
-    scene.handle_event(click(scene.confirm_button))
+    scene.handle_event(row_click(scene))
+    scene.handle_event(click(scene.confirm_button.rect))
 
     assert app_ctx.active_profile.total_xp == 0
     assert app_ctx.active_profile.level == 1
@@ -314,7 +329,7 @@ def test_the_dashboard_renders_with_students_and_without(app_ctx, display, attem
     scene.on_enter()
     scene.render(display)             # one student with figures
 
-    scene.handle_event(click(scene.reset_buttons[0][1]))
+    scene.handle_event(row_click(scene))
     scene.render(display)             # confirmation panel over the table
 
 

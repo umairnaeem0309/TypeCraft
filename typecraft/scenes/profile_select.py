@@ -5,6 +5,7 @@ import pygame
 from typecraft.core.scene import Scene
 from typecraft.ui import theme
 from typecraft.ui.button import Button
+from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
 AVATARS = ["avatar_fox", "avatar_owl", "avatar_cat", "avatar_bear"]
@@ -24,9 +25,16 @@ class ProfileSelectScene(Scene):
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
+        self.panel = ScrollPanel(pygame.Rect(0, 140, theme.SCREEN_WIDTH, 380))
         self._build_profile_buttons()
 
     def _build_profile_buttons(self) -> None:
+        """Lay the cards out in content coordinates inside a scrolling viewport.
+
+        Four across at a 164 px pitch used to run off the bottom of the window from
+        the 9th child onward, so in a class of thirty most students simply could not
+        be selected (FR-014).
+        """
         self.profile_buttons = []
         cols = 4
         card_w, card_h, gap = 220, 140, 24
@@ -34,9 +42,11 @@ class ProfileSelectScene(Scene):
         for i, profile in enumerate(self.profiles):
             row, col = divmod(i, cols)
             x = start_x + col * (card_w + gap)
-            y = 160 + row * (card_h + gap)
-            rect = pygame.Rect(x, y, card_w, card_h)
-            self.profile_buttons.append((profile, rect))
+            y = row * (card_h + gap)          # content space: first row at y = 0
+            self.profile_buttons.append((profile, pygame.Rect(x, y, card_w, card_h)))
+
+        rows = (len(self.profiles) + cols - 1) // cols
+        self.panel.set_content_height(rows * (card_h + gap))
 
     def _create_profile(self) -> None:
         name = self.name_input.text.strip()
@@ -59,9 +69,16 @@ class ProfileSelectScene(Scene):
             return
         if self.create_button.handle_event(event):
             return
+        if self.panel.handle_event(event):
+            return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Hit-test in content space, so a scrolled click lands on the card the
+            # teacher actually sees rather than the one that used to be there.
+            local = self.panel.translated(event)
+            if local is None:
+                return
             for profile, rect in self.profile_buttons:
-                if rect.collidepoint(event.pos):
+                if rect.collidepoint(local.pos):
                     self._select_profile(profile)
                     return
 
@@ -74,14 +91,19 @@ class ProfileSelectScene(Scene):
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 90)))
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        for profile, rect in self.profile_buttons:
-            pygame.draw.rect(surface, theme.COLOR_CARD_BG, rect, border_radius=14)
-            pygame.draw.rect(surface, theme.COLOR_PRIMARY, rect, width=2, border_radius=14)
-            name_surf = self.ctx.resources.text_surface(profile.name, font_body, theme.COLOR_TEXT)
-            surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 15)))
-            lvl_surf = self.ctx.resources.text_surface(
-                f"Level {profile.level}", font_body, theme.COLOR_TEXT_MUTED)
-            surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 25)))
+        with self.panel.clipped(surface):
+            for profile, content_rect in self.profile_buttons:
+                if not self.panel.is_visible(content_rect):
+                    continue
+                rect = self.panel.screen_rect(content_rect)
+                pygame.draw.rect(surface, theme.COLOR_CARD_BG, rect, border_radius=14)
+                pygame.draw.rect(surface, theme.COLOR_PRIMARY, rect, width=2, border_radius=14)
+                name_surf = self.ctx.resources.text_surface(profile.name, font_body, theme.COLOR_TEXT)
+                surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 15)))
+                lvl_surf = self.ctx.resources.text_surface(
+                    f"Level {profile.level}", font_body, theme.COLOR_TEXT_MUTED)
+                surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 25)))
+        self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
 
         self.name_input.render(surface)
         self.create_button.render(surface)

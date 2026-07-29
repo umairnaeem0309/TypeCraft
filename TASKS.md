@@ -8,10 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 17 DONE, 0 IN_PROGRESS, 10 TODO. **Open P0: 0 — every
-data-loss-class defect is closed. No open security defects.** Open P1: 6.
+**Summary:** 27 tasks — 18 DONE, 0 IN_PROGRESS, 9 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.** Open P1: 5.
 **Phases 1, 2 and 3 complete.**
-Test suite: **480 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Test suite: **502 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -33,7 +33,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-012 | Leaderboard completed-attempt filtering | 4 | DONE | P1 |
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | DONE | P1 |
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
-| TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | TODO | P1 |
+| TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | DONE | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | TODO | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | TODO | P1 |
 | TC-017 | Assets, logging, and graceful fallbacks | 4 | TODO | P2 |
@@ -590,7 +590,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   2 250, so the curve cannot silently become too generous either.
 
 ## TC-014 — Classroom-scale scrolling for profiles, lessons, dashboard
-- **Phase** 4 · **Status** TODO · **Priority** P1
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-014, FR-026, FR-124, PR-004
 - **Depends on** TC-004
 - **Goal.** Profile Select overflows the window past 8 profiles, Lesson Select clips its
@@ -604,7 +604,24 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** With 40 profiles and 20 lessons, every visible child rect lies inside
   1280×720 and no two overlap; scrolling reaches the last item; clicks map to the correct item
   after scrolling; no per-frame database query.
-- **Acceptance.** FR-014/026/124 pass.
+- **Acceptance.** OK. **502 passing, 1 xfail.** New `ui/scroll_panel.py` adopted by Profile
+  Select, Lesson Select and the dashboard; 19 tests in `tests/db/test_scrolling.py`.
+- **The design decision that made it safe.** Children keep their positions in **content
+  coordinates and never move**. The panel translates in two directions instead — content shifted
+  up by `offset` and clipped when rendering, and an incoming mouse position shifted back down
+  before dispatch. So a scene's layout and hit-testing code is identical scrolled or not, and the
+  two cannot drift apart. `translated()` returns `None` for a click outside the viewport, which
+  is the half that matters: without it a click just below the panel would be shifted into a
+  child's row and select the wrong student.
+- **Verified at class scale (40 students, AS-05).** Every visible card lies inside the 1280x720
+  window at three scroll positions; every student and every one of the 20 lessons is reachable by
+  scrolling; a scrolled click selects the item under the cursor; a click below the grid selects
+  nobody; a locked lesson still cannot be started when scrolled; and the highest-consequence
+  case — a scrolled Reset click targets the student the teacher can see. Plus `PR-004`: rendering
+  and updating a 10-row dashboard makes **zero** database queries.
+- **Two test-model errors of mine, both caught.** The dashboard tests clicked stored (content)
+  rects rather than screen positions; and a card straddling the viewport's top edge counts as
+  visible while its centre is outside, so the click tests now pick a fully-visible item.
 
 ## TC-015 — Keyboard: Space, Shift, punctuation, next-key, finger guidance
 - **Phase** 4 · **Status** TODO · **Priority** P1

@@ -7,13 +7,13 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 4 — scene flow and core UI completion
-**Current active task:** none — TC-013 closed. **No open P0 tasks and no open security
+**Current active task:** none — TC-014 closed. **No open P0 tasks and no open security
 defects.**
-**Last completed task:** TC-013 — teacher dashboard statistics + confirmed atomic reset
-(2026-07-30)
-**Next recommended task:** **TC-014** — classroom-scale scrolling for the profile grid, lesson
-grid and dashboard table (P1, D-18). All three overflow the 1280x720 window today: profiles past
-the 8th, the 4th row of lesson cards, and any class larger than about twelve.
+**Last completed task:** TC-014 — classroom-scale scrolling (2026-07-30)
+**Next recommended task:** **TC-015** — visual keyboard: Space, Shift, punctuation, next-key and
+finger guidance (P1, D-16). The largest remaining teaching gap: the keyboard has 40 keys, no Space
+or Shift, highlights the key just *typed* rather than the next one expected, and never names a
+finger — so it cannot teach touch typing.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -31,10 +31,10 @@ the 8th, the 4th row of lesson cards, and any class larger than about twelve.
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 17 DONE, 0 IN_PROGRESS, 10 TODO. **Open P0: 0.** Open P1: 6.
-Defects: **31 found** — **21 closed**, 1 partially closed (D-22), 9 open.
+Tasks: 27 defined — 18 DONE, 0 IN_PROGRESS, 9 TODO. **Open P0: 0.** Open P1: 5.
+Defects: **31 found** — **22 closed**, 1 partially closed (D-22), 8 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
-Tests: **480 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Tests: **502 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
@@ -150,7 +150,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-15~~ | S2 | ~~Teacher PIN was a bare unsalted SHA-256 of four digits — 10 000 preimages, recoverable from `settings.json` in milliseconds — compared with `==`.~~ **CLOSED by TC-011b.** PBKDF2-HMAC-SHA256, 200 000 rounds, 16-byte per-install salt, self-describing `pbkdf2_sha256$rounds$salt$digest` format, verified with `hmac.compare_digest`. The brute-force test that used to recover the PIN now finds nothing. Legacy hashes are accepted once and upgraded in place. | `managers/config_manager.py`; `tests/db/test_config_and_seeding.py` | TC-011b ✅ |
 | D-16 | S3 | Visual keyboard is 4 rows × 10 keys only: **no Space, no Shift, no `'`, `-`, `?`, `[`, `]`**. It highlights the key **just typed** rather than the next expected key (FR-092), never indicates a finger (FR-093), and `highlight(None)` for Space means Space is never shown. | `ui/keyboard_renderer.py:14-19, 65-66`; `scenes/lesson.py:74` | TC-015 |
 | D-17 | S3 | Target text wraps mid-word by pixel width, the wrap test `x > max_width + 60` lets the last glyph overhang the text area, and the caret is drawn after `x` has already advanced. | `scenes/lesson.py:96-119` | TC-016 |
-| D-18 | S3 | No pagination or scrolling. Profile Select lays out 4 per row starting at y=160 with 164 px pitch — the 9th profile onward renders off-screen. Lesson Select lays 20 cards 5-per-row at y=120 with 150 px pitch, so the 4th row spans y≈570–700 and the star widgets clip at the window edge. The dashboard list is unbounded. | `scenes/profile_select.py:29-39`; `scenes/lesson_select.py:21-43`; `scenes/teacher_dashboard.py:28-37` | TC-014 |
+| ~~D-18~~ | S3 | ~~No pagination or scrolling: Profile Select ran off the window from the 9th child, Lesson Select clipped its 4th row of cards (so the last five lessons could not be started), and the dashboard list was unbounded.~~ **CLOSED by TC-014.** New `ui/scroll_panel.py` adopted by all three. Children keep content coordinates; the panel translates rendering up and input back down, so layout and hit-testing cannot drift apart. Verified at 40 students: everything visible is inside the window, everything is reachable, and a scrolled click hits the item under the cursor. | `ui/scroll_panel.py`, `scenes/profile_select.py`, `scenes/lesson_select.py`, `scenes/teacher_dashboard.py`; `tests/db/test_scrolling.py` | TC-014 OK |
 | D-19 | S3 | Malformed `lessons.json` falls back to the bundled default in **total silence** — no notice, no log. A teacher's broken edit looks like it simply had no effect. Violates FR-024. | `managers/lesson_manager.py:37-42` | TC-023 |
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
 | D-21 | S3 | `assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent. | no `assets/` directory | TC-017 |
@@ -209,7 +209,21 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-013 (last task, DONE)
+### TC-014 (last task, DONE)
+
+- `typecraft/ui/scroll_panel.py` - **new.** Clipping viewport: wheel (both SDL encodings),
+  middle-drag, PgUp/PgDn/Home/End, clamped offset, `screen_rect`/`content_pos` translation,
+  `translated()` returning `None` outside the viewport, `clipped()` context manager,
+  `render_children()`, and a scrollbar drawn only when scrollable.
+- `typecraft/scenes/profile_select.py`, `lesson_select.py`, `teacher_dashboard.py` - layouts moved
+  into content space (first row at y=0), input translated before dispatch, rendering clipped.
+- `tests/db/test_scrolling.py` - **new**, 19 tests. `tests/db/test_dashboard.py` - click helpers
+  corrected to use screen coordinates.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 502 passing, 1 xfail (D-19 only); app smoke-tested.
+
+### TC-013 (DONE)
 
 - `typecraft/managers/progression.py` - `COMPLETED` SQL fragment (one definition of "attempts
   that count"), `student_summary(profile_id)`, `class_summary()`.

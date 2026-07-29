@@ -5,6 +5,7 @@ import pygame
 from typecraft.core.scene import Scene
 from typecraft.ui import theme
 from typecraft.ui.button import Button
+from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
 ROW_HEIGHT = 44
@@ -31,6 +32,7 @@ class TeacherDashboardScene(Scene):
         #: The student awaiting reset confirmation, or None. Reset is destructive and
         #: irreversible, so it never happens on a single click (FR-125).
         self.pending_reset = None
+        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 500))
         self._build_pin_widgets()
         self._build_dashboard_widgets()
 
@@ -45,10 +47,16 @@ class TeacherDashboardScene(Scene):
                                    bg_color=theme.COLOR_TEXT_MUTED)
 
     def _build_dashboard_widgets(self) -> None:
+        """One row per student inside a scrolling viewport (FR-124).
+
+        A fixed list ran off the bottom of the window at about twelve students, so
+        the rest of a real class - and their Reset buttons - were simply not there.
+        Rows are laid out in the panel's content space, starting at y = 0.
+        """
         self.reset_buttons = []
         self.summaries = self.ctx.progression.class_summary()
 
-        y = FIRST_ROW_Y
+        y = 0
         for summary in self.summaries:
             rect = pygame.Rect(theme.SCREEN_WIDTH - 180, y - 4, 120, 32)
             self.reset_buttons.append((summary, Button(
@@ -56,6 +64,7 @@ class TeacherDashboardScene(Scene):
                 self.ctx.resources, bg_color=theme.COLOR_ERROR,
                 font_size=theme.FONT_SIZE_SMALL)))
             y += ROW_HEIGHT
+        self.panel.set_content_height(y)
 
         cx = theme.SCREEN_WIDTH // 2
         self.confirm_button = Button(pygame.Rect(cx - 200, 420, 180, 46), "Yes, reset",
@@ -150,8 +159,13 @@ class TeacherDashboardScene(Scene):
                 self._try_pin()
             return
 
+        if self.panel.handle_event(event):
+            return
+        local = self.panel.translated(event) if hasattr(event, "pos") else event
+        if local is None:
+            return
         for _, btn in self.reset_buttons:
-            if btn.handle_event(event):
+            if btn.handle_event(local):
                 return
 
     def update(self, dt: float) -> None:
@@ -195,14 +209,24 @@ class TeacherDashboardScene(Scene):
             surface.blit(empty, (60, FIRST_ROW_Y))
             return
 
-        y = FIRST_ROW_Y
-        for summary, btn in self.reset_buttons:
-            for _heading, x, key, fmt in COLUMNS:
-                surf = self.ctx.resources.text_surface(
-                    fmt(summary[key]), font_small, theme.COLOR_TEXT)
-                surface.blit(surf, (x, y))
-            btn.render(surface)
-            y += ROW_HEIGHT
+        with self.panel.clipped(surface):
+            y = 0
+            for summary, btn in self.reset_buttons:
+                row = pygame.Rect(0, y, theme.SCREEN_WIDTH, ROW_HEIGHT)
+                if self.panel.is_visible(row):
+                    screen_y = self.panel.screen_rect(row).y
+                    for _heading, x, key, fmt in COLUMNS:
+                        surf = self.ctx.resources.text_surface(
+                            fmt(summary[key]), font_small, theme.COLOR_TEXT)
+                        surface.blit(surf, (x, screen_y))
+                    original = btn.rect
+                    btn.rect = self.panel.screen_rect(original)
+                    try:
+                        btn.render(surface)
+                    finally:
+                        btn.rect = original
+                y += ROW_HEIGHT
+        self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
 
         # Averages cover completed attempts only, so say so — a dash means "nothing
         # finished yet", which is different from zero (FR-123).
