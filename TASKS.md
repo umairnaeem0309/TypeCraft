@@ -8,7 +8,8 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 9 DONE, 0 IN_PROGRESS, 18 TODO. Open P0: 3. Open P1: 11.
+**Summary:** 27 tasks — 10 DONE, 0 IN_PROGRESS, 17 TODO. Open P0: 2 (TC-009, TC-010).
+Open P1: 11.
 **Phases 1 and 2 complete.** Test suite: **382 passing, 6 strict-xfail defect
 reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
 (AC-02 target ≥ 85 % — met).
@@ -24,7 +25,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 | TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | DONE | P0 |
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | DONE | P0 |
 | TC-008 | Real transaction support in `Database` | 3 | DONE | P0 |
-| TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | TODO | P0 |
+| TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | DONE | P0 |
 | TC-009 | Active-attempt checkpoint and crash recovery | 3 | TODO | P0 |
 | TC-010 | Esc and window-close persist incomplete attempts | 3 | TODO | P0 |
 | TC-011 | Settings load, apply, and persist | 5 | TODO | P1 |
@@ -345,7 +346,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 - **Notes.** Closes risk R2 and unblocks TC-008b and TC-009.
 
 ## TC-008b — Schema migration: keystroke columns + `schema_meta`
-- **Phase** 3 · **Status** TODO · **Priority** P0
+- **Phase** 3 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** DR-003, DR-009, FR-050
 - **Depends on** TC-008
 - **Goal.** Store the keystroke counts FR-050 requires and give the schema a version so
@@ -359,8 +360,16 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 - **Checks.** Migrating a v1 database twice is a no-op the second time; existing rows keep
   their values and get the column defaults; a fresh database lands at the current version; a
   round-trip test asserts the stored counts equal the engine's counters.
-- **Acceptance.** `AttemptResult` and the `lesson_attempts` columns match exactly;
-  `_dev_data/typecraft.db` (v1) upgrades in place with no data loss.
+- **Acceptance.** ✅ Met. **387 passing, 5 xfail.** `SCHEMA_VERSION = 2`; `_migrate()` runs
+  inside one transaction and is additive-only (`ALTER TABLE ADD COLUMN` guarded by a
+  `PRAGMA table_info` check, so it never drops, renames or rewrites a column). Verified against
+  a synthesised v1 database holding a student and an attempt: columns appear, version advances,
+  and every pre-existing value is unchanged with the new columns taking their defaults.
+  Idempotent across three reopens. A round-trip test asserts the stored counters equal the
+  engine's *and* that the stored accuracy is reproducible from them —
+  `correct + errors == total`, so a teacher's figure is now auditable.
+  **Also migrated the real inherited artefact:** `_dev_data/typecraft.db` upgraded in place to
+  v2 with its 10 badge rows preserved.
 
 ## TC-009 — Active-attempt checkpoint and crash recovery
 - **Phase** 3 · **Status** TODO · **Priority** P0

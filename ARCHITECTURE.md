@@ -394,7 +394,7 @@ Present: `idx_attempts_lookup(profile_id, lesson_id, status)`, the two composite
 keys, `badges.code UNIQUE`, `PRAGMA foreign_keys = ON`. The dev database contains 10 badge
 rows and zero profiles/attempts/progress rows.
 
-### 8.2 TARGET deltas (TC-008b, migration `v2`)
+### 8.2 CURRENT deltas — implemented in TC-008b as migration `v2`
 
 - `lesson_attempts.total_keystrokes INTEGER NOT NULL DEFAULT 0` — required by FR-050/DR-003.
 - `lesson_attempts.correct_keystrokes INTEGER NOT NULL DEFAULT 0` — same.
@@ -406,9 +406,12 @@ rows and zero profiles/attempts/progress rows.
 - `lesson_progress` gains no columns; the leaderboard filter uses `times_completed > 0`
   (FR-112).
 
-`AttemptResult` already carries `total_keystrokes`, `correct_keystrokes`, and `combo`, but
-`ProgressionService.score()` never writes them — the dataclass and the table are out of
-sync today.
+Migrations live in `Database._migrate()`: additive-only, each `ALTER TABLE ADD COLUMN` guarded
+by a `PRAGMA table_info` check so re-running is a no-op, all inside one transaction, gated on
+the `schema_meta.schema_version` value. A school machine's database upgrades in place; an older
+build opening a newer database simply ignores columns it does not know about. `AttemptResult`
+and the `lesson_attempts` columns are now in sync (only `combo`, a live-only value, is
+deliberately not stored — `max_combo` is what an attempt is judged on).
 
 ---
 
@@ -788,4 +791,4 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |
 | R7 — no logging | Field failures at the school are undiagnosable | **Facility CLOSED by TC-004** (`core/logging_setup.py`, wired at startup, tested). The FR-024/FR-134 call sites still need it — TC-011, TC-017, TC-023 |
 | ~~R8 — `_dev_data/` is untracked and un-ignored~~ | — | **CLOSED by TC-001.** `.gitignore` added and both `_dev_data/` and `__pycache__/` proven ignored |
-| R9 — the schema is missing keystroke columns while `AttemptResult` has them | Metrics can't be stored or audited | TC-008b migration with `schema_meta` versioning |
+| ~~R9 — schema missing keystroke columns~~ | — | **CLOSED by TC-008b.** Migration v2 with `schema_meta` versioning; verified on the real inherited database |

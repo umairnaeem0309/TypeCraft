@@ -7,12 +7,11 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 3 — persistence, progression, badges, streaks, and recovery
-**Current active task:** none — TC-008 closed, awaiting the go-ahead for TC-008b
-**Last completed task:** TC-008 — real transaction support in `Database` (2026-07-29)
-**Next recommended task:** **TC-008b** — schema migration adding
-`total_keystrokes` / `correct_keystrokes` / `corrections_made` plus a `schema_meta` version
-table (P0). Now unblocked by TC-008's `transaction()`; clears 1 strict-xfail. Then TC-009
-(crash checkpoint), which needs both.
+**Current active task:** none — TC-008b closed, awaiting the go-ahead for TC-009
+**Last completed task:** TC-008b — schema migration + `schema_meta` (2026-07-29)
+**Next recommended task:** **TC-009** — active-attempt checkpoint and crash recovery (P0).
+Both prerequisites (real transactions, the migration mechanism) are now in place. Fixes D-05,
+the last data-loss defect that a school power cut would expose.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -24,16 +23,17 @@ table (P0). Now unblocked by TC-008's `transaction()`; clears 1 strict-xfail. Th
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
-| 3 — Persistence & recovery | IN PROGRESS — TC-007, TC-008 done; TC-008b, TC-009, TC-010, TC-013b outstanding |
+| 3 — Persistence & recovery | IN PROGRESS — TC-007, TC-008, TC-008b done; TC-009, TC-010, TC-013b outstanding |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 9 DONE, 0 IN_PROGRESS, 18 TODO. Open P0: 3. Open P1: 11.
-Defects: **31 found** — **9 closed** (D-01, D-02, D-03, D-04, D-07, D-08, D-28, D-29, D-30),
-1 partially closed (D-22), 21 open.
-Tests: **382 passing, 6 strict-xfail defect reproductions, 0 unexpected failures.**
+Tasks: 27 defined — 10 DONE, 0 IN_PROGRESS, 17 TODO. Open P0: **2** (TC-009, TC-010).
+Open P1: 11.
+Defects: **31 found** — **10 closed** (D-01…D-04, D-07, D-08, D-09, D-28, D-29, D-30),
+1 partially closed (D-22), 20 open.
+Tests: **387 passing, 5 strict-xfail defect reproductions, 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
@@ -139,7 +139,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-08~~ | S2 | ~~`_error_counted[]` suppressed repeat errors, so `correct + errors != total`.~~ **CLOSED by TC-006.** `_error_counted` deleted; every wrong keystroke posts its own error. **Verified:** 4 wrong keys then the right one now reports `total=5 correct=1 errors=4`, sum 5 = total (was sum 2 ≠ 5). Was the only defect that unbalanced FR-043's equation, and only in `lock_on_error`. | `engine/typing_engine.py`; `test_D08_*`, `test_ledger_holds_over_randomised_sequences[lock_on_error]` | TC-006 ✅ |
 | ~~D-29~~ | S3 | ~~Input after completion raised `IndexError` because the `cursor >= len(target)` guard sat *after* `mode.resolve()`, which indexes `target[cursor]`.~~ **CLOSED by TC-006.** The guard moved ahead of `resolve()` and now covers Backspace too, so a finished attempt is genuinely immutable (FR-047). **Verified:** a key after completion is ignored and leaves the counters untouched. | `engine/typing_engine.py`; `test_D29_input_after_completion_is_ignored` | TC-006 ✅ |
 | ~~D-30~~ | S2 | ~~**Accuracy could be farmed with Backspace.** `resolve()` returned `is_backspace=False` at cursor 0, so `feed_key()` scored the Backspace as a **correct keystroke** — 20 presses before typing anything gave 100 % accuracy, combo 20, 3 stars and an unlock with nothing typed.~~ **CLOSED by TC-006.** A no-op backspace now reports `is_backspace=True` in all three modes, so it can never reach the scoring path. **Verified:** 20 presses now report `total=0 correct=0 combo=0` → **0 %**. Guarded by `test_a_no_op_backspace_is_still_flagged_as_one`, parametrised over all three modes. | `engine/input_modes.py`; `test_D30_*`, `test_only_typing_can_produce_accuracy` | TC-006 ✅ |
-| D-09 | S2 | `lesson_attempts` has no `total_keystrokes` / `correct_keystrokes` columns, yet `AttemptResult` carries them and FR-050 requires storing them. `ProgressionService.score()` silently drops them. | `PRAGMA table_info` vs `models/attempt.py:41-43` | TC-008b |
+| ~~D-09~~ | S2 | ~~`lesson_attempts` had no `total_keystrokes` / `correct_keystrokes` columns, so `score()` silently dropped them and no stored accuracy was auditable.~~ **CLOSED by TC-008b.** Migration to `SCHEMA_VERSION = 2` adds `total_keystrokes`, `correct_keystrokes` and `corrections_made`; `score()` writes all three. Additive-only and idempotent, run in one transaction, versioned via a new `schema_meta` table (DR-009). The real inherited `_dev_data/typecraft.db` upgraded in place with its 10 badge rows preserved. | `managers/database.py`, `managers/progression.py`; `tests/db/test_schema.py` | TC-008b ✅ |
 | D-10 | S2 | Leaderboard includes every profile with score 0: `ProfileManager.create()` inserts a zero-valued `lesson_progress` row and the leaderboard query has no completion filter, so a brand-new student outranks nobody but still occupies a slot. Violates FR-112. | `scenes/leaderboard.py:35-44`; `managers/profile_manager.py:28-31` | TC-012 |
 | D-11 | S2 | `BadgeManager.award()` adds `xp_bonus` to `profile.total_xp` **after** `ProgressionService._award_xp()` already recomputed the level, so badge XP does not raise the level until the next attempt — and the `rising_star` / `keyboard_master` predicates evaluate a stale level. Violates FR-083. | `managers/progression.py:40-45`; `managers/badge_manager.py:53-59` | TC-013b |
 | D-12 | S2 | Teacher dashboard shows only name, level, and current streak. Average net WPM, average accuracy, lessons completed, XP, badge count, and longest streak are all missing (FR-122). | `scenes/teacher_dashboard.py:111-116` | TC-013 |
@@ -207,7 +207,21 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-008 (last task, DONE)
+### TC-008b (last task, DONE)
+
+- `typecraft/managers/database.py` — `SCHEMA_VERSION = 2`; `schema_meta` table; `_migrate()`
+  (one transaction, additive-only, guarded by `PRAGMA table_info` so it is idempotent);
+  `schema_version()`, `_add_column()`, `_set_schema_version()`.
+- `typecraft/managers/progression.py` — `_insert_attempt()` writes the three new columns.
+- `tests/db/test_schema.py` — D-09 marker removed; 4 new tests (fresh-DB version, a synthesised
+  v1 → v2 upgrade preserving every value, idempotency across three reopens, and a keystroke
+  round-trip asserting the stored accuracy is reproducible from the stored counters).
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 387 passing, 5 xfail. `_dev_data/typecraft.db` — the actual inherited artefact —
+reports `schema_version 2`, has all three new columns, and still holds its 10 badge rows.
+
+### TC-008 (DONE)
 
 - `typecraft/managers/database.py` — `isolation_level=None`; `transaction()` context manager
   (`BEGIN IMMEDIATE`, commit on clean exit, rollback + re-raise on exception, refuses to nest);

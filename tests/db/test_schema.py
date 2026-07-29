@@ -109,10 +109,86 @@ def test_reclassification_leaves_complete_and_incomplete_rows_alone(db, writable
         reopened.close()
 
 
-# --------------------------------------------------------------------- known defect
+# --------------------------------------------------------------------- migrations
 
-@pytest.mark.xfail(strict=True, reason="defect D-09: lesson_attempts has no "
-                                      "total_keystrokes / correct_keystrokes columns")
+def test_a_fresh_database_is_at_the_current_version(db):
+    from typecraft.managers.database import SCHEMA_VERSION
+
+    assert db.schema_version() == SCHEMA_VERSION
+
+
+def test_migrating_a_v1_database_adds_the_columns_and_keeps_the_data(writable_dir):
+    """DR-009. Simulates a real school machine: a v1 database holding a student
+    and an attempt, opened by this build. Columns must appear, the version must
+    advance, and not one existing value may change."""
+    import sqlite3
+
+    from typecraft.managers.database import SCHEMA, SCHEMA_VERSION, Database
+
+    # Build a v1 database: the inherited schema, minus schema_meta and the three
+    # new columns, exactly as the inherited build left it.
+    path = writable_dir / "typecraft.db"
+    raw = sqlite3.connect(str(path))
+    v1_schema = ";".join(
+        stmt for stmt in SCHEMA.split(";") if "schema_meta" not in stmt
+    )
+    raw.executescript(v1_schema)
+    raw.execute("INSERT INTO profiles (name, avatar_key, created_at, total_xp) "
+                "VALUES ('Amina','avatar_fox','2026-07-01T09:00:00', 175)")
+    raw.execute("""INSERT INTO lesson_attempts
+                   (profile_id, lesson_id, status, mode, accuracy, stars, started_at)
+                   VALUES (1,'t1l1','complete','lock_on_error', 91.5, 1, '2026-07-01T09:05:00')""")
+    raw.commit()
+    raw.close()
+
+    migrated = Database()
+    try:
+        assert migrated.schema_version() == SCHEMA_VERSION
+        assert {"total_keystrokes", "correct_keystrokes", "corrections_made"} <= _columns(
+            migrated, "lesson_attempts")
+
+        profile = migrated.query("SELECT * FROM profiles")[0]
+        assert (profile["name"], profile["total_xp"]) == ("Amina", 175)
+
+        attempt = migrated.query("SELECT * FROM lesson_attempts")[0]
+        assert attempt["accuracy"] == pytest.approx(91.5)
+        assert attempt["stars"] == 1
+        assert attempt["total_keystrokes"] == 0, "pre-existing rows get the column default"
+    finally:
+        migrated.close()
+
+
+def test_migration_is_idempotent(db, writable_dir):
+    """Opening the same database repeatedly must be a no-op after the first time."""
+    from typecraft.managers.database import SCHEMA_VERSION, Database
+
+    db.close()
+    for _ in range(3):
+        again = Database()
+        assert again.schema_version() == SCHEMA_VERSION
+        assert len(_columns(again, "lesson_attempts")) == 18
+        again.close()
+
+
+def test_keystroke_counts_survive_a_round_trip(profile, attempt_factory):
+    """FR-050: what the engine counted is what the teacher can audit later."""
+    ctx, student = profile
+    attempt = attempt_factory(student.id, accuracy=90.0, total_keystrokes=250)
+
+    ctx.progression.score(attempt, student)
+
+    row = ctx.db.query("SELECT * FROM lesson_attempts WHERE profile_id=?", (student.id,))[0]
+    assert row["total_keystrokes"] == attempt.total_keystrokes
+    assert row["correct_keystrokes"] == attempt.correct_keystrokes
+    assert row["errors"] == attempt.errors
+    # The stored accuracy must be reproducible from the stored counters.
+    assert row["correct_keystrokes"] + row["errors"] == row["total_keystrokes"]
+    assert row["accuracy"] == pytest.approx(
+        row["correct_keystrokes"] / row["total_keystrokes"] * 100.0, abs=0.5)
+
+
+# --------------------------------------------------------------------- column contract
+
 def test_attempts_table_stores_the_keystroke_counts(db):
     """FR-050/DR-003. AttemptResult already carries these three counters and the
     engine computes them, but the table has nowhere to put them, so

@@ -61,12 +61,14 @@ class ProgressionService:
         self.db.execute(
             """INSERT INTO lesson_attempts
                (profile_id, lesson_id, status, mode, wpm_net, wpm_gross, accuracy,
-                errors, max_combo, duration_sec, stars, xp_awarded, started_at, completed_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                errors, max_combo, duration_sec, stars, xp_awarded, started_at, completed_at,
+                total_keystrokes, correct_keystrokes, corrections_made)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (attempt.profile_id, attempt.lesson_id, attempt.status.value, attempt.mode,
              attempt.wpm_net, attempt.wpm_gross, attempt.accuracy, attempt.errors,
              attempt.max_combo, attempt.duration_sec, attempt.stars, attempt.xp_awarded,
-             attempt.started_at, attempt.completed_at),
+             attempt.started_at, attempt.completed_at,
+             attempt.total_keystrokes, attempt.correct_keystrokes, attempt.corrections_made),
         )
 
     def _update_progress_cache(self, attempt: AttemptResult) -> None:

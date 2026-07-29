@@ -14,6 +14,9 @@ from contextlib import contextmanager
 
 from typecraft.core.paths import writable_data_dir
 
+#: Bumped whenever _migrate() gains a step. v1 = the inherited schema.
+SCHEMA_VERSION = 2
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +69,11 @@ CREATE TABLE IF NOT EXISTS badges (
     xp_bonus INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS profile_badges (
     profile_id INTEGER NOT NULL REFERENCES profiles(id),
     badge_id INTEGER NOT NULL REFERENCES badges(id),
@@ -106,7 +114,50 @@ class Database:
     def _bootstrap(self) -> None:
         # executescript() manages its own transaction, so it runs outside ours.
         self._conn.executescript(SCHEMA)
+        self._migrate()
         self._reclassify_orphaned_attempts()
+
+    # --- Migrations --------------------------------------------------------
+    # Additive and idempotent only (DR-009): a school machine's typecraft.db
+    # already holds real student records, so a migration may add columns with
+    # defaults but must never drop, rename, or rewrite one. An older build
+    # opening a newer database simply ignores columns it does not know about.
+
+    def schema_version(self) -> int:
+        rows = self.query("SELECT value FROM schema_meta WHERE key='schema_version'")
+        return int(rows[0]["value"]) if rows else 1
+
+    def _migrate(self) -> None:
+        current = self.schema_version()
+        if current >= SCHEMA_VERSION:
+            self._set_schema_version(SCHEMA_VERSION)
+            return
+
+        with self.transaction():
+            if current < 2:
+                # FR-050/DR-003: AttemptResult has carried these three counters
+                # all along, but the table had nowhere to put them, so every
+                # stored accuracy figure was unauditable (defect D-09).
+                self._add_column("lesson_attempts", "total_keystrokes",
+                                 "INTEGER NOT NULL DEFAULT 0")
+                self._add_column("lesson_attempts", "correct_keystrokes",
+                                 "INTEGER NOT NULL DEFAULT 0")
+                self._add_column("lesson_attempts", "corrections_made",
+                                 "INTEGER NOT NULL DEFAULT 0")
+            self._set_schema_version(SCHEMA_VERSION)
+
+    def _add_column(self, table: str, column: str, definition: str) -> None:
+        existing = {r["name"] for r in self.query(f"PRAGMA table_info({table})")}
+        if column not in existing:
+            # Table and column names are module constants, never input (SR-006).
+            self.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+    def _set_schema_version(self, version: int) -> None:
+        self.execute(
+            "INSERT INTO schema_meta (key, value) VALUES ('schema_version', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (str(version),),
+        )
 
     def _reclassify_orphaned_attempts(self) -> None:
         """Decision D3: any row still 'in_progress' at startup means the app
