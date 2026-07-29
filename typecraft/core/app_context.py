@@ -21,6 +21,15 @@ class AppContext:
         self.audio = AudioManager(self.resources)
         self.config = ConfigManager()
 
+        # FR-130: the stored sound settings are the ones the classroom last chose.
+        # Applying them here is what makes them mean anything — before this, a muted
+        # machine came back unmuted every launch.
+        self.audio.set_volume(self.config.get("volume", 0.7))
+        self.audio.set_muted(self.config.get("muted", False))
+
+        #: Teacher-facing problems found at startup, shown in the UI (FR-024, FR-134).
+        self.notices = list(self.config.warnings)
+
         self.lessons = LessonManager(self.db)
         self.lessons.load_file()
 

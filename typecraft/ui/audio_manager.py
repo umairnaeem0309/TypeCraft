@@ -24,8 +24,16 @@ class AudioManager:
         except (pygame.error, FileNotFoundError):
             pass
 
+    @property
+    def volume(self) -> float:
+        return self._volume
+
+    @property
+    def muted(self) -> bool:
+        return self._muted
+
     def set_volume(self, v: float) -> None:
         self._volume = max(0.0, min(1.0, v))
 
     def set_muted(self, flag: bool) -> None:
-        self._muted = flag
+        self._muted = bool(flag)

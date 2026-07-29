@@ -8,6 +8,7 @@ silently destroy work with no way back.
 """
 
 import json
+import os
 import logging
 
 import pytest
@@ -106,8 +107,8 @@ def test_fallback_does_not_overwrite_the_teachers_broken_file(seeded_dir, db):
     assert (seeded_dir / "lessons.json").read_text(encoding="utf-8") == broken
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-19: the fallback is silent - no log record "
-                                      "and no teacher-visible notice")
+@pytest.mark.xfail(strict=True, reason="defect D-19: the lessons.json fallback is still silent "
+                                      "- no log record and no teacher-visible notice (TC-023)")
 def test_a_broken_lessons_file_is_reported(seeded_dir, db, caplog):
     """FR-024. Without this, a teacher's broken edit looks exactly like an edit
     that had no effect: the class sees the default lessons and nobody knows why.
@@ -167,13 +168,10 @@ def test_the_plaintext_pin_is_never_written_to_disk(writable_dir):
         assert "2468" not in path.read_text(encoding="utf-8", errors="ignore"), path.name
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-15: the PIN is an unsalted SHA-256 of four "
-                                      "digits - only 10 000 possible hashes")
 def test_the_pin_hash_is_salted(writable_dir, tmp_path, monkeypatch):
     """SR-002. A bare SHA-256 of a 4-digit PIN is reversed by trying all 10 000
-    inputs, so the stored hash is equivalent to storing the PIN. Two installs
-    choosing the same PIN must not produce the same hash. TC-011b moves this to
-    PBKDF2 with a per-install salt."""
+    inputs, so the stored hash was equivalent to storing the PIN. Two installs
+    choosing the same PIN must not produce the same hash."""
     ConfigManager().set_pin("2468")
     first = json.loads((writable_dir / "settings.json").read_text(encoding="utf-8"))
 
@@ -184,11 +182,9 @@ def test_the_pin_hash_is_salted(writable_dir, tmp_path, monkeypatch):
     assert first["teacher_pin_hash"] != second["teacher_pin_hash"]
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-15: a 4-digit unsalted SHA-256 is brute "
-                                      "forced instantly")
 def test_the_pin_cannot_be_recovered_by_brute_force(writable_dir):
-    """SR-002, demonstrated rather than asserted in the abstract: this loop
-    recovers the PIN from settings.json in milliseconds."""
+    """SR-002, demonstrated rather than asserted in the abstract: this loop used to
+    recover the PIN from settings.json in milliseconds."""
     import hashlib
 
     ConfigManager().set_pin("2468")
@@ -200,3 +196,77 @@ def test_the_pin_cannot_be_recovered_by_brute_force(writable_dir):
         None,
     )
     assert recovered is None, f"recovered the teacher PIN from disk: {recovered}"
+
+
+def test_the_stored_hash_records_its_scheme_and_cost(writable_dir):
+    """SR-002: the format must carry its own parameters so the work factor can be
+    raised later without invalidating existing PINs."""
+    from typecraft.managers.config_manager import HASH_PREFIX, PBKDF2_ROUNDS
+
+    ConfigManager().set_pin("2468")
+    stored = json.loads((writable_dir / "settings.json").read_text(encoding="utf-8"))
+
+    scheme, rounds, salt_hex, digest_hex = stored["teacher_pin_hash"].split("$")
+    assert scheme == HASH_PREFIX
+    assert int(rounds) == PBKDF2_ROUNDS >= 100_000
+    assert len(bytes.fromhex(salt_hex)) == 16
+    assert len(bytes.fromhex(digest_hex)) == 32
+
+
+def test_a_pin_set_by_an_older_build_still_works_and_is_upgraded(writable_dir):
+    """A school that already set a PIN must not be locked out by this change. The
+    legacy digest is accepted once, then replaced — so the weak hash disappears
+    from disk the first time the teacher uses it."""
+    import hashlib
+
+    from typecraft.managers.config_manager import HASH_PREFIX
+
+    legacy = hashlib.sha256("2468".encode()).hexdigest()
+    (writable_dir / "settings.json").write_text(json.dumps(
+        {"volume": 0.7, "muted": False, "teacher_pin_hash": legacy}), encoding="utf-8")
+
+    config = ConfigManager()
+    assert config.verify_pin("1357") is False, "a wrong PIN must not upgrade anything"
+    assert config.verify_pin("2468") is True
+
+    upgraded = json.loads((writable_dir / "settings.json").read_text(encoding="utf-8"))
+    assert upgraded["teacher_pin_hash"].startswith(HASH_PREFIX + "$")
+    assert upgraded["teacher_pin_hash"] != legacy
+    # And the upgraded hash still verifies after a restart.
+    assert ConfigManager().verify_pin("2468") is True
+
+
+def test_a_malformed_pin_hash_denies_access_without_crashing(writable_dir):
+    """A teacher who hand-edits the hash locks themselves out — which is correct —
+    but must not crash the app for the class."""
+    for bad in ("pbkdf2_sha256$not-a-number$zz$zz", "pbkdf2_sha256$1$2", 12345, ""):
+        (writable_dir / "settings.json").write_text(json.dumps(
+            {"volume": 0.7, "muted": False, "teacher_pin_hash": bad}), encoding="utf-8")
+        assert ConfigManager().verify_pin("2468") is False, bad
+
+
+def test_settings_are_written_atomically(writable_dir, monkeypatch):
+    """FR-135. A truncate-then-write leaves an empty settings.json if power is lost
+    in that window, taking the teacher's PIN with it. Simulated by failing during
+    the write and asserting the previous file is still intact and valid."""
+    config = ConfigManager()
+    config.set_pin("2468")
+    before = (writable_dir / "settings.json").read_text(encoding="utf-8")
+
+    real_replace = os.replace
+
+    def fail_before_replace(*_args, **_kwargs):
+        raise OSError("simulated power loss")
+
+    monkeypatch.setattr(os, "replace", fail_before_replace)
+    with pytest.raises(OSError):
+        config.set("volume", 0.1)
+    monkeypatch.setattr(os, "replace", real_replace)
+
+    assert (writable_dir / "settings.json").read_text(encoding="utf-8") == before
+    assert ConfigManager().verify_pin("2468") is True, "the PIN survived the failed write"
+
+
+def test_no_temporary_file_is_left_behind(writable_dir):
+    ConfigManager().set("volume", 0.5)
+    assert [p.name for p in writable_dir.iterdir() if p.suffix == ".tmp"] == []

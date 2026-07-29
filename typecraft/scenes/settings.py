@@ -16,14 +16,18 @@ class SettingsScene(Scene):
                                    lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
                                    bg_color=theme.COLOR_TEXT_MUTED)
 
+        # FR-131: show what is actually stored, not a hard-coded guess. These used
+        # to be fixed at 0.7/unmuted, so the screen contradicted the running app and
+        # nothing the teacher changed here survived a restart.
         self.volume_bar = ProgressBar(pygame.Rect(cx - 150, 220, 300, 24))
-        self.volume_bar.set_value(0.7)
+        self.volume_bar.set_value(self.ctx.audio.volume)
         self.vol_down = Button(pygame.Rect(cx - 220, 210, 50, 44), "-", self._vol_down, self.ctx.resources)
         self.vol_up = Button(pygame.Rect(cx + 170, 210, 50, 44), "+", self._vol_up, self.ctx.resources)
 
-        self.muted = False
-        self.mute_button = Button(pygame.Rect(cx - 90, 280, 180, 46), "Mute", self._toggle_mute,
-                                   self.ctx.resources)
+        self.muted = self.ctx.audio.muted
+        self.mute_button = Button(pygame.Rect(cx - 90, 280, 180, 46),
+                                   "Unmute" if self.muted else "Mute",
+                                   self._toggle_mute, self.ctx.resources)
 
         self.pin_input = TextInput(pygame.Rect(cx - 100, 420, 200, 44), self.ctx.resources,
                                     placeholder="New 4-digit PIN", max_length=4, is_password=True)
@@ -31,19 +35,23 @@ class SettingsScene(Scene):
                                       self._set_pin, self.ctx.resources)
         self.pin_status = ""
 
+    def _set_volume(self, value: float) -> None:
+        """Apply to the running app *and* persist it (FR-132)."""
+        value = round(max(0.0, min(1.0, value)), 2)
+        self.volume_bar.set_value(value)
+        self.ctx.audio.set_volume(value)
+        self.ctx.config.set("volume", value)
+
     def _vol_down(self) -> None:
-        v = max(0.0, self.volume_bar.value - 0.1)
-        self.volume_bar.set_value(v)
-        self.ctx.audio.set_volume(v)
+        self._set_volume(self.volume_bar.value - 0.1)
 
     def _vol_up(self) -> None:
-        v = min(1.0, self.volume_bar.value + 0.1)
-        self.volume_bar.set_value(v)
-        self.ctx.audio.set_volume(v)
+        self._set_volume(self.volume_bar.value + 0.1)
 
     def _toggle_mute(self) -> None:
         self.muted = not self.muted
         self.ctx.audio.set_muted(self.muted)
+        self.ctx.config.set("muted", self.muted)
         self.mute_button.label = "Unmute" if self.muted else "Mute"
 
     def _set_pin(self) -> None:
@@ -85,8 +93,17 @@ class SettingsScene(Scene):
         self.pin_input.render(surface)
         self.set_pin_button.render(surface)
 
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+
         if self.pin_status:
-            font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
             status_surf = self.ctx.resources.text_surface(
                 self.pin_status, font_small, theme.COLOR_PRIMARY_DARK)
             surface.blit(status_surf, status_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 540)))
+
+        # FR-134: a settings file that could not be read must say so, or the teacher
+        # sees their choices silently reverting with no explanation.
+        y = 620
+        for notice in getattr(self.ctx, "notices", []):
+            surf = self.ctx.resources.text_surface(notice, font_small, theme.COLOR_ERROR)
+            surface.blit(surf, surf.get_rect(center=(theme.SCREEN_WIDTH // 2, y)))
+            y += 24

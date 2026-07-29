@@ -7,11 +7,13 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 4 — scene flow and core UI completion
-**Current active task:** none — TC-012 closed. **No open P0 tasks.**
-**Last completed task:** TC-012 — leaderboard completed-attempt filtering (2026-07-30)
-**Next recommended task:** **TC-011** then **TC-011b** — settings load/apply/persist, then PIN
-hardening (P1, D-14 and D-15). D-15 is the last security defect: the teacher PIN is an unsalted
-SHA-256 of four digits and a test currently recovers it from `settings.json` in milliseconds.
+**Current active task:** none — TC-011 and TC-011b closed. **No open P0 tasks and no open
+security defects.**
+**Last completed task:** TC-011b — PIN hardening and atomic settings writes (2026-07-30)
+**Next recommended task:** **TC-013** — teacher dashboard statistics + confirmed atomic reset
+(P1, D-12/D-13). The dashboard currently shows only name, level and streak, and reset fires on a
+single click with no confirmation. Depends on TC-014 for scrolling, so either order works —
+TC-013 first is fine since the reset transaction already exists.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -29,10 +31,11 @@ SHA-256 of four digits and a test currently recovers it from `settings.json` in 
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 14 DONE, 0 IN_PROGRESS, 13 TODO. **Open P0: 0.** Open P1: 9.
-Defects: **31 found** — **15 closed** (D-01…D-11 except D-10 now also closed, D-28…D-31),
-1 partially closed (D-22), 15 open. **Every S1 (data-loss) defect is closed; Phases 1–3 done.**
-Tests: **428 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
+Tasks: 27 defined — 16 DONE, 0 IN_PROGRESS, 11 TODO. **Open P0: 0.** Open P1: 7.
+Defects: **31 found** — **19 closed**, 1 partially closed (D-22), 11 open.
+**Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
+Tests: **458 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
+Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
@@ -143,8 +146,8 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-11~~ | S2 | ~~`BadgeManager.award()` added `xp_bonus` after `_award_xp()` had already recomputed the level, so badge XP did not count until a later attempt and the `rising_star`/`keyboard_master` predicates read a stale level.~~ **CLOSED by TC-013b.** `_award_xp()` split into `_add_xp()` + `_recompute_level()`; the level is derived after *all* XP, and one bounded extra badge pass catches level-dependent badges. Verified: badge XP crossing level 5 awards `rising_star` in the same attempt. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
 | D-12 | S2 | Teacher dashboard shows only name, level, and current streak. Average net WPM, average accuracy, lessons completed, XP, badge count, and longest streak are all missing (FR-122). | `scenes/teacher_dashboard.py:111-116` | TC-013 |
 | D-13 | S2 | Reset progress fires immediately on click with no confirmation step (FR-125). | `scenes/teacher_dashboard.py:34-37` | TC-013 |
-| D-14 | S2 | Settings UI neither loads nor persists: volume is hard-coded to 0.7 and mute to `False` on entry, and neither is ever written to `settings.json`. Startup never applies stored values to `AudioManager`. Only the PIN persists. | `scenes/settings.py:19-47` | TC-011 |
-| D-15 | S2 | Teacher PIN is a **bare unsalted SHA-256** of a 4-digit code — only 10 000 preimages, reversible in milliseconds from `settings.json`. Verification uses `==`, not a constant-time compare. Violates SR-002/SR-003. | `managers/config_manager.py:32-39` | TC-011b |
+| ~~D-14~~ | S2 | ~~Settings neither loaded nor persisted: volume hard-coded to 0.7 and mute to `False` on entry, never written back, and startup never applied stored values.~~ **CLOSED by TC-011.** `AppContext` applies stored volume/mute to `AudioManager`; `SettingsScene` initialises from it and writes every change; a corrupt file falls back with a visible notice + log and is healed by the next change. | `core/app_context.py`, `scenes/settings.py`, `managers/config_manager.py`; `tests/db/test_settings.py` | TC-011 ✅ |
+| ~~D-15~~ | S2 | ~~Teacher PIN was a bare unsalted SHA-256 of four digits — 10 000 preimages, recoverable from `settings.json` in milliseconds — compared with `==`.~~ **CLOSED by TC-011b.** PBKDF2-HMAC-SHA256, 200 000 rounds, 16-byte per-install salt, self-describing `pbkdf2_sha256$rounds$salt$digest` format, verified with `hmac.compare_digest`. The brute-force test that used to recover the PIN now finds nothing. Legacy hashes are accepted once and upgraded in place. | `managers/config_manager.py`; `tests/db/test_config_and_seeding.py` | TC-011b ✅ |
 | D-16 | S3 | Visual keyboard is 4 rows × 10 keys only: **no Space, no Shift, no `'`, `-`, `?`, `[`, `]`**. It highlights the key **just typed** rather than the next expected key (FR-092), never indicates a finger (FR-093), and `highlight(None)` for Space means Space is never shown. | `ui/keyboard_renderer.py:14-19, 65-66`; `scenes/lesson.py:74` | TC-015 |
 | D-17 | S3 | Target text wraps mid-word by pixel width, the wrap test `x > max_width + 60` lets the last glyph overhang the text area, and the caret is drawn after `x` has already advanced. | `scenes/lesson.py:96-119` | TC-016 |
 | D-18 | S3 | No pagination or scrolling. Profile Select lays out 4 per row starting at y=160 with 164 px pitch — the 9th profile onward renders off-screen. Lesson Select lays 20 cards 5-per-row at y=120 with 150 px pitch, so the 4th row spans y≈570–700 and the star widgets clip at the window edge. The dashboard list is unbounded. | `scenes/profile_select.py:29-39`; `scenes/lesson_select.py:21-43`; `scenes/teacher_dashboard.py:28-37` | TC-014 |
@@ -206,7 +209,25 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-012 (last task, DONE)
+### TC-011 + TC-011b (last tasks, DONE)
+
+- `typecraft/managers/config_manager.py` — safe loader (`_load`/`_sanitise`) with fallback,
+  `warnings` list and logging; **atomic** `_write()` (temp file → `fsync` → `os.replace`);
+  PBKDF2 `_hash()`, `verify_pin()` with `hmac.compare_digest` and a one-time legacy-hash
+  upgrade.
+- `typecraft/core/app_context.py` — applies stored volume/mute at startup; exposes `notices`.
+- `typecraft/ui/audio_manager.py` — `volume` / `muted` read-only properties.
+- `typecraft/scenes/settings.py` — initialises from the running config, persists every change,
+  renders startup notices.
+- `tests/db/test_settings.py` — **new**, 23 tests. `tests/db/test_config_and_seeding.py` — two
+  D-15 markers removed, 5 tests added (hash format, legacy upgrade, malformed hash, atomic
+  write, no leftover temp file).
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 458 passing, 1 xfail (D-19 only); `config_manager.py` 97 % covered;
+app smoke-tested.
+
+### TC-012 (DONE)
 
 - `typecraft/managers/progression.py` — `LEADERBOARD_COLUMNS` allow-list and
   `leaderboard(board, limit=10)`.

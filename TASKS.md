@@ -8,9 +8,10 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 14 DONE, 0 IN_PROGRESS, 13 TODO. **Open P0: 0 — every
-data-loss-class defect is closed.** Open P1: 9. **Phases 1, 2 and 3 complete.**
-Test suite: **428 passing, 3 strict-xfail (D-15 ×2, D-19), 0 unexpected failures.**
+**Summary:** 27 tasks — 16 DONE, 0 IN_PROGRESS, 11 TODO. **Open P0: 0 — every
+data-loss-class defect is closed. No open security defects.** Open P1: 7.
+**Phases 1, 2 and 3 complete.**
+Test suite: **458 passing, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -27,8 +28,8 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | DONE | P0 |
 | TC-009 | Active-attempt checkpoint and crash recovery | 3 | DONE | P0 |
 | TC-010 | Esc and window-close persist incomplete attempts | 3 | DONE | P0 |
-| TC-011 | Settings load, apply, and persist | 5 | TODO | P1 |
-| TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
+| TC-011 | Settings load, apply, and persist | 5 | DONE | P1 |
+| TC-011b | PIN hardening and atomic settings writes | 5 | DONE | P1 |
 | TC-012 | Leaderboard completed-attempt filtering | 4 | DONE | P1 |
 | TC-013 | Teacher dashboard statistics + confirmed atomic reset | 5 | TODO | P1 |
 | TC-013b | XP economy: badge XP ordering + missing daily streak bonus | 3 | DONE | P1 |
@@ -436,7 +437,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   TC-019 would have needed anyway.
 
 ## TC-011 — Settings load, apply, and persist
-- **Phase** 5 · **Status** TODO · **Priority** P1
+- **Phase** 5 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** FR-130, FR-131, FR-132, FR-134
 - **Depends on** TC-004
 - **Goal.** Volume and mute must come from `settings.json` and go back to it. Today the
@@ -450,10 +451,20 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   `tests/db/test_settings.py`, `tests/scenes/test_settings_scene.py`.
 - **Checks.** Set volume → new `ConfigManager` → value preserved; corrupt the file → app
   constructs, notice present, log line written; mute state round-trips.
-- **Acceptance.** FR-130/131/132/134 pass.
+- **Acceptance.** ✅ Met. 23 tests in `tests/db/test_settings.py`. `AppContext` applies the
+  stored volume/mute to `AudioManager` at startup; `SettingsScene` initialises from it and
+  writes every change. `ConfigManager` gained a safe loader: a malformed file falls back to the
+  bundled defaults, records a warning on `ctx.notices`, logs the reason, and is **left on disk
+  intact** so the teacher can see their mistake (same reasoning as `lessons.json`). A partial
+  file keeps whatever is valid. Values are sanitised — `"volume": 11` clamps to 1.0,
+  `"muted": "no"` is rejected rather than read as true — so nothing out of range reaches
+  `pygame.mixer`. The corrupt file is healed by the next successful change.
+- **Scenario test worth naming.** `test_a_muted_classroom_stays_muted_across_a_restart`: mute a
+  machine, lower the volume, rebuild `AppContext`, still muted at 0.6. That is the whole defect
+  in one test.
 
 ## TC-011b — PIN hardening and atomic settings writes
-- **Phase** 5 · **Status** TODO · **Priority** P1
+- **Phase** 5 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** SR-001, SR-002, SR-003, FR-133, FR-135, ADR-006
 - **Depends on** TC-011
 - **Goal.** A 4-digit PIN behind bare SHA-256 has 10 000 preimages — trivially reversed from
@@ -467,7 +478,17 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** Correct/incorrect PIN; legacy-hash upgrade path; the plaintext PIN appears in
   no file after setting it (grep the writable dir); an interrupted write leaves the previous
   valid file intact.
-- **Acceptance.** SR-001/002/003, FR-133, FR-135 pass.
+- **Acceptance.** ✅ Met. **458 passing, 1 xfail** — both D-15 markers removed, so **no open
+  security defect remains**. PBKDF2-HMAC-SHA256, 200 000 rounds, 16-byte per-install salt,
+  stored as `pbkdf2_sha256$rounds$salt$digest` so the work factor can be raised later without
+  invalidating existing PINs. Verification uses `hmac.compare_digest`. The brute-force test that
+  previously *recovered* the PIN from `settings.json` now finds nothing. Writes are atomic
+  (temp file → `fsync` → `os.replace`), proven by failing during the write and asserting the
+  previous file and its PIN both survive, with no `.tmp` left behind.
+- **Legacy upgrade path.** A PIN set by the inherited build is a bare unsalted SHA-256. Rather
+  than locking that school out, it is accepted **once** and immediately re-hashed, so the weak
+  digest leaves disk the first time the teacher uses it. A *wrong* PIN triggers no upgrade. A
+  hand-mangled hash denies access without crashing the class's app.
 
 ## TC-012 — Leaderboard completed-attempt filtering
 - **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P1
