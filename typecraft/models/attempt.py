@@ -42,6 +42,11 @@ class AttemptResult:
     errors: int = 0
     correct_keystrokes: int = 0
 
+    #: Backspace corrections the student made (BackspaceMode only). Reported for
+    #: encouragement — "you caught 4 of your own mistakes" — and never scored;
+    #: see the OQ-001 resolution in REQUIREMENTS.md 13.
+    corrections_made: int = 0
+
     combo: int = 0
     max_combo: int = 0
 

@@ -269,7 +269,9 @@ target, and char statuses and returns a `KeystrokeResult(advanced, is_error, cha
 is_backspace, corrected_index)`. Only `TypingEngine.feed_key()` mutates counters. Modes are
 created from a string key via `create_mode()` backed by `MODE_REGISTRY`.
 
-**CURRENT accounting defects** (the core correctness work of Phase 2):
+**Accounting defects — ALL FIXED in TC-006 (Phase 2 complete).** Retained as the record of
+what was wrong and what the tests now guard against; `engine/typing_engine.py` and
+`engine/metrics.py` are at 100 % coverage.
 
 1. `LockOnErrorMode` + `_error_counted[]`: a second wrong key at the same position
    increments `total_keystrokes` but is suppressed from `errors`, so
@@ -297,14 +299,19 @@ created from a string key via `create_mode()` backed by `MODE_REGISTRY`.
 only D-08 unbalances it; D-07 and D-30 keep it balanced while corrupting the values, so the
 fix must be verified against exact expected counters.
 
-Target accounting (pending **OQ-001**, recommended resolution): treat the counters as a
-ledger over cursor positions. Advancing past position *i* posts exactly one entry
-(`total += 1` and either `correct += 1` or `errors += 1`). Backspacing over position *i*
-reverses that entry (`total -= 1` and the matching counter -= 1). A repeated wrong key in
-`LockOnErrorMode` posts a full entry each time (`total += 1`, `errors += 1`) and
-`_error_counted` is deleted. A separate `corrections_made` counter is displayed but never
-scored. This makes FR-043/FR-044/FR-045 structurally true rather than incidentally true,
-and is directly property-testable with randomised keystroke sequences.
+**Accounting as implemented (OQ-001 resolved blueprint-literal, TC-006).** The counters are a
+ledger over keystrokes, not over cursor positions. Every character-producing keystroke posts
+exactly one entry — `total += 1` plus either `correct += 1` or `errors += 1` — and **no entry
+is ever reversed**. Backspace is navigation: it moves the cursor, clears the character it
+uncovers, bumps the non-scoring `corrections_made`, and touches no metric. A repeated wrong key
+in `LockOnErrorMode` posts a full entry each time (`_error_counted` deleted). A no-op backspace
+still reports `is_backspace=True` so it can never reach the scoring path. Input after
+completion is ignored, guarded before `mode.resolve()` is called.
+
+This makes FR-043/FR-044/FR-045 true by construction. Note for future work: the ledger
+equation alone is **not** a sufficient test — D-07 and D-30 both kept it balanced while
+corrupting the values, so exact expected counters must be asserted (see
+`tests/unit/test_invariants.py`'s docstring).
 
 ---
 
@@ -758,7 +765,7 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | ADR-002 | `assets/` and `data/` live *inside* the package; `_dev_data/` stays outside it | **Accepted — implemented TC-002** | One stable anchor for `resource_path()` in both dev and frozen modes; dev data cannot be swept into a build |
 | ADR-003 | `Database` uses `isolation_level=None` + an explicit `transaction()` context manager | Proposed (TC-008) | Current per-statement autocommit makes DR-010 unachievable |
 | ADR-004 | One row per attempt, reserved on the first keystroke, promoted from `in_progress` to `complete`/`incomplete` | Proposed (TC-009) | Prevents duplicate rows once checkpointing exists |
-| ADR-005 | Ledger-style keystroke accounting; delete `_error_counted` | Proposed (TC-006, pending OQ-001) | Makes FR-043/044/045 structural instead of incidental |
+| ADR-005 | Ledger-style keystroke accounting; delete `_error_counted`; Backspace never edits a counter | **Accepted — implemented TC-006** | FR-043/044/045 now hold by construction; fixed D-07, D-08, D-29, D-30 |
 | ADR-006 | PIN uses `pbkdf2_hmac` with a per-install random salt, verified with `compare_digest` | Proposed (TC-011b) | A 4-digit unsalted SHA-256 has only 10 000 preimages |
 | ADR-007 | Dirty-rect presentation via a per-scene dirty-rect list; full repaint behind a debug flag | Proposed (TC-018) | PR-002; keeps a simple escape hatch for debugging |
 | ADR-008 | Lessons joined with a single space; no Enter key mid-lesson | Accepted (in code) | Keeps the target a flat string and the keyboard free of an Enter highlight |
@@ -772,7 +779,7 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 |---|---|---|
 | ~~R1 — the import-path/package defect blocks every test and the build~~ | — | **CLOSED by TC-002.** Both entry points resolve the full internal import graph from the repo root |
 | R2 — auto-commit `Database` silently defeats every transaction | Corrupt half-reset student records | TC-008 before any new multi-write feature |
-| R3 — keystroke accounting is wrong in two modes | Every stored metric, star, XP, badge, and leaderboard entry is suspect | TC-005 (tests first) then TC-006 |
+| ~~R3 — keystroke accounting is wrong in two modes~~ | — | **CLOSED by TC-006.** Four defects fixed (D-07, D-08, D-29, D-30) and verified; `engine/` at 99 % coverage. Metrics are now trustworthy; persisting them is not yet (R2, R4) |
 | R4 — no `in_progress` checkpoint and no window-close save | Silent data loss on a school power cut | TC-009, TC-010 |
 | R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |
 | R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |

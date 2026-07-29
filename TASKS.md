@@ -8,9 +8,9 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 6 DONE, 0 IN_PROGRESS, 21 TODO. Open P0: 6. Open P1: 11.
-**Phase 1 complete.** Test suite: 281 tests — 271 passing, 10 strict-xfail defect
-reproductions awaiting TC-006, 0 unexpected failures.
+**Summary:** 27 tasks — 7 DONE, 0 IN_PROGRESS, 20 TODO. Open P0: 5. Open P1: 11.
+**Phases 1 and 2 complete.** Test suite: **284 passing, 0 failing, 0 xfail.**
+`engine/` coverage 99 % (`typing_engine.py` and `metrics.py` both 100 %).
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
@@ -20,7 +20,7 @@ reproductions awaiting TC-006, 0 unexpected failures.
 | TC-003 | Runtime and dev dependency manifests | 1 | DONE | P0 |
 | TC-004 | pytest infrastructure with isolated data paths | 1 | DONE | P0 |
 | TC-005 | Baseline tests for metrics and the three modes | 2 | DONE | P0 |
-| TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | TODO | P0 |
+| TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | DONE | P0 |
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | TODO | P0 |
 | TC-008 | Real transaction support in `Database` | 3 | TODO | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | TODO | P0 |
@@ -210,7 +210,7 @@ reproductions awaiting TC-006, 0 unexpected failures.
   `TypingEngine` for deterministic WPM, with no behavioural effect.
 
 ## TC-006 — Fix keystroke accounting (LockOnError + Backspace + D-29/D-30)
-- **Phase** 2 · **Status** TODO · **Priority** P0
+- **Phase** 2 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** FR-040…FR-048, FR-050, ADR-005, OQ-001
 - **Depends on** TC-005. **OQ-001 is RESOLVED** (blueprint-literal ledger) — unblocked.
 - **Goal.** Make the counters a consistent ledger so accuracy, WPM, stars, XP, badges, and
@@ -236,13 +236,31 @@ reproductions awaiting TC-006, 0 unexpected failures.
   **their `xfail` markers must be removed** — `strict=True` makes the suite red otherwise, so
   a leftover marker cannot be missed. Then the full suite green, and coverage of
   `typing_engine.py` held at ≥ 99 %.
-- **Acceptance.** FR-043/044/045 hold for every input sequence tested; no counter is ever
-  negative; no sequence of Backspace presses can move any counter; input after completion is
-  ignored rather than raising; a corrected error still costs accuracy per the OQ-001
-  resolution, with `corrections_made` reported separately.
-- **Notes.** Verifying with the FR-043 invariant alone is **not sufficient** — TC-005 proved
-  D-07 and D-30 keep the equation balanced while corrupting the values. The exact expected
-  counter assertions in `test_typing_engine.py` are the real gate.
+- **Acceptance.** ✅ Met. All 10 strict-xfail tests pass and every marker is removed;
+  **284 passing, 0 failing, 0 xfail.** `typing_engine.py` and `metrics.py` at **100 %**
+  coverage, `input_modes.py` 96 %, `engine/` overall 99 %. App smoke-tested after the change.
+  Verified independently of the test suite:
+
+  | Scenario | Before | After |
+  |---|---|---|
+  | 20× Backspace, nothing typed (D-30) | total 20, correct 20, combo 20, **100 %** | total 0, correct 0, combo 0, **0 %** |
+  | wrong key + Backspace (D-07) | total 1, correct 1, errors 0, **100 %** | total 1, correct 0, errors 1, **0 %** |
+  | wrong + Backspace + right (D-07) | **100 %**, 0 mistakes | **50 %**, 1 mistake, 1 correction |
+  | 4 wrong then right (D-08) | total 5, errors 1, **sum 2 ≠ 5** | total 5, errors 4, **sum 5 = 5** |
+  | key after completion (D-29) | `IndexError` | ignored, total unchanged |
+- **Two TC-005 assertions were corrected, not weakened.** `test_free_advance_ignores_backspace`
+  and `test_backspace_at_the_start_of_the_text_is_a_no_op` asserted
+  `is_backspace is False` for a no-op backspace — which *is* the D-30 mechanism, so they
+  pinned the bug. Replaced by `test_a_no_op_backspace_is_still_flagged_as_one`, parametrised
+  over all three modes: "the backspace did nothing" must never be expressed as "this was not
+  a backspace".
+- **One test premise was wrong.** `test_D07_navigating_back_over_a_correct_character…` used a
+  2-character target, so its second keystroke completed the text and the new FR-047
+  finished-guard (correctly) ignored the Backspaces. Target widened to 3 characters; the
+  assertions are unchanged and stricter (now also checks `corrections_made`).
+- **Notes.** Verifying with the FR-043 invariant alone would **not** have been sufficient —
+  TC-005 proved D-07 and D-30 keep the equation balanced while corrupting the values. The
+  exact expected counter assertions were the real gate.
 
 ## TC-007 — Progression, unlock, streak, badge service tests
 - **Phase** 3 · **Status** TODO · **Priority** P0

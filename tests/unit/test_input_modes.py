@@ -100,7 +100,7 @@ def test_free_advance_ignores_backspace():
     result = FreeAdvanceMode().resolve(FakeState("abc", 2), "\b")
     assert result.advanced is False
     assert result.is_error is False
-    assert result.is_backspace is False
+    assert result.is_backspace is True, "see test_a_no_op_backspace_is_still_flagged_as_one"
 
 
 # --------------------------------------------------------------------------- BackspaceMode
@@ -121,8 +121,32 @@ def test_backspace_at_the_start_of_the_text_is_a_no_op():
     """Nothing to go back to; must not produce a negative cursor."""
     result = BackspaceMode().resolve(FakeState("abc", 0), "\b")
     assert result.advanced is False
-    assert result.is_backspace is False
+    assert result.is_error is False
     assert result.corrected_index == -1
+
+
+@pytest.mark.parametrize("mode,cursor", [
+    (BackspaceMode(), 0),      # nothing to go back to
+    (LockOnErrorMode(), 2),    # backspace disallowed entirely
+    (FreeAdvanceMode(), 2),    # backspace disallowed entirely
+])
+def test_a_no_op_backspace_is_still_flagged_as_one(mode, cursor):
+    """Regression guard for defect D-30 — the highest-impact bug found so far.
+
+    `is_backspace` is what TypingEngine.feed_key() uses to route a keystroke away
+    from the scoring path. When BackspaceMode returned False for a backspace at
+    cursor 0, feed_key() fell through and scored it as a *correct* keystroke: 20
+    presses before typing anything gave 100 % accuracy, combo 20, three stars and
+    an unlock with nothing typed.
+
+    So "the backspace did nothing" must never be expressed as "this was not a
+    backspace". Asserted for all three modes, including the two where the engine
+    rejects Backspace earlier, so the hazard cannot reappear if that guard moves.
+    """
+    result = mode.resolve(FakeState("abc", cursor), "\b")
+    assert result.is_backspace is True
+    assert result.advanced is False
+    assert result.is_error is False
 
 
 def test_backspace_over_an_error_reports_the_position_being_revisited():

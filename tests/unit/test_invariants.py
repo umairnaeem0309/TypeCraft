@@ -12,20 +12,21 @@ The invariants, checked after *every* keystroke rather than only at the end:
     0 <= correct_keystrokes <= total_keystrokes         (FR-045)
     no counter is ever negative                         (FR-045)
 
-**A finding worth recording, established by these tests.** The ledger equation is
-necessary but *not sufficient*. Only D-08 actually breaks FR-043, and only in
-`lock_on_error`, the one mode where the cursor can revisit a position:
+**A finding worth keeping, established by these tests in TC-005.** The ledger
+equation is necessary but *not sufficient*. Of the three accounting defects, only
+D-08 actually broke FR-043, and only in `lock_on_error` — the one mode where the
+cursor can revisit a position:
 
-  - D-08 counts a repeated wrong key in total_keystrokes but suppresses the
-    error, so the two sides genuinely diverge. Caught here.
-  - D-07 decrements `errors` while incrementing `correct_keystrokes`, so the sum
-    still matches total. The equation holds; the values are wrong.
-  - D-30 increments total *and* correct together, so again the sum matches.
+  - D-08 counted a repeated wrong key in total_keystrokes but suppressed the
+    error, so the two sides genuinely diverged. Caught here.
+  - D-07 decremented `errors` while incrementing `correct_keystrokes`, so the sum
+    still matched total. The equation held; the values were wrong.
+  - D-30 incremented total *and* correct together, so again the sum matched.
 
-So a randomised equation check cannot find D-07 or D-30. That is why the
-hand-written scenarios in `test_typing_engine.py` assert exact expected counter
-values rather than only the invariant — a lesson about what this style of test
-can and cannot prove.
+A randomised equation check therefore could not find D-07 or D-30. That is why
+the scenarios in `test_typing_engine.py` assert exact expected counter values and
+not merely the invariant — worth remembering before trusting a property test to
+prove a fix.
 """
 
 import random
@@ -94,20 +95,13 @@ def drive(mode_key, keys):
     return None
 
 
-@pytest.mark.parametrize("mode_key", [
-    pytest.param("lock_on_error", marks=pytest.mark.xfail(
-        strict=True,
-        reason="defect D-08: a repeated wrong key at one position is counted in "
-               "total_keystrokes but suppressed from errors (fixed in TC-006)")),
-    "backspace",
-    "free_advance",
-])
+@pytest.mark.parametrize("mode_key", MODES)
 def test_ledger_holds_over_randomised_sequences(mode_key):
     """400 sequences x 40 keystrokes per mode, from a fixed seed.
 
-    Passes today for `backspace` and `free_advance`: those modes advance the
-    cursor on every keystroke, so no position is ever counted twice. Only
-    `lock_on_error` can revisit a position, which is what D-08 mishandles.
+    `lock_on_error` is the interesting case: it is the only mode where the cursor
+    can revisit a position, which is what D-08 mishandled. The other two advance
+    on every keystroke, so they passed even before the fix.
     """
     rng = random.Random(SEED)
     failures = []
@@ -136,8 +130,6 @@ def test_a_perfectly_typed_run_is_exactly_one_hundred_percent(mode_key):
     assert engine.total_keystrokes == len(TARGET)
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-30: Backspace at cursor 0 is scored as "
-                                      "a correct keystroke (fixed in TC-006)")
 def test_only_typing_can_produce_accuracy():
     """No amount of Backspace pressing may move the counters. This is the
     integrity property behind the 85% unlock gate: without it a student reaches
@@ -153,8 +145,6 @@ def test_only_typing_can_produce_accuracy():
 
 
 @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
-@pytest.mark.xfail(strict=True, reason="defect D-08 in lock_on_error breaks FR-043 "
-                                      "(fixed in TC-006)")
 @given(
     mode_key=st.sampled_from(MODES),
     keys=st.lists(st.sampled_from(KEYPOOL), min_size=1, max_size=60),

@@ -44,23 +44,34 @@ class TypingEngine:
         self.combo = 0
         self.max_combo = 0
 
+        # Backspace corrections of a previously-wrong character. Reported to the
+        # student, never scored (OQ-001).
+        self.corrections_made = 0
+
         self._start_time = None
         self._end_time = None
         self._started_at_iso = None
 
-        # Tracks which target-indices have already counted an error, so a
-        # student re-attempting the same position in LockOnErrorMode isn't
-        # double-penalised for every retry of a single mistake.
-        self._error_counted = [False] * len(target)
+    @staticmethod
+    def _ignored() -> KeystrokeResult:
+        """A keystroke the engine declines to act on. Nothing is counted."""
+        return KeystrokeResult(advanced=False, is_error=False, char_status=CharStatus.PENDING)
 
     def feed_key(self, char: str) -> KeystrokeResult:
         """char is a single typed character, or '\\b' for Backspace."""
+        # FR-047: once the target text is complete the attempt is over and every
+        # further key is ignored. This must come BEFORE mode.resolve(), which
+        # indexes target[cursor] — the old ordering made the equivalent guard
+        # below unreachable and raised IndexError instead (defect D-29).
+        if self.is_finished():
+            return self._ignored()
+
+        if char == "\b" and not self.mode.allows_backspace():
+            return self._ignored()
+
         if self._start_time is None and char != "\b":
             self._start_time = self._clock()
             self._started_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
-
-        if char == "\b" and not self.mode.allows_backspace():
-            return KeystrokeResult(advanced=False, is_error=False, char_status=CharStatus.PENDING)
 
         result = self.mode.resolve(self, char)
 
@@ -68,15 +79,16 @@ class TypingEngine:
             self._apply_backspace(result)
             return result
 
-        if self.cursor >= len(self.target):
-            return result  # already finished, ignore stray input
-
+        # From here the keystroke is scored, and posts exactly one ledger entry:
+        # total goes up by one, and so does exactly one of correct/errors. That
+        # is what makes FR-043 (correct + errors == total) true by construction.
         self.total_keystrokes += 1
 
         if result.is_error:
-            if not self._error_counted[self.cursor]:
-                self.errors += 1
-                self._error_counted[self.cursor] = True
+            # Every wrong keystroke is its own mistake, including a repeat at the
+            # same position in LockOnErrorMode. Suppressing repeats unbalanced the
+            # ledger and under-reported the mistake count (defect D-08).
+            self.errors += 1
             self.combo = 0
         else:
             self.correct_keystrokes += 1
@@ -94,18 +106,26 @@ class TypingEngine:
         return result
 
     def _apply_backspace(self, result: KeystrokeResult) -> None:
-        if self.cursor > 0:
-            self.cursor -= 1
-            self.char_status[self.cursor] = CharStatus.PENDING
+        """Move the cursor back one position and clear what it uncovers.
 
-        # Retroactive correction (BackspaceMode locked decision, see
-        # engine/input_modes.py docstring): fixing a previously-flagged
-        # error decrements errors and increments correct_keystrokes so
-        # final accuracy reflects the corrected text. Combo is NOT restored.
-        if result.corrected_index != -1 and self._error_counted[result.corrected_index]:
-            self.errors -= 1
-            self.correct_keystrokes += 1
-            self._error_counted[result.corrected_index] = False
+        Deliberately counter-neutral (OQ-001): no metric is touched here. The
+        previous version decremented `errors` and incremented
+        `correct_keystrokes`, then the retype credited the same position a
+        second time — crediting a keystroke that was never pressed and reporting
+        100% accuracy for any fully-corrected attempt (defect D-07).
+
+        Combo is not restored: it broke when the original error was made.
+        """
+        if self.cursor == 0:
+            return  # nothing to go back to
+
+        self.cursor -= 1
+        self.char_status[self.cursor] = CharStatus.PENDING
+
+        if result.corrected_index != -1:
+            # The uncovered character was wrong, so this is a genuine
+            # self-correction rather than plain navigation. Reported, not scored.
+            self.corrections_made += 1
 
     def _elapsed_minutes(self) -> float:
         if self._start_time is None:
@@ -124,6 +144,9 @@ class TypingEngine:
             "combo": self.combo,
             "max_combo": self.max_combo,
             "errors": self.errors,
+            "total_keystrokes": self.total_keystrokes,
+            "correct_keystrokes": self.correct_keystrokes,
+            "corrections_made": self.corrections_made,
             "cursor": self.cursor,
             "total_chars": len(self.target),
             "elapsed_sec": minutes * 60.0,
@@ -157,6 +180,7 @@ class TypingEngine:
             total_keystrokes=self.total_keystrokes,
             errors=self.errors,
             correct_keystrokes=self.correct_keystrokes,
+            corrections_made=self.corrections_made,
             combo=self.combo,
             max_combo=self.max_combo,
             duration_sec=minutes * 60.0,

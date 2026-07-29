@@ -1,10 +1,10 @@
 """TypingEngine bookkeeping (FR-040..FR-048).
 
-Characterisation tests written *before* the fix, per TC-005. Everything marked
-`xfail(strict=True)` is a defect reproduction, not an aspiration: the assertion
-states what TC-006 must make true, and `strict` means the suite goes red the
-moment the behaviour is fixed, forcing the marker to be removed. Nothing here is
-allowed to be "fixed" by weakening an assertion.
+Written as characterisation tests in TC-005, *before* the repair, so the fix in
+TC-006 had an objective target. The tests named `test_D07_*` / `test_D08_*` /
+`test_D29_*` / `test_D30_*` were strict-xfail defect reproductions then; TC-006
+made them pass and the markers were removed. The names are kept so the defect
+they guard against stays traceable.
 
 The accounting policy asserted is the OQ-001 resolution (REQUIREMENTS.md 13):
 Backspace moves the cursor and clears the on-screen status only. It never edits
@@ -246,19 +246,18 @@ def test_result_carries_the_keystroke_counts_the_schema_needs():
     assert result.errors == 1
 
 
-# =========================================================================== DEFECTS
-# Each test below reproduces a confirmed defect. strict=True means the suite fails
-# if one starts passing, which forces the marker to be removed in TC-006.
+# =========================================================================== REGRESSIONS
+# Each test below pins a defect fixed in TC-006. They were strict-xfail before the
+# fix; if one of them fails again, the named defect has come back.
 
-@pytest.mark.xfail(strict=True, reason="defect D-08: _error_counted suppresses repeat "
-                                      "errors, so correct + errors != total")
 def test_D08_repeated_wrong_key_keeps_the_ledger_consistent():
     """FR-043. Three wrong keys then the right one at the same position is four
     real keystrokes: 3 errors + 1 correct. The `_error_counted` guard records
-    only the first error while still counting all four keystrokes."""
+    only the first error while still counting all four keystrokes (defect D-08)."""
     engine, _ = make_engine("ab")
     type_all(engine, "zzz")
     engine.feed_key("a")
+
 
     assert engine.total_keystrokes == 4
     assert engine.errors == 3
@@ -266,7 +265,6 @@ def test_D08_repeated_wrong_key_keeps_the_ledger_consistent():
     assert_ledger_consistent(engine)
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-08: mistake count understates reality")
 def test_D08_every_wrong_keystroke_counts_as_a_mistake():
     """The HUD's 'Mistakes' figure and the stored `errors` column must reflect
     what the student actually did, or the teacher's dashboard is misleading."""
@@ -275,12 +273,10 @@ def test_D08_every_wrong_keystroke_counts_as_a_mistake():
     assert engine.errors == 5
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-07: correction erases the error and "
-                                      "double-credits correct_keystrokes")
 def test_D07_corrected_error_still_counts_against_accuracy():
     """OQ-001. Wrong key, Backspace, right key = 2 keystrokes, 1 error = 50%.
-    The current code reports 100% with 0 mistakes, so a student who corrects
-    everything scores identically to one who never erred."""
+    Previously this reported 100% with 0 mistakes, so a student who corrected
+    everything scored identically to one who never erred."""
     engine, _ = make_engine("ab", "backspace")
     engine.feed_key("z")   # wrong at 0
     engine.feed_key("\b")  # revisit it
@@ -292,12 +288,10 @@ def test_D07_corrected_error_still_counts_against_accuracy():
     assert engine.metrics()["accuracy"] == pytest.approx(50.0)
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-07: backspace credits a keystroke that "
-                                      "was never pressed")
 def test_D07_backspace_alone_cannot_manufacture_accuracy():
     """After one wrong key and one Backspace the student has typed exactly one
-    character and got it wrong: 0% accuracy. The current code reports 100%
-    before the replacement character is even typed."""
+    character and got it wrong: 0% accuracy. Previously this reported 100%
+    before the replacement character had even been typed."""
     engine, _ = make_engine("ab", "backspace")
     engine.feed_key("z")
     engine.feed_key("\b")
@@ -308,32 +302,38 @@ def test_D07_backspace_alone_cannot_manufacture_accuracy():
     assert engine.metrics()["accuracy"] == 0.0
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-07: retyping over a backspaced correct "
-                                      "character double-credits it")
 def test_D07_navigating_back_over_a_correct_character_does_not_inflate_accuracy():
     """'a', wrong 'z', Backspace, Backspace, 'a', 'b' is 4 keystrokes with 1
-    error = 75%. The current code erases the error and reports 100%."""
-    engine, _ = make_engine("ab", "backspace")
+    error = 75%. Previously the error was erased and the retype double-credited,
+    reporting 100%.
+
+    The target is 3 characters so the scenario stays reachable: on a 2-character
+    target the second keystroke completes the text and FR-047's finished-guard
+    then (correctly) ignores the Backspaces.
+    """
+    engine, _ = make_engine("abc", "backspace")
     engine.feed_key("a")   # correct at 0
     engine.feed_key("z")   # wrong at 1
     engine.feed_key("\b")  # back over the error
     engine.feed_key("\b")  # back over the correct 'a'
-    engine.feed_key("a")
-    engine.feed_key("b")
+    engine.feed_key("a")   # retype position 0
+    engine.feed_key("b")   # retype position 1
 
     assert engine.total_keystrokes == 4
     assert engine.errors == 1
+    assert engine.correct_keystrokes == 3
     assert engine.metrics()["accuracy"] == pytest.approx(75.0)
+    assert engine.corrections_made == 1, "only the ERROR character was a correction"
+    assert engine.is_finished() is False
     assert_ledger_consistent(engine)
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-30: Backspace at cursor 0 in "
-                                      "BackspaceMode is scored as a correct keystroke")
 def test_D30_backspace_at_the_start_cannot_be_farmed_for_accuracy():
     """BackspaceMode.resolve() returns is_backspace=False when the cursor is at 0,
     so feed_key() falls through to the normal path and counts the Backspace as a
-    correct keystroke. Pressing Backspace 20 times before typing anything banks
-    20 free correct keystrokes and guarantees a pass."""
+    correct keystroke, so pressing Backspace 20 times before typing anything
+    banked 20 free correct keystrokes and guaranteed a pass. Fixed by making a
+    no-op backspace still report is_backspace=True."""
     engine, _ = make_engine("ab", "backspace")
     for _ in range(20):
         engine.feed_key("\b")
@@ -344,12 +344,10 @@ def test_D30_backspace_at_the_start_cannot_be_farmed_for_accuracy():
     assert engine.metrics()["accuracy"] == 0.0
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-29: input after completion raises "
-                                      "IndexError instead of being ignored")
 def test_D29_input_after_completion_is_ignored():
     """FR-047, and the engine's own docstring says 'already finished, ignore
     stray input' -- but mode.resolve() reads target[cursor] before feed_key's
-    guard is reached, so it raises."""
+    guard was reached, so it raised. Fixed by moving the guard first."""
     engine, _ = make_engine("ab", "free_advance")
     type_all(engine, "ab")
     assert engine.is_finished()

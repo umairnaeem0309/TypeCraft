@@ -321,6 +321,17 @@ The project is accepted when all of the following are objectively evidenced in
 - **OQ-003** May permissively-licensed third-party assets be bundled (fonts/sounds), or must all assets be original? Affects TC-017 and AS-06.
 - **OQ-004** Should a wrong Shift key (e.g. left Shift for a left-hand capital) be flagged as a technique error, or only the resulting character checked? Current spec: only the character is checked.
 - **OQ-005** Does the teacher need any progress export beyond copying `typecraft.db`? Currently out of scope.
+- **OQ-006 (raised by TC-006, for Phase 4)** In `BackspaceMode`, a wrong **final** character
+  can never be corrected: the attempt completes the instant the cursor reaches the end of the
+  target, and `LessonScene` transitions straight to Results. FR-033 promises that incorrect
+  characters can be revisited; FR-047 says a finished attempt ignores further input. Both are
+  currently honoured, and they collide only on the last character.
+  **Options:** (a) accept it — the student retries the lesson, which is unlimited (FR-063);
+  (b) treat the attempt as complete only when the cursor reaches the end *and* the student
+  confirms, giving a chance to fix the last character in `BackspaceMode` only; (c) auto-finish
+  only when the final character is correct. Not a regression — this is inherited behaviour. No
+  code decision was taken in TC-006; the engine follows FR-047 literally. Recommend (a) unless
+  classroom observation shows it frustrates students.
 
 ---
 
