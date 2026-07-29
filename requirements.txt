@@ -1,0 +1,11 @@
+# TypeCraft runtime dependencies (NFR-002).
+#
+# This is the complete runtime dependency list. Everything else TypeCraft needs
+# — sqlite3, json, hashlib, pathlib — is Python standard library (NFR-003), and
+# the application makes no network calls of any kind (NFR-004).
+#
+# The upper bound is deliberate: pygame 3 is not released and would be a major
+# version change on the one library the whole render path depends on. Widen it
+# only after re-running the full test suite and the low-end hardware check.
+
+pygame>=2.5.2,<3.0

@@ -7,11 +7,10 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 1 — package structure, environment, and test infrastructure
-**Current active task:** none — TC-002 closed, awaiting the go-ahead for TC-003
-**Last completed task:** TC-002 — normalise the package and entry point (2026-07-29)
-**Next recommended task:** **TC-003** — runtime and dev dependency manifests (P0). It also
-carries the one check deferred out of TC-002: proving `python main.py` actually reaches the
-Main Menu, which needs pygame installed.
+**Current active task:** none — TC-003 closed, awaiting the go-ahead for TC-004
+**Last completed task:** TC-003 — runtime and dev dependency manifests (2026-07-29)
+**Next recommended task:** **TC-004** — pytest infrastructure with isolated data paths (P0).
+Last task of Phase 1; everything in Phase 2 onward depends on it.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -21,7 +20,7 @@ Main Menu, which needs pygame installed.
 | Phase | State |
 |---|---|
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
-| 1 — Structure, deps, tests | IN PROGRESS — TC-002 done; TC-003, TC-004 outstanding |
+| 1 — Structure, deps, tests | IN PROGRESS — TC-002, TC-003 done; TC-004 outstanding |
 | 2 — Engine & metric correctness | NOT STARTED |
 | 3 — Persistence & recovery | NOT STARTED |
 | 4 — Scenes & core UI | NOT STARTED |
@@ -29,8 +28,8 @@ Main Menu, which needs pygame installed.
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 3 DONE, 0 IN_PROGRESS, 24 TODO. Open P0: 9. Open P1: 11.
-Defects: 28 found — 2 closed (D-01, D-28), 26 open.
+Tasks: 27 defined — 4 DONE, 0 IN_PROGRESS, 23 TODO. Open P0: 8. Open P1: 11.
+Defects: 28 found — 3 closed (D-01, D-02, D-28), 25 open.
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -68,10 +67,30 @@ and two confirmed data-integrity defects (D-04, D-05) can lose or corrupt studen
 
 ---
 
-## 3. Working features confirmed by tests
+## 3. Working features
 
-**None — there is no test suite.** Everything below is code-inspection-level confidence only
-and must not be reported as working until Phase 1/2 tests exist:
+### Confirmed by execution (TC-003 headless probe, not yet by tests)
+
+A throwaway probe under `SDL_VIDEODRIVER=dummy`, with the writable dir redirected to a temp
+folder, established that **the inherited application starts and runs**:
+
+- `Game()` constructs and the active scene is `MainMenuScene`.
+- 3 full event/update/render frames execute on the Main Menu without error.
+- All 5 profile-independent scenes enter and render: `main_menu`, `profile_select`,
+  `leaderboard`, `settings`, `teacher_dashboard`.
+- 20 lessons across 5 tiers load from `lessons.json`.
+- First-run seeding creates all 5 writable files (`typecraft.db` + 4 JSON) in an empty dir.
+- `run()` exits cleanly on a posted `pygame.QUIT`.
+- `python main.py` and `python -m typecraft` each sustained the loop for 6 s with no error.
+
+**Not covered by that probe:** `lesson_select`, `mode_select`, `lesson`, and `results` (all
+need an active profile), any gameplay, and every metric. It is a liveness check, not a
+correctness check.
+
+### Confirmed by tests
+
+**None — there is no test suite yet (TC-004).** Everything below is code-inspection-level
+confidence only and must not be reported as working until Phase 2 tests exist:
 
 - Every module byte-compiles (`compileall` clean).
 - `core/paths.py` implements the read-only/writable split correctly, including
@@ -95,7 +114,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ID | Sev | Defect | Evidence | Task |
 |---|---|---|---|---|
 | ~~D-01~~ | S1 | ~~Package/import layout is unrunnable from the repo root.~~ **CLOSED by TC-002.** Code moved to a `typecraft/` package with a root `main.py` launcher; 88 imports rewritten. Both `python main.py` and `python -m typecraft` now resolve the full internal graph from the repo root. | see §7 TC-002 | TC-002 ✅ |
-| D-02 | S4 | `requirements.txt` is 0 bytes; no dev/test/build manifest; no venv; pygame/pytest/PyInstaller absent. | file size 0; `import pygame` → ModuleNotFoundError | TC-003 |
+| ~~D-02~~ | S4 | ~~`requirements.txt` is 0 bytes; no dev/test/build manifest; no venv.~~ **CLOSED by TC-003.** `requirements.txt`, `requirements-dev.txt`, `pyproject.toml` written; `.venv` installs pygame 2.6.1, pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, PyInstaller 6.21.0. | see §7 TC-003 | TC-003 ✅ |
 | D-03 | S2 | No automated tests and no test infrastructure at all. | no `tests/` directory | TC-004 |
 | D-04 | S1 | `Database.execute()` commits after **every** statement, so `begin()`/`rollback()` are inert. The teacher's reset-progress is therefore **non-atomic** despite its `try/except: rollback(); raise` — a failure part-way leaves a student with deleted attempts but intact XP (or vice versa). `ProgressionService.score()` has the same exposure across six separate commits. | `managers/database.py:104-108`; `scenes/teacher_dashboard.py:47-69` | TC-008 |
 | D-05 | S1 | No `in_progress` checkpoint is ever written. `AttemptStatus.IN_PROGRESS` exists and startup reclassification exists, but nothing produces such a row — so a power cut mid-lesson loses the entire attempt with no recovery record. | grep: no writer of `'in_progress'` | TC-009 |
@@ -154,9 +173,10 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 5. Current blockers
 
-- **B-01** No virtual environment and no pygame/pytest/PyInstaller installed — nothing can be
-  executed beyond `compileall` until TC-003. Resolution: create a venv in TC-003 and install
-  from the new manifests. *(Not a hard blocker for TC-001/TC-002, which are structural.)*
+- ~~**B-01**~~ **CLEARED by TC-003.** `.venv` exists at the repo root with pygame 2.6.1,
+  pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, and PyInstaller 6.21.0 on Python 3.12.9.
+  Use `.venv\Scripts\python.exe` (or activate it) for every command from here on — the
+  MiniConda base interpreter still has none of these.
 - **B-02 (decision needed from the user)** **OQ-001** — Backspace correction accounting.
   Blueprint §2.4 implies no retroactive edits; the code comment claims corrections do fix the
   books; the implementation does neither correctly. TC-006 will implement the recommended
@@ -168,7 +188,20 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-002 (last task, DONE)
+### TC-003 (last task, DONE)
+
+- `requirements.txt` — was 0 bytes; now the single runtime pin `pygame>=2.5.2,<3.0`.
+- `requirements-dev.txt` — **new**: pytest, pytest-cov, hypothesis, PyInstaller 6.x.
+- `pyproject.toml` — **new**: `requires-python = ">=3.10"`, pytest config
+  (`testpaths=["tests"]`, `-q --strict-markers`, a `slow` marker), coverage config.
+- `README.md` — rewritten: requirements, venv setup, run, test, build, repo map, the two
+  invariants that matter (all paths via `core/paths.py`; only `database.py` imports
+  `sqlite3`), and an explicit "not releasable yet" banner. Full DOC-001 treatment is TC-021.
+- `tests/.gitkeep` — **new**, so the `testpaths` setting resolves before TC-004 lands.
+- `.venv/` — created, git-ignored, not committed.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+### TC-002 (DONE)
 
 - `typecraft/` — **new package.** All 45 source files plus `data/` moved in via `git mv`
   (recorded as pure renames, zero content churn in the move commit).
@@ -264,7 +297,28 @@ Resolve hashes with `git log --oneline -3` on `repair/typecraft-v1`.
 **Deferred (not skipped):** "`python main.py` reaches the Main Menu" — impossible until
 pygame exists. Carried into TC-003's check list. Everything up to the pygame import boundary
 is proven; nothing beyond it has been executed, and TC-002 is **not** evidence that the
-application runs.
+application runs. **→ Closed in TC-003 below.**
+
+### TC-003 (2026-07-29)
+
+All commands run with `.venv\Scripts\python.exe` from the repo root.
+
+| Command | Result |
+|---|---|
+| `python -m venv .venv` | **PASS** |
+| `pip install -r requirements.txt -r requirements-dev.txt` | **PASS** — pygame 2.6.1, pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, pyinstaller 6.21.0 (+ transitive) |
+| `python --version` | `Python 3.12.9` |
+| `python -c "import pygame; print(pygame.version.ver)"` | `2.6.1` |
+| `python -m pytest --version` | `pytest 8.4.2` |
+| `python -m PyInstaller --version` | `6.21.0`, with a benign warning that the venv's base interpreter is MiniConda — re-check at TC-020 |
+| `python -m pytest` | Runs; `no tests ran in 1.72s` (expected — `tests/` is empty until TC-004) |
+| headless probe (`SDL_VIDEODRIVER=dummy`, writable dir → temp) | **PASS** — see §3. Reached `MainMenuScene`, 3 frames rendered, 5 profile-independent scenes entered + rendered, 20 lessons / 5 tiers loaded, 5 writable files seeded, `run()` exited cleanly on QUIT |
+| `SDL_VIDEODRIVER=dummy timeout 6 python main.py` | exit 124 (**still running after 6 s = healthy**), no output on stderr |
+| `SDL_VIDEODRIVER=dummy timeout 6 python -m typecraft` | exit 124, identical |
+
+**The TC-002 deferral is closed: the inherited application starts and runs.** This is a
+liveness result only — no gameplay path and no metric has been exercised, and the 25 open
+defects are all still open.
 
 ---
 
@@ -303,10 +357,11 @@ application runs.
 8. Update this file (§1, §3, §4, §6, §7, §8) and `TASKS.md` before finishing, whether the task
    succeeded or failed. Record failures honestly, with the failing test ids.
 
-**Environment caveat for the next session:** there is no virtual environment yet and pygame,
-pytest, and PyInstaller are not installed, so only `compileall`-level verification is
-possible until TC-003 completes. TC-001 and TC-002 are structural and can proceed without
-them, but TC-002's "app starts" check must be deferred to TC-003 and recorded as deferred.
+**Environment note for the next session:** use the repo-root virtual environment —
+`.venv\Scripts\python.exe` on Windows, or activate it first. The MiniConda base interpreter
+has no pygame, pytest, or PyInstaller, so commands run outside the venv will fail
+misleadingly. `.venv/` is git-ignored; recreate it with the two commands in `README.md` if it
+is missing.
 
 **Do not delete:** `TypeCraft_Master_Blueprint.md`, `TypeCraft Khidmat Proposal.pdf`,
 `_dev_data/` (including `typecraft.db`), or any `data/*.json`.

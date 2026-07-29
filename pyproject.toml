@@ -1,0 +1,31 @@
+[project]
+name = "typecraft"
+version = "0.1.0"
+description = "Offline, child-friendly desktop typing tutor for The Bridge School"
+requires-python = ">=3.10"
+dependencies = ["pygame>=2.5.2,<3.0"]
+
+# Deliberately NOT packaged for PyPI. TypeCraft ships as a PyInstaller onedir
+# folder (PK-001..PK-008), not as a wheel. This file exists to declare the
+# Python floor and to hold the pytest and coverage configuration in one place.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+# Scene tests need a video/audio driver that requires no display. TC-004 sets
+# SDL_VIDEODRIVER/SDL_AUDIODRIVER to "dummy" from a conftest.py fixture rather
+# than here, so the suite cannot accidentally open a real window and a headless
+# run behaves identically to a local one.
+markers = [
+    "slow: excluded from the default focused run (packaging builds, long loops)",
+]
+
+[tool.coverage.run]
+source = ["typecraft"]
+omit = ["typecraft/__main__.py", "typecraft/main.py"]
+
+[tool.coverage.report]
+# AC-02 requires >=85% statement coverage of engine/ and managers/. The gate is
+# enforced in the release checklist rather than here, so a focused run during
+# development is never blocked by overall coverage.
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]

@@ -8,14 +8,14 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 3 DONE, 0 IN_PROGRESS, 24 TODO. Open P0: 9. Open P1: 11.
+**Summary:** 27 tasks — 4 DONE, 0 IN_PROGRESS, 23 TODO. Open P0: 8. Open P1: 11.
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
 | TC-000 | Control files and read-only audit | 0 | DONE | P0 |
 | TC-001 | Baseline inventory, `.gitignore`, dev DB hygiene | 0 | DONE | P0 |
 | TC-002 | Normalise the package and entry point | 1 | DONE | P0 |
-| TC-003 | Runtime and dev dependency manifests | 1 | TODO | P0 |
+| TC-003 | Runtime and dev dependency manifests | 1 | DONE | P0 |
 | TC-004 | pytest infrastructure with isolated data paths | 1 | TODO | P0 |
 | TC-005 | Baseline tests for metrics and the three modes | 2 | TODO | P0 |
 | TC-006 | Fix keystroke accounting (LockOnError + Backspace) | 2 | TODO | P0 |
@@ -115,7 +115,7 @@ cover.
   defects D-01 and D-28.
 
 ## TC-003 — Runtime and dev dependency manifests
-- **Phase** 1 · **Status** TODO · **Priority** P0
+- **Phase** 1 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** NFR-001, NFR-002, NFR-003, PK-009
 - **Depends on** TC-002
 - **Goal.** Reproducible environments for running, testing, and building.
@@ -129,10 +129,17 @@ cover.
   `pytest --version` and `pyinstaller --version` both work. **Plus the check deferred from
   TC-002:** `python main.py` reaches the Main Menu (headless with `SDL_VIDEODRIVER=dummy` is
   acceptable evidence), and `python -m typecraft` behaves identically.
-- **Acceptance.** A clean venv reaches a runnable app and a runnable test suite using only
-  the documented commands.
-- **Notes.** The environment audited on 2026-07-29 (MiniConda Python 3.12.9) has **no**
-  pygame, pytest, or PyInstaller installed — a venv is required before anything can run.
+- **Acceptance.** ✅ Met. Fresh `.venv` installed from the new manifests: pygame 2.6.1,
+  pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, PyInstaller 6.21.0 on Python 3.12.9.
+  `pytest` runs and collects nothing (no tests until TC-004). **The deferred TC-002 check is
+  closed: the application starts.** Headless probe reached `MainMenuScene`, rendered 3 frames,
+  entered and rendered all 5 profile-independent scenes, loaded 20 lessons across 5 tiers,
+  seeded all 5 writable files on first run, and exited `run()` cleanly on QUIT. Both
+  `python main.py` and `python -m typecraft` sustained the loop for 6 s with no error.
+- **Notes.** The environment audited on 2026-07-29 (MiniConda Python 3.12.9) had **no**
+  pygame, pytest, or PyInstaller — a venv was required before anything could run.
+  PyInstaller emits a benign "not an Anaconda environment" warning because the venv's base
+  interpreter is MiniConda; re-check at TC-020 that it does not affect the build.
 
 ## TC-004 — pytest infrastructure with isolated data paths
 - **Phase** 1 · **Status** TODO · **Priority** P0
