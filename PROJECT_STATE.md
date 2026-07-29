@@ -6,11 +6,13 @@
 ---
 
 **Last updated:** 2026-07-29
-**Current phase:** Phase 1 — package structure, environment, and test infrastructure
-**Current active task:** none — TC-003 closed, awaiting the go-ahead for TC-004
-**Last completed task:** TC-003 — runtime and dev dependency manifests (2026-07-29)
-**Next recommended task:** **TC-004** — pytest infrastructure with isolated data paths (P0).
-Last task of Phase 1; everything in Phase 2 onward depends on it.
+**Current phase:** Phase 2 — typing-engine and metric correctness
+**Current active task:** none — TC-004 closed, **Phase 1 complete**, awaiting the go-ahead
+for TC-005
+**Last completed task:** TC-004 — pytest infrastructure with isolated data paths (2026-07-29)
+**Next recommended task:** **TC-005** — baseline tests for metrics and the three input modes
+(P0). Characterisation only: it must **reproduce** defects D-07 and D-08 as named failing
+tests, not fix them. TC-006 is the fix and needs **OQ-001** answered first (see B-02).
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -20,16 +22,18 @@ Last task of Phase 1; everything in Phase 2 onward depends on it.
 | Phase | State |
 |---|---|
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
-| 1 — Structure, deps, tests | IN PROGRESS — TC-002, TC-003 done; TC-004 outstanding |
-| 2 — Engine & metric correctness | NOT STARTED |
+| 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
+| 2 — Engine & metric correctness | NOT STARTED — TC-005 next |
 | 3 — Persistence & recovery | NOT STARTED |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 4 DONE, 0 IN_PROGRESS, 23 TODO. Open P0: 8. Open P1: 11.
-Defects: 28 found — 3 closed (D-01, D-02, D-28), 25 open.
+Tasks: 27 defined — 5 DONE, 0 IN_PROGRESS, 22 TODO. Open P0: 7. Open P1: 11.
+Defects: 28 found — 4 closed (D-01, D-02, D-03, D-28), 1 partially closed (D-22), 23 open.
+Tests: **154 passing**, 0 failing. Coverage 34 % overall, 29 % for `engine/` + `managers/`
+(AC-02 target: ≥ 85 % there).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -115,7 +119,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 |---|---|---|---|---|
 | ~~D-01~~ | S1 | ~~Package/import layout is unrunnable from the repo root.~~ **CLOSED by TC-002.** Code moved to a `typecraft/` package with a root `main.py` launcher; 88 imports rewritten. Both `python main.py` and `python -m typecraft` now resolve the full internal graph from the repo root. | see §7 TC-002 | TC-002 ✅ |
 | ~~D-02~~ | S4 | ~~`requirements.txt` is 0 bytes; no dev/test/build manifest; no venv.~~ **CLOSED by TC-003.** `requirements.txt`, `requirements-dev.txt`, `pyproject.toml` written; `.venv` installs pygame 2.6.1, pytest 8.4.2, pytest-cov 7.1.0, hypothesis 6.163.0, PyInstaller 6.21.0. | see §7 TC-003 | TC-003 ✅ |
-| D-03 | S2 | No automated tests and no test infrastructure at all. | no `tests/` directory | TC-004 |
+| ~~D-03~~ | S2 | ~~No automated tests and no test infrastructure at all.~~ **CLOSED by TC-004.** `tests/conftest.py` with 6 fixtures + 154 passing tests covering imports, layering rules, data isolation, and logging. Behavioural coverage of the engine and managers is still absent — that is TC-005/TC-007, not this defect. | see §7 TC-004 | TC-004 ✅ |
 | D-04 | S1 | `Database.execute()` commits after **every** statement, so `begin()`/`rollback()` are inert. The teacher's reset-progress is therefore **non-atomic** despite its `try/except: rollback(); raise` — a failure part-way leaves a student with deleted attempts but intact XP (or vice versa). `ProgressionService.score()` has the same exposure across six separate commits. | `managers/database.py:104-108`; `scenes/teacher_dashboard.py:47-69` | TC-008 |
 | D-05 | S1 | No `in_progress` checkpoint is ever written. `AttemptStatus.IN_PROGRESS` exists and startup reclassification exists, but nothing produces such a row — so a power cut mid-lesson loses the entire attempt with no recovery record. | grep: no writer of `'in_progress'` | TC-009 |
 | D-06 | S1 | Closing the window mid-lesson silently discards the attempt. `Game._process_events()` handles `pygame.QUIT` by setting `running = False` and returning; the active scene is never notified. | `core/game.py:64-68` | TC-010 |
@@ -134,7 +138,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-19 | S3 | Malformed `lessons.json` falls back to the bundled default in **total silence** — no notice, no log. A teacher's broken edit looks like it simply had no effect. Violates FR-024. | `managers/lesson_manager.py:37-42` | TC-023 |
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
 | D-21 | S3 | `assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent. | no `assets/` directory | TC-017 |
-| D-22 | S3 | No logging facility anywhere in the codebase, so FR-024/FR-134 diagnostics and NFR-013 have no channel and a field failure at the school would be undiagnosable. | grep: no `logging` import | TC-004 / TC-017 |
+| D-22 | S3 | **PARTIALLY CLOSED by TC-004.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Still open:** the FR-024/FR-134 call sites do not log yet, so a malformed `lessons.json` or `settings.json` is still rejected silently. | log written on a real app run; no `logging` import in `managers/` yet | TC-011, TC-017, TC-023 |
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
@@ -188,7 +192,29 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-003 (last task, DONE)
+### TC-004 (last task, DONE)
+
+- `tests/conftest.py` — **new.** 6 fixtures: `writable_dir`, `seeded_dir`, `db`, `display`,
+  `app_ctx`, `profile`. Sets `SDL_VIDEODRIVER`/`SDL_AUDIODRIVER=dummy` at import time.
+- `tests/unit/test_imports.py` — **new**, 141 tests (parametrised per module): every module
+  imports from the repo root, the six documented subpackages exist, no `TypeCraft.` prefix
+  has crept back, the entry point is reachable.
+- `tests/unit/test_layering.py` — **new**: dependency direction per ARCHITECTURE.md §2,
+  `engine`/`managers`/`models` stay pygame-free, `sqlite3` only in `managers/database.py`,
+  no scene imports another scene, `__file__` used only in `core/paths.py`,
+  `engine/metrics.py` stays pure.
+- `tests/unit/test_data_isolation.py` — **new**: proves the fixtures cannot reach real data.
+- `tests/unit/test_logging_setup.py` — **new**: log file location, handler idempotency,
+  child-logger naming, survival of an unwritable path, no console handler when frozen.
+- `typecraft/core/paths.py` — added `log_path()`.
+- `typecraft/core/logging_setup.py` — **new**: `configure_logging()`, `get_logger()`,
+  `reset_logging()`.
+- `typecraft/main.py` — 2 lines: configure logging and log startup, so the facility is wired
+  rather than dead code.
+- `tests/.gitkeep` — removed (real tests now occupy the directory).
+- `ARCHITECTURE.md` §5, §11, §15, §17, §19; `TASKS.md`; `PROJECT_STATE.md`.
+
+### TC-003 (DONE)
 
 - `requirements.txt` — was 0 bytes; now the single runtime pin `pygame>=2.5.2,<3.0`.
 - `requirements-dev.txt` — **new**: pytest, pytest-cov, hypothesis, PyInstaller 6.x.
@@ -319,6 +345,20 @@ All commands run with `.venv\Scripts\python.exe` from the repo root.
 **The TC-002 deferral is closed: the inherited application starts and runs.** This is a
 liveness result only — no gameplay path and no metric has been exercised, and the 25 open
 defects are all still open.
+
+### TC-004 (2026-07-29)
+
+| Command | Result |
+|---|---|
+| `python -m pytest` | **154 passed in 2.94 s**, 0 failed, 0 errors |
+| `python -m pytest --cov --cov-report=term-missing` | **PASS** — coverage tooling works; 34 % overall (1 504 statements, 988 missed) |
+| `python -m pytest --cov=typecraft.engine --cov=typecraft.managers` | 29 % across those two packages. Worst: `typing_engine.py` 15 %, `badge_manager.py` 18 %, `metrics.py` 21 %, `streak_manager.py` 21 %. Best: `database.py` 82 % (exercised by the `db` fixture) |
+| `ls -la _dev_data/` before and after a full suite run | **PASS — isolation proven.** All five files kept their original 02:04:35 mtimes and **no `typecraft.log` was created**. Nothing in `_dev_data/` was read or written by the suite |
+| `SDL_VIDEODRIVER=dummy timeout 5 python main.py` | Ran; wrote `_dev_data/typecraft.log` containing `INFO typecraft.main: TypeCraft starting`. Confirms the logging wiring works end to end **and** that the log only appears when the app actually runs |
+
+Notable: `test_only_paths_module_derives_locations_from_dunder_file` and
+`test_metrics_is_pure` both passed on the inherited code — NFR-011 and FR-052 were already
+being honoured, which is why `core/paths.py` needed no repair.
 
 ---
 

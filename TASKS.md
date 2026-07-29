@@ -8,7 +8,8 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 4 DONE, 0 IN_PROGRESS, 23 TODO. Open P0: 8. Open P1: 11.
+**Summary:** 27 tasks — 5 DONE, 0 IN_PROGRESS, 22 TODO. Open P0: 7. Open P1: 11.
+**Phase 1 complete.** Test suite: 154 passing.
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
@@ -16,7 +17,7 @@ cover.
 | TC-001 | Baseline inventory, `.gitignore`, dev DB hygiene | 0 | DONE | P0 |
 | TC-002 | Normalise the package and entry point | 1 | DONE | P0 |
 | TC-003 | Runtime and dev dependency manifests | 1 | DONE | P0 |
-| TC-004 | pytest infrastructure with isolated data paths | 1 | TODO | P0 |
+| TC-004 | pytest infrastructure with isolated data paths | 1 | DONE | P0 |
 | TC-005 | Baseline tests for metrics and the three modes | 2 | TODO | P0 |
 | TC-006 | Fix keystroke accounting (LockOnError + Backspace) | 2 | TODO | P0 |
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | TODO | P0 |
@@ -142,7 +143,7 @@ cover.
   interpreter is MiniConda; re-check at TC-020 that it does not affect the build.
 
 ## TC-004 — pytest infrastructure with isolated data paths
-- **Phase** 1 · **Status** TODO · **Priority** P0
+- **Phase** 1 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** NFR-011, NFR-013, DR-011, AC-02
 - **Depends on** TC-003
 - **Goal.** A test suite that can never touch the developer's or a school's real data, plus
@@ -160,8 +161,20 @@ cover.
 - **Checks.** `pytest -q` passes; after a full run `_dev_data/` modification time is
   unchanged and no new file appeared there; the layering test fails if a `pygame` import is
   added to `engine/`.
-- **Acceptance.** Fixtures are used by at least one test each; the suite is green; test data
-  isolation is proven, not assumed.
+- **Acceptance.** ✅ Met. **154 tests pass** in 2.9 s. Isolation proven, not assumed: after a
+  full suite run every `_dev_data/` file still had its original 02:04:35 mtime and no
+  `typecraft.log` existed there — the log appeared only when the app itself was run.
+  `test_data_isolation.py` additionally walks every imported `typecraft.*` module and asserts
+  no `writable_data_dir` binding escaped the redirect, and that `resource_path()` was *not*
+  redirected (or first-run seeding would have nothing to copy from). Fixtures delivered:
+  `writable_dir`, `seeded_dir`, `db`, `display`, `app_ctx`, `profile` — each used by at least
+  one test. Coverage tooling verified: baseline **34 %** overall, **29 %** for
+  `engine/` + `managers/` (AC-02 needs ≥ 85 % there; Phases 2–3 close it).
+- **Extra beyond the planned scope, recorded.** `tests/unit/test_logging_setup.py` (5 tests)
+  and `tests/unit/test_data_isolation.py` (8 tests) were not named in the original scope but
+  are the evidence for the two acceptance claims above, so they belong here rather than in a
+  later task. `typecraft/main.py` gained a 2-line `configure_logging()` call so the new
+  facility is wired rather than dead code.
 
 ## TC-005 — Baseline tests for metrics and the three modes
 - **Phase** 2 · **Status** TODO · **Priority** P0

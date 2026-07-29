@@ -113,6 +113,20 @@ def writable_data_dir() -> Path:
     return base
 
 
+def log_path() -> Path:
+    """
+    Resolve the absolute path to the diagnostic log file.
+
+    Lives in the writable data directory beside typecraft.db, so a teacher can
+    email or copy it when reporting a problem, and so it survives an update
+    that replaces the bundled application files.
+
+    Returns:
+        Path: absolute path to typecraft.log (the file may not exist yet).
+    """
+    return writable_data_dir() / "typecraft.log"
+
+
 def ensure_seeded(filenames, defaults_subdir: str = "data") -> None:
     """
     First-run seeding (blueprint §3.3): for each filename in `filenames`,

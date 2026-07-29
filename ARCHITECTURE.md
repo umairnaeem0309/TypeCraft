@@ -221,11 +221,17 @@ whose highlight changed. Full-surface repaint remains available behind a debug f
 | `ui.resource_manager` | The only loader of images/fonts/sounds and the only caller of `font.render` | Know about scenes |
 | `ui.audio_manager` | `pygame.mixer` wrapper, volume/mute, silent when no device | Read settings from disk |
 
-**CURRENT gaps:** there is no logging facility anywhere (needed by FR-024, FR-134,
-NFR-013); `AudioManager` is never actually asked to play anything and no `assets/sounds`
-exist; `ConfigManager` values are never applied to `AudioManager` at startup (FR-130);
-`ProgressionService` performs five separate auto-committed writes rather than one
+**CURRENT gaps:** `AudioManager` is never actually asked to play anything and no
+`assets/sounds` exist; `ConfigManager` values are never applied to `AudioManager` at startup
+(FR-130); `ProgressionService` performs five separate auto-committed writes rather than one
 transaction (DR-010).
+
+`core/logging_setup.py` was added in TC-004 and is configured from `typecraft/main.py` at
+startup: one rotating file at `log_path()` (512 KB × 2 backups), plus a console handler only
+when not frozen. `configure_logging()` is idempotent and never raises — if the log file
+cannot be opened it degrades to console-only or a `NullHandler`, because losing diagnostics
+must never stop the app from starting. The FR-024/FR-134 **call sites** that should be using
+it do not yet (TC-011, TC-017, TC-023).
 
 ---
 
@@ -461,8 +467,10 @@ right exceptions but is silent — no notice, no log. Tier 3 is right for audio.
 only in `TeacherDashboardScene._reset_progress`, and its rollback is ineffective (§13).
 There is no logging module at all.
 
-**TARGET:** add `core/logging_setup.py` (stdlib `logging`, rotating file handler at
-`log_path()`, INFO default) and `core/notices.py` (`AppContext.notices` list rendered by a
+**DONE in TC-004:** `core/logging_setup.py` (stdlib `logging`, rotating file handler at
+`log_path()`, INFO default), wired from `typecraft/main.py`.
+
+**TARGET:** `core/notices.py` (`AppContext.notices` list rendered by a
 `NoticeBar` in every scene). `except Exception` remains permitted only in `Game.run()`'s
 outermost guard (log + attempt an incomplete-attempt save + exit cleanly) and inside
 transaction wrappers that re-raise after rollback.
@@ -605,7 +613,28 @@ builds `onedir`, launches the exe with `SDL_VIDEODRIVER=dummy` and a self-exit f
 asserts the writable files appeared beside the exe and **not** under `_internal/`, then
 relaunches and asserts the profile row survived.
 
-**CURRENT: there are no tests and no test infrastructure.**
+**CURRENT (after TC-004):** `tests/conftest.py` and `tests/unit/` exist; 154 tests pass.
+Fixtures provided: `writable_dir` (redirects the writable data dir into `tmp_path`),
+`seeded_dir` (same, after first-run seeding, so first-run behaviour stays separately
+testable), `db` (a `Database` on a throwaway file), `display` (headless 1280×720 via the
+dummy SDL driver), `app_ctx` (a fully-wired `AppContext` on isolated paths), `profile` (a
+created student with lesson 1 unlocked). `tests/db/` and `tests/scenes/` land in TC-007 and
+TC-019.
+
+**Isolation caveat worth knowing before writing a fixture.** Production modules use
+`from typecraft.core.paths import writable_data_dir`, which binds the *function object* into
+each importing module's namespace at import time. Patching only `typecraft.core.paths` would
+leave `managers.database`, `managers.lesson_manager`, `managers.badge_manager`,
+`managers.config_manager`, and `scenes.results` still pointing at the real folder. The
+`writable_dir` fixture therefore patches every already-imported `typecraft.*` module holding
+such a binding, *plus* the `paths` module itself so modules imported later inherit the
+redirect. `tests/unit/test_data_isolation.py` asserts that no binding escaped.
+Calling `paths.writable_data_dir()` at each call site would need no patching at all — a
+worthwhile cleanup, but it touches five production modules and is not scheduled.
+
+Baseline coverage recorded at TC-004 (from import/layering/isolation/logging tests alone,
+before any behavioural test exists): **34 % overall**, `engine/` + `managers/` **29 %**.
+AC-02 requires `engine/` + `managers/` ≥ 85 %; Phase 2 and Phase 3 close that gap.
 
 ---
 
@@ -649,7 +678,12 @@ rules), because tests and multiple call sites depend on them.
 resource_path(relative: str) -> Path
 writable_data_dir() -> Path
 ensure_seeded(filenames: Iterable[str], defaults_subdir: str = "data") -> None
-log_path() -> Path                                   # TARGET
+log_path() -> Path
+
+# core/logging_setup.py
+configure_logging(level: int = logging.INFO, to_console: bool | None = None) -> Logger
+get_logger(name: str | None = None) -> Logger
+reset_logging() -> None                              # test teardown only
 
 # core/scene.py
 class Scene:
@@ -728,6 +762,6 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | R4 — no `in_progress` checkpoint and no window-close save | Silent data loss on a school power cut | TC-009, TC-010 |
 | R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |
 | R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |
-| R7 — no logging | Field failures at the school are undiagnosable | Add logging in TC-011/TC-004 as a prerequisite for FR-024/FR-134 |
+| R7 — no logging | Field failures at the school are undiagnosable | **Facility CLOSED by TC-004** (`core/logging_setup.py`, wired at startup, tested). The FR-024/FR-134 call sites still need it — TC-011, TC-017, TC-023 |
 | ~~R8 — `_dev_data/` is untracked and un-ignored~~ | — | **CLOSED by TC-001.** `.gitignore` added and both `_dev_data/` and `__pycache__/` proven ignored |
 | R9 — the schema is missing keystroke columns while `AttemptResult` has them | Metrics can't be stored or audited | TC-008b migration with `schema_meta` versioning |
