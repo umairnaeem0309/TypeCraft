@@ -303,7 +303,19 @@ The project is accepted when all of the following are objectively evidenced in
 
 ## 13. Unresolved questions
 
-- **OQ-001 (blocks TC-006 policy choice)** Backspace correction accounting. Blueprint §2.4 defines `correct_keystrokes = total_keystrokes − errors` with no retroactive edits, so a corrected error still counts against accuracy. The code comment in `engine/input_modes.py` declares the opposite ("locked decision": corrections retroactively fix the books). The current implementation does neither correctly — it credits `correct_keystrokes` at Backspace time *and* again on the retype, inventing a keystroke that was never pressed.
+- **OQ-001 — RESOLVED 2026-07-29 (blueprint-literal, accepted by default after the choice was
+  put to the user).** Backspace changes the cursor and the on-screen character status **only**;
+  it never edits `total_keystrokes`, `errors`, or `correct_keystrokes`. Every
+  character-producing keystroke posts exactly one ledger entry that is never reversed, so
+  `correct + errors == total` holds by construction and no keystroke can be invented. A
+  corrected mistake therefore still counts against accuracy: wrong key → Backspace → right
+  key is 2 keystrokes and 1 error, i.e. 50 %, not 100 %. A separate non-scoring
+  `corrections_made` counter is displayed so a self-correcting student still gets credit for
+  noticing. `_error_counted` is deleted, so a repeated wrong key at one position posts a full
+  error each time. Implemented in TC-006; asserted by `tests/unit/test_typing_engine.py` and
+  `tests/unit/test_invariants.py`. Original wording of the question retained below.
+
+  ~~**OQ-001 (blocks TC-006 policy choice)**~~ Backspace correction accounting. Blueprint §2.4 defines `correct_keystrokes = total_keystrokes − errors` with no retroactive edits, so a corrected error still counts against accuracy. The code comment in `engine/input_modes.py` declares the opposite ("locked decision": corrections retroactively fix the books). The current implementation does neither correctly — it credits `correct_keystrokes` at Backspace time *and* again on the retype, inventing a keystroke that was never pressed.
   **Recommended resolution (default if unanswered):** implement blueprint-literal accounting — Backspace un-does the position it removes (decrementing whichever counter that position contributed and `total_keystrokes` with it), the retype re-counts it normally, and a separate non-scoring `corrections_made` counter is displayed to the student. This preserves FR-043 exactly, cannot invent keystrokes, and still shows a corrected attempt as accurate.
 - **OQ-002** Is 40 profiles per machine the right classroom ceiling for FR-014/FR-124 sizing?
 - **OQ-003** May permissively-licensed third-party assets be bundled (fonts/sounds), or must all assets be original? Affects TC-017 and AS-06.

@@ -8,8 +8,9 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 5 DONE, 0 IN_PROGRESS, 22 TODO. Open P0: 7. Open P1: 11.
-**Phase 1 complete.** Test suite: 154 passing.
+**Summary:** 27 tasks — 6 DONE, 0 IN_PROGRESS, 21 TODO. Open P0: 6. Open P1: 11.
+**Phase 1 complete.** Test suite: 281 tests — 271 passing, 10 strict-xfail defect
+reproductions awaiting TC-006, 0 unexpected failures.
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
@@ -18,8 +19,8 @@ cover.
 | TC-002 | Normalise the package and entry point | 1 | DONE | P0 |
 | TC-003 | Runtime and dev dependency manifests | 1 | DONE | P0 |
 | TC-004 | pytest infrastructure with isolated data paths | 1 | DONE | P0 |
-| TC-005 | Baseline tests for metrics and the three modes | 2 | TODO | P0 |
-| TC-006 | Fix keystroke accounting (LockOnError + Backspace) | 2 | TODO | P0 |
+| TC-005 | Baseline tests for metrics and the three modes | 2 | DONE | P0 |
+| TC-006 | Fix keystroke accounting (LockOnError + Backspace + D-29/D-30) | 2 | TODO | P0 |
 | TC-007 | Progression, unlock, streak, badge service tests | 3 | TODO | P0 |
 | TC-008 | Real transaction support in `Database` | 3 | TODO | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | TODO | P0 |
@@ -177,7 +178,7 @@ cover.
   facility is wired rather than dead code.
 
 ## TC-005 — Baseline tests for metrics and the three modes
-- **Phase** 2 · **Status** TODO · **Priority** P0
+- **Phase** 2 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** FR-030…FR-036, FR-040…FR-048, FR-050…FR-057
 - **Depends on** TC-004
 - **Goal.** Pin the correct behaviour in tests *before* changing the engine, and make the
@@ -193,33 +194,55 @@ cover.
 - **Files.** four new test modules; `typecraft/engine/typing_engine.py` (clock injection only).
 - **Checks.** `pytest tests/unit -q`. Expect **failures** in `test_invariants.py` and the
   repeated-error and backspace cases — that is the deliverable.
-- **Acceptance.** Every FR listed has at least one test; the known defects are reproduced by
-  a named failing test; all other tests pass. Record the exact failing test ids in
-  `PROJECT_STATE.md`.
-- **Notes.** Do not fix anything here. TC-006 is the fix.
+- **Acceptance.** ✅ Met. **281 tests: 271 pass, 10 strict-xfail, 0 unexpected failures.**
+  Defect reproductions are marked `xfail(strict=True)` with the defect id in the reason, so
+  the suite stays green *and* goes red the moment TC-006 fixes them — the marker cannot be
+  left behind. The 10 test ids are listed in `PROJECT_STATE.md` §7 as TC-006's acceptance
+  list. Coverage: `metrics.py` 100 %, `typing_engine.py` 99 %, `input_modes.py` 94 %.
+- **Findings.** `engine/metrics.py` and all three `InputMode` strategies are **correct as
+  inherited** — all three blueprint XP worked examples and the whole 10-level table pass. Every
+  defect is in `feed_key()`/`_apply_backspace()`. Two **new** defects found: **D-30**
+  (Backspace at cursor 0 scores as a correct keystroke — 20 presses give 100 % accuracy and
+  3 stars with nothing typed) and **D-29** (input after completion raises `IndexError`; the
+  guard is unreachable). Also established that FR-043's equation is necessary but not
+  sufficient: only D-08 unbalances it.
+- **Notes.** Nothing was fixed here. One production change only: a `clock=` parameter on
+  `TypingEngine` for deterministic WPM, with no behavioural effect.
 
-## TC-006 — Fix keystroke accounting (LockOnError + Backspace)
+## TC-006 — Fix keystroke accounting (LockOnError + Backspace + D-29/D-30)
 - **Phase** 2 · **Status** TODO · **Priority** P0
 - **Requirements** FR-040…FR-048, FR-050, ADR-005, OQ-001
-- **Depends on** TC-005; **resolution of OQ-001** (default: blueprint-literal ledger)
+- **Depends on** TC-005. **OQ-001 is RESOLVED** (blueprint-literal ledger) — unblocked.
 - **Goal.** Make the counters a consistent ledger so accuracy, WPM, stars, XP, badges, and
-  the leaderboard are all trustworthy.
-- **Scope.** Delete `_error_counted` so a repeated wrong key in `LockOnErrorMode` posts a
-  full ledger entry (`total += 1`, `errors += 1`). Rewrite `_apply_backspace` so backing over
-  position *i* reverses exactly that position's entry (`total -= 1` and the matching counter
-  `-= 1`), removing the double credit and the invented keystroke. Add a non-scoring
-  `corrections_made` counter, expose it in `metrics()` and `AttemptResult`. Add
-  `total_keystrokes`/`correct_keystrokes` to the `metrics()` dict for the HUD.
+  the leaderboard are all trustworthy. Fixes D-07, D-08, D-29, D-30.
+- **Scope.** Per the OQ-001 resolution, Backspace touches the cursor and character status
+  **only** — it never edits any counter, so no entry is ever reversed and no keystroke can be
+  invented:
+  1. Delete `_error_counted` so a repeated wrong key in `LockOnErrorMode` posts a full entry
+     each time (`total += 1`, `errors += 1`). *(D-08)*
+  2. Rewrite `_apply_backspace()` to move the cursor and reset `char_status` only, and to
+     increment a new non-scoring `corrections_made` counter. *(D-07)*
+  3. Make `BackspaceMode.resolve()` return `is_backspace=True` even when the cursor is at 0
+     (a no-op backspace is still a backspace), so `feed_key()` can never score it on the
+     normal path. *(D-30 — the highest-impact fix in the task)*
+  4. Move the `cursor >= len(target)` guard **before** the `mode.resolve()` call so it is
+     reachable and stray input is ignored per FR-047. *(D-29)*
+  5. Expose `corrections_made`, `total_keystrokes` and `correct_keystrokes` in `metrics()`
+     and `AttemptResult` for the HUD and the attempt row.
 - **Files.** `typecraft/engine/typing_engine.py`, `typecraft/engine/input_modes.py`,
   `typecraft/models/attempt.py`, the Phase 2 tests, `REQUIREMENTS.md` (OQ-001 resolution),
   `ARCHITECTURE.md` §6.
-- **Checks.** All of `tests/unit` green, including the previously failing invariant tests;
-  full `pytest`; a hand-worked scenario table (type-wrong-twice-then-right; wrong→backspace→
-  right; wrong→backspace→wrong; backspace over a correct char) verified against expected
-  counter values in the test file.
+- **Checks.** All **10 strict-xfail tests** listed in `PROJECT_STATE.md` §7 must pass and
+  **their `xfail` markers must be removed** — `strict=True` makes the suite red otherwise, so
+  a leftover marker cannot be missed. Then the full suite green, and coverage of
+  `typing_engine.py` held at ≥ 99 %.
 - **Acceptance.** FR-043/044/045 hold for every input sequence tested; no counter is ever
-  negative; `BackspaceMode` no longer reports 100 % accuracy and 0 mistakes for an attempt
-  that contained corrected errors unless OQ-001 is resolved that way explicitly.
+  negative; no sequence of Backspace presses can move any counter; input after completion is
+  ignored rather than raising; a corrected error still costs accuracy per the OQ-001
+  resolution, with `corrections_made` reported separately.
+- **Notes.** Verifying with the FR-043 invariant alone is **not sufficient** — TC-005 proved
+  D-07 and D-30 keep the equation balanced while corrupting the values. The exact expected
+  counter assertions in `test_typing_engine.py` are the real gate.
 
 ## TC-007 — Progression, unlock, streak, badge service tests
 - **Phase** 3 · **Status** TODO · **Priority** P0

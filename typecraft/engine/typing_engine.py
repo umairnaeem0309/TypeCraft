@@ -22,7 +22,11 @@ from typecraft.engine import metrics as m
 
 class TypingEngine:
     def __init__(self, target: str, mode: InputMode, profile_id: int, lesson_id: str,
-                 mode_key: str, tier: int):
+                 mode_key: str, tier: int, clock=time.monotonic):
+        # clock is injected so WPM is deterministic under test: a fake clock lets a
+        # scripted attempt assert an exact words-per-minute value instead of sleeping.
+        # Production always uses time.monotonic (immune to system clock changes).
+        self._clock = clock
         self.target = target
         self.mode = mode
         self.profile_id = profile_id
@@ -52,7 +56,7 @@ class TypingEngine:
     def feed_key(self, char: str) -> KeystrokeResult:
         """char is a single typed character, or '\\b' for Backspace."""
         if self._start_time is None and char != "\b":
-            self._start_time = time.monotonic()
+            self._start_time = self._clock()
             self._started_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
 
         if char == "\b" and not self.mode.allows_backspace():
@@ -85,7 +89,7 @@ class TypingEngine:
             self.cursor += 1
 
         if self.is_finished():
-            self._end_time = time.monotonic()
+            self._end_time = self._clock()
 
         return result
 
@@ -106,7 +110,7 @@ class TypingEngine:
     def _elapsed_minutes(self) -> float:
         if self._start_time is None:
             return 0.0
-        end = self._end_time if self._end_time is not None else time.monotonic()
+        end = self._end_time if self._end_time is not None else self._clock()
         return max(0.0, (end - self._start_time) / 60.0)
 
     def metrics(self) -> dict:

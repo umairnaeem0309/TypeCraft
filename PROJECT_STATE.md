@@ -7,12 +7,13 @@
 
 **Last updated:** 2026-07-29
 **Current phase:** Phase 2 — typing-engine and metric correctness
-**Current active task:** none — TC-004 closed, **Phase 1 complete**, awaiting the go-ahead
-for TC-005
-**Last completed task:** TC-004 — pytest infrastructure with isolated data paths (2026-07-29)
-**Next recommended task:** **TC-005** — baseline tests for metrics and the three input modes
-(P0). Characterisation only: it must **reproduce** defects D-07 and D-08 as named failing
-tests, not fix them. TC-006 is the fix and needs **OQ-001** answered first (see B-02).
+**Current active task:** none — TC-005 closed, awaiting the go-ahead for TC-006
+**Last completed task:** TC-005 — baseline tests for metrics and the three input modes
+(2026-07-29)
+**Next recommended task:** **TC-006** — fix keystroke accounting (P0). OQ-001 is resolved
+(blueprint-literal), so it is unblocked. It must clear **10 strict-xfail tests** covering
+D-07, D-08, D-29 and D-30; `strict` means the suite goes red when they start passing, forcing
+the markers to be removed.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -23,17 +24,20 @@ tests, not fix them. TC-006 is the fix and needs **OQ-001** answered first (see 
 |---|---|
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
-| 2 — Engine & metric correctness | NOT STARTED — TC-005 next |
+| 2 — Engine & metric correctness | IN PROGRESS — TC-005 done (tests pin the defects); TC-006 (the fix) next |
 | 3 — Persistence & recovery | NOT STARTED |
 | 4 — Scenes & core UI | NOT STARTED |
 | 5 — Teacher tools & settings | NOT STARTED |
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 5 DONE, 0 IN_PROGRESS, 22 TODO. Open P0: 7. Open P1: 11.
-Defects: 28 found — 4 closed (D-01, D-02, D-03, D-28), 1 partially closed (D-22), 23 open.
-Tests: **154 passing**, 0 failing. Coverage 34 % overall, 29 % for `engine/` + `managers/`
-(AC-02 target: ≥ 85 % there).
+Tasks: 27 defined — 6 DONE, 0 IN_PROGRESS, 21 TODO. Open P0: 6. Open P1: 11.
+Defects: **30 found** (D-29, D-30 added by TC-005) — 4 closed (D-01, D-02, D-03, D-28),
+1 partially closed (D-22), 25 open.
+Tests: **281 total — 271 passing, 10 strict-xfail defect reproductions, 0 unexpected
+failures.** Coverage: `engine/metrics.py` 100 %, `engine/typing_engine.py` 99 %,
+`engine/input_modes.py` 94 %; `engine/` + `managers/` combined 58 % (AC-02 target ≥ 85 %;
+the shortfall is entirely `managers/`, which TC-007 covers).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -123,8 +127,10 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-04 | S1 | `Database.execute()` commits after **every** statement, so `begin()`/`rollback()` are inert. The teacher's reset-progress is therefore **non-atomic** despite its `try/except: rollback(); raise` — a failure part-way leaves a student with deleted attempts but intact XP (or vice versa). `ProgressionService.score()` has the same exposure across six separate commits. | `managers/database.py:104-108`; `scenes/teacher_dashboard.py:47-69` | TC-008 |
 | D-05 | S1 | No `in_progress` checkpoint is ever written. `AttemptStatus.IN_PROGRESS` exists and startup reclassification exists, but nothing produces such a row — so a power cut mid-lesson loses the entire attempt with no recovery record. | grep: no writer of `'in_progress'` | TC-009 |
 | D-06 | S1 | Closing the window mid-lesson silently discards the attempt. `Game._process_events()` handles `pygame.QUIT` by setting `running = False` and returning; the active scene is never notified. | `core/game.py:64-68` | TC-010 |
-| D-07 | S2 | `BackspaceMode` double-credits a correction: `_apply_backspace()` does `errors -= 1; correct_keystrokes += 1`, then the retype does `correct_keystrokes += 1` again, while `total_keystrokes` is never decremented. One physical keystroke is credited twice and a keystroke that never happened is invented. Net effect: any attempt whose errors are all corrected reports **100 % accuracy and 0 mistakes** with an inflated `total_keystrokes` (so gross WPM is inflated and net == gross). Backspacing over an already-*correct* character has the same double-credit on retype. | `engine/typing_engine.py:92-104` | TC-006 |
-| D-08 | S2 | `LockOnErrorMode` + `_error_counted[]`: a second wrong key at the same position increments `total_keystrokes` but is suppressed from `errors`, so `correct + errors != total` (FR-043) and the displayed mistake count understates reality. Accuracy is *under*-reported. | `engine/typing_engine.py:72-76, 50` | TC-006 |
+| D-07 | S2 | `BackspaceMode` erases errors and credits keystrokes that were never pressed: `_apply_backspace()` does `errors -= 1; correct_keystrokes += 1`, and the retype then credits `correct_keystrokes` again. **Measured:** one wrong key followed by one Backspace reports `total=1 correct=1 errors=0` → **100 % accuracy before the replacement character is even typed**. Any attempt whose errors are all corrected reports 100 % accuracy and 0 mistakes. Backspacing over an already-*correct* character double-credits it on retype. **Correction to the original audit note:** `total_keystrokes` is *not* inflated and FR-043's equation still balances — the values are semantically wrong, not arithmetically inconsistent. That is why the fix must be asserted with exact expected counters, not just the invariant. | `engine/typing_engine.py:92-104`; xfail tests `test_D07_*` | TC-006 |
+| D-08 | S2 | `LockOnErrorMode` + `_error_counted[]`: a second wrong key at the same position increments `total_keystrokes` but is suppressed from `errors`, so `correct + errors != total` (FR-043) and the displayed mistake count understates reality. **Measured:** 4 wrong keys then the right one gives `total=5 correct=1 errors=1` — the ledger is short by 3. Accuracy is *under*-reported. This is the **only** defect that breaks FR-043's equation, and only in `lock_on_error` (the one mode where the cursor can revisit a position). | `engine/typing_engine.py:72-76, 50`; xfail tests `test_D08_*` | TC-006 |
+| **D-29** | S3 | Input after completion raises `IndexError: string index out of range` instead of being ignored. `feed_key()` calls `mode.resolve()` — which reads `target[cursor]` — *before* reaching its own `if self.cursor >= len(self.target): return` guard, so the guard is unreachable. Contradicts FR-047 and the engine's own comment. Not reachable through the current UI (`LessonScene` changes scene on the finishing keystroke), but it is a latent crash one event-ordering change away. | `engine/typing_engine.py:61-68`; xfail `test_D29_input_after_completion_is_ignored` | TC-006 |
+| **D-30** | S2 | **Accuracy can be farmed with Backspace.** In `BackspaceMode`, `resolve()` returns `is_backspace=False` when the cursor is at 0, so `feed_key()` skips the backspace branch and falls through to the normal scoring path: the Backspace is counted as a **correct keystroke**. **Measured:** 20 Backspace presses before typing anything give `total=20 correct=20 errors=0 combo=20 accuracy=100 %` — enough for 3 stars, an unlock, XP, the Combo King badge, and a top leaderboard place without typing one character. Defeats the 85 % gate (FR-061) and every aggregate. | `engine/input_modes.py:78-80` + `engine/typing_engine.py:63-79`; xfail `test_D30_*`, `test_only_typing_can_produce_accuracy` | TC-006 |
 | D-09 | S2 | `lesson_attempts` has no `total_keystrokes` / `correct_keystrokes` columns, yet `AttemptResult` carries them and FR-050 requires storing them. `ProgressionService.score()` silently drops them. | `PRAGMA table_info` vs `models/attempt.py:41-43` | TC-008b |
 | D-10 | S2 | Leaderboard includes every profile with score 0: `ProfileManager.create()` inserts a zero-valued `lesson_progress` row and the leaderboard query has no completion filter, so a brand-new student outranks nobody but still occupies a slot. Violates FR-112. | `scenes/leaderboard.py:35-44`; `managers/profile_manager.py:28-31` | TC-012 |
 | D-11 | S2 | `BadgeManager.award()` adds `xp_bonus` to `profile.total_xp` **after** `ProgressionService._award_xp()` already recomputed the level, so badge XP does not raise the level until the next attempt — and the `rising_star` / `keyboard_master` predicates evaluate a stale level. Violates FR-083. | `managers/progression.py:40-45`; `managers/badge_manager.py:53-59` | TC-013b |
@@ -192,7 +198,29 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-004 (last task, DONE)
+### TC-005 (last task, DONE)
+
+- `tests/unit/test_metrics.py` — **new**, 76 tests: accuracy, gross/net WPM, the
+  `net = gross × accuracy` identity, star boundaries at 84.99/85/91.99/92/96.99/97, the three
+  blueprint XP worked examples, participation XP, the speed-bonus cap, the full 10-level
+  table, and the streak-bonus saturation.
+- `tests/unit/test_input_modes.py` — **new**, 22 tests: registry, `create_mode` including the
+  unknown-key error, backspace permission per mode, each mode's advance/error decisions, and
+  a test that `resolve()` never mutates the state it is given.
+- `tests/unit/test_typing_engine.py` — **new**, 25 tests (18 pass, 7 strict-xfail): initial
+  state, clock-starts-on-first-keystroke, perfect runs in all three modes, deterministic WPM
+  via the injected clock, zero-duration safety, combo behaviour, backspace inertness,
+  `result()` status inference, and 7 defect reproductions.
+- `tests/unit/test_invariants.py` — **new**, 8 tests (5 pass, 3 strict-xfail): 400 randomised
+  sequences × 40 keystrokes per mode from a fixed seed, a hypothesis property test with
+  shrinking, and the "only typing can produce accuracy" integrity property.
+- `typecraft/engine/typing_engine.py` — the single production change: a `clock=time.monotonic`
+  constructor parameter, used in place of the three direct `time.monotonic()` calls, so WPM is
+  deterministic under test with no sleeping. No behavioural change.
+- `REQUIREMENTS.md` — OQ-001 marked RESOLVED with the accounting policy.
+- `TASKS.md`, `PROJECT_STATE.md`, `ARCHITECTURE.md` §6.
+
+### TC-004 (DONE)
 
 - `tests/conftest.py` — **new.** 6 fixtures: `writable_dir`, `seeded_dir`, `db`, `display`,
   `app_ctx`, `profile`. Sets `SDL_VIDEODRIVER`/`SDL_AUDIODRIVER=dummy` at import time.
@@ -359,6 +387,44 @@ defects are all still open.
 Notable: `test_only_paths_module_derives_locations_from_dunder_file` and
 `test_metrics_is_pure` both passed on the inherited code — NFR-011 and FR-052 were already
 being honoured, which is why `core/paths.py` needed no repair.
+
+### TC-005 (2026-07-29)
+
+| Command | Result |
+|---|---|
+| `pytest tests/unit/test_metrics.py` | 76 passed. **All formulas in `engine/metrics.py` are correct as inherited** — including all three blueprint worked examples and the whole 10-level table |
+| `pytest tests/unit/test_input_modes.py` | 22 passed. **The three strategies are correct as inherited**; the defects are all in `feed_key()`'s bookkeeping, not in the mode decisions |
+| `pytest tests/unit/test_typing_engine.py -rxX` | 18 passed, **7 xfail** |
+| `pytest tests/unit/test_invariants.py -rxX` | 5 passed, **3 xfail** |
+| `pytest -q -rxX` (full suite) | **281 tests: 271 passed, 10 xfail, 0 unexpected failures** |
+| `pytest --cov=typecraft.engine --cov=typecraft.managers` | `metrics.py` **100 %**, `typing_engine.py` **99 %**, `input_modes.py` **94 %**; combined engine+managers 58 % (up from 29 %) |
+
+**One assumption of mine was wrong, and the tests caught it.** I had marked the randomised
+ledger check as xfail for all three modes. `strict=True` turned the unexpected passes into
+failures, which forced the correction: only **D-08** breaks FR-043's equation, and only in
+`lock_on_error`. D-07 and D-30 keep the equation balanced while making the values wrong
+(D-07 moves a count from `errors` to `correct`; D-30 increments `total` and `correct`
+together). Consequence for TC-006: an invariant check alone cannot prove the fix — the exact
+expected counter values must be asserted, which is what `test_typing_engine.py` now does.
+
+**The 10 strict-xfail tests — the exact TC-006 acceptance list:**
+
+| Test id | Defect |
+|---|---|
+| `test_typing_engine.py::test_D08_repeated_wrong_key_keeps_the_ledger_consistent` | D-08 |
+| `test_typing_engine.py::test_D08_every_wrong_keystroke_counts_as_a_mistake` | D-08 |
+| `test_typing_engine.py::test_D07_corrected_error_still_counts_against_accuracy` | D-07 |
+| `test_typing_engine.py::test_D07_backspace_alone_cannot_manufacture_accuracy` | D-07 |
+| `test_typing_engine.py::test_D07_navigating_back_over_a_correct_character_does_not_inflate_accuracy` | D-07 |
+| `test_typing_engine.py::test_D30_backspace_at_the_start_cannot_be_farmed_for_accuracy` | D-30 |
+| `test_typing_engine.py::test_D29_input_after_completion_is_ignored` | D-29 |
+| `test_invariants.py::test_ledger_holds_over_randomised_sequences[lock_on_error]` | D-08 |
+| `test_invariants.py::test_only_typing_can_produce_accuracy` | D-30 |
+| `test_invariants.py::test_ledger_holds_under_hypothesis` | D-08 |
+
+Also corrected during this task: one of my own test expectations was wrong, not the code —
+`xp_for(50.0, …)` returns 2, not 3, because Python's `round(2.5)` is banker's rounding. Pinned
+with a comment so it is a decision on record.
 
 ---
 

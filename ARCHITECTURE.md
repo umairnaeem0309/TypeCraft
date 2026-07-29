@@ -282,6 +282,20 @@ created from a string key via `create_mode()` backed by `MODE_REGISTRY`.
    `total_keystrokes` (so gross WPM is inflated and `net == gross`). Violates FR-046.
 3. Backspacing over an already-correct character clears its status to PENDING but leaves
    its `correct_keystrokes` credit in place; retyping it credits it a second time.
+4. **D-30 — accuracy is farmable.** `BackspaceMode.resolve()` returns `is_backspace=False`
+   when the cursor is at 0, so `feed_key()` skips the backspace branch and scores the
+   Backspace on the normal path as a *correct keystroke*. 20 Backspace presses before typing
+   anything yield 100 % accuracy and combo 20 — enough for 3 stars, an unlock, and a
+   leaderboard place with zero characters typed. Defeats FR-061's 85 % gate outright.
+5. **D-29 — the finished-guard is unreachable.** `feed_key()` calls `mode.resolve()`, which
+   reads `target[cursor]`, *before* its own `if self.cursor >= len(self.target)` guard, so
+   input after completion raises `IndexError` rather than being ignored (FR-047).
+
+**Measured against the inherited code (TC-005): `engine/metrics.py` and all three
+`InputMode` strategies are correct.** Every defect above is in `TypingEngine.feed_key()` /
+`_apply_backspace()`. Note also that the FR-043 equation is necessary but not sufficient —
+only D-08 unbalances it; D-07 and D-30 keep it balanced while corrupting the values, so the
+fix must be verified against exact expected counters.
 
 Target accounting (pending **OQ-001**, recommended resolution): treat the counters as a
 ledger over cursor positions. Advancing past position *i* posts exactly one entry
