@@ -10,8 +10,47 @@ active scene through GameStateManager. Uses dirty-rect display updates
 import pygame
 
 from typecraft.core.app_context import AppContext
+from typecraft.core.logging_setup import get_logger
 from typecraft.core.state_manager import GameStateManager
 from typecraft.ui import theme
+
+
+def build_state_manager(ctx) -> GameStateManager:
+    """Register every scene and wire the manager onto the context.
+
+    Module-level rather than a Game method so tests can obtain a fully-wired
+    manager without opening a window, and so there is exactly one list of scene
+    names in the codebase.
+
+    Does not activate a scene — the caller chooses the entry point.
+    """
+    # Local imports avoid a circular import between core and scenes.
+    from typecraft.scenes.main_menu import MainMenuScene
+    from typecraft.scenes.profile_select import ProfileSelectScene
+    from typecraft.scenes.lesson_select import LessonSelectScene
+    from typecraft.scenes.mode_select import ModeSelectScene
+    from typecraft.scenes.lesson import LessonScene
+    from typecraft.scenes.results import ResultsScene
+    from typecraft.scenes.leaderboard import LeaderboardScene
+    from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
+    from typecraft.scenes.settings import SettingsScene
+
+    states = GameStateManager(ctx)
+    for name, scene_cls in (
+        ("main_menu", MainMenuScene),
+        ("profile_select", ProfileSelectScene),
+        ("lesson_select", LessonSelectScene),
+        ("mode_select", ModeSelectScene),
+        ("lesson", LessonScene),
+        ("results", ResultsScene),
+        ("leaderboard", LeaderboardScene),
+        ("teacher_dashboard", TeacherDashboardScene),
+        ("settings", SettingsScene),
+    ):
+        states.register(name, scene_cls)
+
+    ctx.states = states  # scenes reach the manager via ctx.states.change(...)
+    return states
 
 
 class Game:
@@ -22,35 +61,10 @@ class Game:
         self.clock = pygame.time.Clock()
 
         self.ctx = AppContext()
-        self.states = GameStateManager(self.ctx)
-        self.ctx.states = self.states  # scenes reach the manager via ctx.states.change(...)
-        self._register_scenes()
+        self.states = build_state_manager(self.ctx)
+        self.states.change("main_menu")
 
         self.running = True
-
-    def _register_scenes(self) -> None:
-        # Local import to avoid a circular import between core and scenes.
-        from typecraft.scenes.main_menu import MainMenuScene
-        from typecraft.scenes.profile_select import ProfileSelectScene
-        from typecraft.scenes.lesson_select import LessonSelectScene
-        from typecraft.scenes.mode_select import ModeSelectScene
-        from typecraft.scenes.lesson import LessonScene
-        from typecraft.scenes.results import ResultsScene
-        from typecraft.scenes.leaderboard import LeaderboardScene
-        from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
-        from typecraft.scenes.settings import SettingsScene
-
-        self.states.register("main_menu", MainMenuScene)
-        self.states.register("profile_select", ProfileSelectScene)
-        self.states.register("lesson_select", LessonSelectScene)
-        self.states.register("mode_select", ModeSelectScene)
-        self.states.register("lesson", LessonScene)
-        self.states.register("results", ResultsScene)
-        self.states.register("leaderboard", LeaderboardScene)
-        self.states.register("teacher_dashboard", TeacherDashboardScene)
-        self.states.register("settings", SettingsScene)
-
-        self.states.change("main_menu")
 
     def run(self) -> None:
         while self.running:
@@ -63,7 +77,7 @@ class Game:
     def _process_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self._request_quit()
                 return
             self.states.handle_event(event)
 
@@ -74,6 +88,20 @@ class Game:
         self.screen.fill(theme.COLOR_BG)
         self.states.render(self.screen)
         pygame.display.flip()
+
+    def _request_quit(self) -> None:
+        """Window close: give the active scene a chance to save before we stop.
+
+        Without this the loop simply ended and a lesson in progress was discarded
+        (defect D-06). The save is wrapped because a failure here must still let
+        the application exit — a hung window is worse than a lost attempt, and the
+        checkpoint from TC-009 already limits the loss to a few seconds.
+        """
+        try:
+            self.states.notify_quit()
+        except Exception:
+            get_logger(__name__).exception("failed to save state while closing")
+        self.running = False
 
     def _shutdown(self) -> None:
         self.ctx.db.close()

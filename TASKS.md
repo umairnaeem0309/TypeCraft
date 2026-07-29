@@ -8,8 +8,8 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 11 DONE, 0 IN_PROGRESS, 16 TODO. Open P0: **1** (TC-010).
-Open P1: 11.
+**Summary:** 27 tasks — 12 DONE, 0 IN_PROGRESS, 15 TODO. **Open P0: 0 — every
+data-loss-class defect is closed.** Open P1: 11.
 **Phases 1 and 2 complete.** Test suite: **382 passing, 6 strict-xfail defect
 reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97 %**
 (AC-02 target ≥ 85 % — met).
@@ -27,7 +27,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 | TC-008 | Real transaction support in `Database` | 3 | DONE | P0 |
 | TC-008b | Schema migration: keystroke columns + `schema_meta` | 3 | DONE | P0 |
 | TC-009 | Active-attempt checkpoint and crash recovery | 3 | DONE | P0 |
-| TC-010 | Esc and window-close persist incomplete attempts | 3 | TODO | P0 |
+| TC-010 | Esc and window-close persist incomplete attempts | 3 | DONE | P0 |
 | TC-011 | Settings load, apply, and persist | 5 | TODO | P1 |
 | TC-011b | PIN hardening and atomic settings writes | 5 | TODO | P1 |
 | TC-012 | Leaderboard completed-attempt filtering | 4 | TODO | P1 |
@@ -404,7 +404,7 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
   (in TC-010) window-close cannot drift apart in how they persist.
 
 ## TC-010 — Esc and window-close persist incomplete attempts
-- **Phase** 3 · **Status** TODO · **Priority** P0
+- **Phase** 3 · **Status** DONE (2026-07-30) · **Priority** P0
 - **Requirements** FR-070, FR-071, FR-072, FR-076
 - **Depends on** TC-009
 - **Goal.** Closing the window mid-lesson must save the attempt. Today `pygame.QUIT` just
@@ -419,7 +419,22 @@ reproductions, 0 unexpected failures.** Coverage of `engine/` + `managers/` **97
 - **Checks.** Under the SDL dummy driver: feed keystrokes, post `pygame.QUIT`, run one loop
   iteration, assert exactly one `incomplete` row; same for Esc; assert **zero** rows when Esc
   is pressed before any keystroke.
-- **Acceptance.** FR-070/071/072/076 pass; aggregates unchanged by either path.
+- **Acceptance.** ✅ Met. **406 passing, 5 xfail.** 10 new tests: window close mid-lesson saves
+  one `incomplete` row with the right keystroke count; closing before typing saves nothing;
+  closing after a checkpoint **promotes** that row rather than adding a second; `Game` really
+  does call `on_quit_requested()` before setting `running = False` (driven through a posted
+  `pygame.QUIT`); a save that raises still lets the app exit **and is logged**; Esc with and
+  without typing; completion transitioning to Results; and an incomplete attempt from any path
+  leaving XP, level, badges and unlocks untouched.
+- **The test that matters most:** `test_all_three_exit_paths_agree_on_what_they_persist` types
+  identical text into two profiles, exits one by Esc and one by window-close, and asserts the
+  two stored rows are field-for-field identical. That is the property `_finish()` exists to
+  guarantee, and it would have caught the original defect.
+- **Refactor, in scope.** `Game._register_scenes()` became a module-level
+  `build_state_manager(ctx)`. Scenes navigate through `ctx.states`, which only `Game.__init__`
+  used to wire, so no scene was testable without opening a window. Now there is exactly one
+  scene registry in the codebase and the `app_ctx` fixture is fully wired — a prerequisite
+  TC-019 would have needed anyway.
 
 ## TC-011 — Settings load, apply, and persist
 - **Phase** 5 · **Status** TODO · **Priority** P1

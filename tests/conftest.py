@@ -114,8 +114,11 @@ def app_ctx(writable_dir, display):
     than assembling managers by hand.
     """
     from typecraft.core.app_context import AppContext
+    from typecraft.core.game import build_state_manager
 
     ctx = AppContext()
+    # Scenes navigate via ctx.states.change(...); Game normally wires this up.
+    build_state_manager(ctx)
     yield ctx
     ctx.db.close()
 

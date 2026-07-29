@@ -67,6 +67,15 @@ class LessonScene(Scene):
         attempt = self.engine.result(status=status)
         return self.ctx.progression.score(attempt, self.profile, self._attempt_row_id)
 
+    def on_quit_requested(self) -> None:
+        """Window close mid-lesson (FR-071): save what the student has done.
+
+        Routed through the same `_finish()` as Esc and completion, so the three
+        exit paths cannot disagree about what gets persisted.
+        """
+        if self._has_started() and not self.engine.is_finished():
+            self._finish(AttemptStatus.INCOMPLETE)
+
     def _quit_lesson(self) -> None:
         """Esc mid-lesson (decision D3): persist as incomplete, return to lesson select."""
         if self._has_started() and not self.engine.is_finished():

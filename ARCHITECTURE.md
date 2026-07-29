@@ -157,9 +157,12 @@ stateDiagram-v2
 but it also means per-entry rebuild cost (Lesson Select re-queries the database and
 re-lays out 20 cards on every entry; acceptable at 20, measured in TC-018).
 
-**TARGET additions:** a `Scene.on_quit_requested() -> bool` hook so `Game` can let the
-active scene persist an incomplete attempt before the process exits (FR-071), and a
-`Scene.dirty_rects()` contract for FR/PR-002 dirty-rect rendering.
+**Added in TC-010:** `Scene.on_quit_requested()` so `Game` can let the active scene persist
+an incomplete attempt before the process exits (FR-071), plus a module-level
+`build_state_manager(ctx)` holding the single scene registry — it wires `ctx.states`, which
+scenes navigate through, so a scene can now be exercised without opening a window.
+
+**TARGET:** a `Scene.dirty_rects()` contract for the PR-002 dirty-rect rendering (TC-018).
 
 ---
 
@@ -552,10 +555,13 @@ the final write cannot disagree about an attempt's shape. `LessonScene._finish(s
 single exit point for an attempt. Startup reclassification runs in `Database._bootstrap()`
 before any aggregate is read.
 
-**Still open:** `pygame.QUIT` sets `running = False` in `Game._process_events()` without
-notifying the active scene, so a window-close mid-lesson still loses whatever happened since
-the last checkpoint (D-06, FR-071 — TC-010). The damage is now bounded to 10 seconds rather
-than the whole attempt.
+**Window close (TC-010):** `Game._request_quit()` calls `GameStateManager.notify_quit()` →
+`Scene.on_quit_requested()` before stopping the loop, and `LessonScene` routes that through the
+same `_finish()` as Esc and completion, so the three exit paths cannot disagree about what they
+persist (asserted field-for-field). A failure while saving is logged and still permits exit — a
+hung window is worse than a lost attempt, and the checkpoint bounds the loss anyway.
+
+**All four data-loss defects in this area (D-04, D-05, D-06, D-09) are now closed.**
 
 ---
 
@@ -722,7 +728,10 @@ class Scene:
     handle_event(event) -> None
     update(dt: float) -> None
     render(surface) -> None
-    on_quit_requested() -> None                      # TARGET (FR-071)
+    on_quit_requested() -> None                      # FR-071
+
+# core/game.py
+build_state_manager(ctx) -> GameStateManager         # the one scene registry
 
 # engine/input_modes.py
 class InputMode:
@@ -793,7 +802,7 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | ~~R1 — the import-path/package defect blocks every test and the build~~ | — | **CLOSED by TC-002.** Both entry points resolve the full internal import graph from the repo root |
 | ~~R2 — auto-commit `Database` silently defeats every transaction~~ | — | **CLOSED by TC-008.** `transaction()` context manager; `score()` and the teacher reset are each atomic, proven by forced-failure rollback tests |
 | ~~R3 — keystroke accounting is wrong in two modes~~ | — | **CLOSED by TC-006.** Four defects fixed (D-07, D-08, D-29, D-30) and verified; `engine/` at 99 % coverage. Metrics are now trustworthy; persisting them is not yet (R2, R4) |
-| R4 — no `in_progress` checkpoint and no window-close save | Silent data loss on a school power cut | TC-009, TC-010 |
+| ~~R4 — no `in_progress` checkpoint and no window-close save~~ | — | **CLOSED by TC-009 + TC-010.** 10 s checkpoint, one row per attempt, and all three exit paths persisting identically |
 | R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |
 | R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |
 | R7 — no logging | Field failures at the school are undiagnosable | **Facility CLOSED by TC-004** (`core/logging_setup.py`, wired at startup, tested). The FR-024/FR-134 call sites still need it — TC-011, TC-017, TC-023 |

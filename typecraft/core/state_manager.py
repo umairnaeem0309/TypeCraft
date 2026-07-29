@@ -25,6 +25,10 @@ class GameStateManager:
         if self.current:
             self.current.handle_event(event)
 
+    def notify_quit(self) -> None:
+        if self.current:
+            self.current.on_quit_requested()
+
     def update(self, dt: float) -> None:
         if self.current:
             self.current.update(dt)
