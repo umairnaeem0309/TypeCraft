@@ -1,0 +1,37 @@
+# --- Student / development data (NEVER commit) ---------------------------------
+# _dev_data/ holds the live writable copies used when running from source:
+# typecraft.db plus the teacher-editable JSON. Committing it would publish
+# student records and could clobber a real database on checkout.
+_dev_data/
+*.db
+*.db-wal
+*.db-shm
+typecraft.log
+
+# --- Python bytecode / caches --------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Virtual environments ------------------------------------------------------
+.venv/
+venv/
+env/
+
+# --- PyInstaller build output --------------------------------------------------
+build/
+dist/
+*.spec.bak
+
+# --- Editor / OS noise ---------------------------------------------------------
+.vscode/
+.idea/
+desktop.ini
+Thumbs.db
+*.swp
