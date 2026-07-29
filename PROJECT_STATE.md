@@ -6,11 +6,12 @@
 ---
 
 **Last updated:** 2026-07-29
-**Current phase:** Phase 0 — repository audit and reproducible baseline
-**Current active task:** none — TC-001 closed, awaiting the go-ahead for TC-002
-**Last completed task:** TC-001 — baseline inventory, `.gitignore`, dev DB hygiene (2026-07-29)
-**Next recommended task:** **TC-002** — normalise the package and entry point (P0, unblocks
-everything: no test can run and no build can be made until the repo imports from its own root)
+**Current phase:** Phase 1 — package structure, environment, and test infrastructure
+**Current active task:** none — TC-002 closed, awaiting the go-ahead for TC-003
+**Last completed task:** TC-002 — normalise the package and entry point (2026-07-29)
+**Next recommended task:** **TC-003** — runtime and dev dependency manifests (P0). It also
+carries the one check deferred out of TC-002: proving `python main.py` actually reaches the
+Main Menu, which needs pygame installed.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -20,7 +21,7 @@ everything: no test can run and no build can be made until the repo imports from
 | Phase | State |
 |---|---|
 | 0 — Audit & baseline | **COMPLETE** — control files written, baseline committed (TC-000, TC-001) |
-| 1 — Structure, deps, tests | NOT STARTED |
+| 1 — Structure, deps, tests | IN PROGRESS — TC-002 done; TC-003, TC-004 outstanding |
 | 2 — Engine & metric correctness | NOT STARTED |
 | 3 — Persistence & recovery | NOT STARTED |
 | 4 — Scenes & core UI | NOT STARTED |
@@ -28,7 +29,8 @@ everything: no test can run and no build can be made until the repo imports from
 | 6 — Performance | NOT STARTED |
 | 7 — Packaging, docs, release | NOT STARTED |
 
-Tasks: 27 defined — 2 DONE, 0 IN_PROGRESS, 25 TODO. Open P0: 10. Open P1: 11.
+Tasks: 27 defined — 3 DONE, 0 IN_PROGRESS, 24 TODO. Open P0: 9. Open P1: 11.
+Defects: 28 found — 2 closed (D-01, D-28), 26 open.
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
 **Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
@@ -55,8 +57,12 @@ and two confirmed data-integrity defects (D-04, D-05) can lose or corrupt studen
 - `lesson_attempts` columns: `id, profile_id, lesson_id, status, mode, wpm_net, wpm_gross,
   accuracy, errors, max_combo, duration_sec, stars, xp_awarded, started_at, completed_at`
   — **no `total_keystrokes`, no `correct_keystrokes`** (see D-09).
-- Absent: `assets/`, `tests/`, `TypeCraft.spec`, `.gitignore`, `pyproject.toml`, any
-  documentation beyond a 2-line README. `requirements.txt` is **0 bytes**.
+- **Layout as of TC-002:** all source now lives in the `typecraft/` package; `main.py` is a
+  repo-root launcher; `assets/{images,fonts,sounds}/` exist but are empty; `_dev_data/` stays
+  outside the package and is git-ignored. See ARCHITECTURE.md §1.2.
+- Still absent: `tests/`, `TypeCraft.spec`, `pyproject.toml`, `requirements-dev.txt`, any
+  documentation beyond a 2-line README, any bundled asset. `requirements.txt` is **0 bytes**.
+- Added since the audit: `.gitignore`, `.gitattributes`, the five control documents.
 - Environment: Python **3.12.9** (MiniConda, `C:\MiniConda\python.exe`). **pygame, pytest,
   and PyInstaller are all NOT installed.** No virtual environment exists.
 
@@ -88,7 +94,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 
 | ID | Sev | Defect | Evidence | Task |
 |---|---|---|---|---|
-| D-01 | S1 | Package/import layout is unrunnable from the repo root. Modules import `TypeCraft.*` but the repo root *is* the `TypeCraft` package, so imports resolve only with the repo's **parent** on `sys.path`. `python main.py` from the repo root fails; `pytest` cannot collect. | Probe: from parent dir the import proceeds (fails later only on the missing `pygame`); blueprint §3.1 expects bare imports instead | TC-002 |
+| ~~D-01~~ | S1 | ~~Package/import layout is unrunnable from the repo root.~~ **CLOSED by TC-002.** Code moved to a `typecraft/` package with a root `main.py` launcher; 88 imports rewritten. Both `python main.py` and `python -m typecraft` now resolve the full internal graph from the repo root. | see §7 TC-002 | TC-002 ✅ |
 | D-02 | S4 | `requirements.txt` is 0 bytes; no dev/test/build manifest; no venv; pygame/pytest/PyInstaller absent. | file size 0; `import pygame` → ModuleNotFoundError | TC-003 |
 | D-03 | S2 | No automated tests and no test infrastructure at all. | no `tests/` directory | TC-004 |
 | D-04 | S1 | `Database.execute()` commits after **every** statement, so `begin()`/`rollback()` are inert. The teacher's reset-progress is therefore **non-atomic** despite its `try/except: rollback(); raise` — a failure part-way leaves a student with deleted attempts but intact XP (or vice versa). `ProgressionService.score()` has the same exposure across six separate commits. | `managers/database.py:104-108`; `scenes/teacher_dashboard.py:47-69` | TC-008 |
@@ -114,7 +120,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
 | D-25 | S4 | `ResultsScene._pick_message()` re-opens and re-parses `messages.json` on every scene entry instead of loading it once through a manager. Not on the frame path, so low severity. | `scenes/results.py:40-57` | TC-017 |
 | D-26 | S4 | Leaderboard interpolates a column name into SQL with an f-string. The value is currently drawn from a two-element internal whitelist so it is not injectable today, but it violates SR-006's "allow-list, never interpolate" rule. | `scenes/leaderboard.py:36-44` | TC-012 |
-| D-28 | S4 | No `.gitattributes`, and `core.autocrlf` is enabled — git warned "LF will be replaced by CRLF" for all 51 committed text files. The next git operation that rewrites the working tree will flip every file's line endings and produce spurious whole-file diffs, which would make TC-002's import rewrite unreviewable. | `git add` output during TC-001 | TC-002 |
+| ~~D-28~~ | S4 | ~~No `.gitattributes`, and `core.autocrlf` is enabled.~~ **CLOSED by TC-002.** `.gitattributes` pins `* text=auto eol=lf` and marks binary types; verified to introduce no renormalisation churn. | `git diff --stat` empty after adding it | TC-002 ✅ |
 | D-27 | S4 | Dead code: `LessonSelectScene._unused_prevent_lint()`; `KeyboardRenderer.highlight()` accepts a `finger` argument it ignores; `StarRating._draw_star()` imports `math` inside the function on every call. | `scenes/lesson_select.py:83`; `ui/keyboard_renderer.py:65`; `ui/star_rating.py:21` | TC-015 / TC-018 |
 
 ### Audit hypotheses — verdicts
@@ -162,7 +168,24 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-001 (last task, DONE)
+### TC-002 (last task, DONE)
+
+- `typecraft/` — **new package.** All 45 source files plus `data/` moved in via `git mv`
+  (recorded as pure renames, zero content churn in the move commit).
+- `typecraft/assets/{images,fonts,sounds}/.gitkeep` — **new**, empty; populated by TC-017.
+- 88 import statements rewritten `TypeCraft.` → `typecraft.` across 27 files. The only
+  surviving bare `TypeCraft` strings are the window caption (`core/game.py:21`), the menu
+  title (`scenes/main_menu.py:40`), and two prose lines — all correct.
+- `typecraft/core/paths.py` — `_project_root()` split into `_package_root()` (anchors
+  `resource_path`, = `typecraft/`) and `_repo_root()` (anchors the dev writable dir, =
+  repo root). This is the one behavioural edit in the task, and it is what keeps
+  `_dev_data/` outside the package. Docstrings updated.
+- `main.py` — **new** repo-root launcher (`from typecraft.main import main`).
+- `typecraft/__main__.py` — **new**, makes `python -m typecraft` equivalent.
+- `.gitattributes` — **new**, pins LF (D-28).
+- `ARCHITECTURE.md` §1.1/§1.2/§10/§16/§18/§19, `TASKS.md`, `PROJECT_STATE.md`.
+
+### TC-001 (DONE)
 
 - `.gitignore` — **new.** Ignores `_dev_data/`, `*.db*`, `typecraft.log`, `__pycache__/`,
   `*.py[cod]`, `.pytest_cache/`, coverage output, `.venv/`/`venv/`/`env/`, `build/`, `dist/`,
@@ -220,6 +243,28 @@ Commits produced by TC-001 (branch `repair/typecraft-v1`):
 | `docs: add audit control files and .gitignore (TC-000, TC-001)` | `.gitignore` + `REQUIREMENTS.md`, `ARCHITECTURE.md`, `PROJECT_PLAN.md`, `TASKS.md`, `PROJECT_STATE.md` |
 
 Resolve hashes with `git log --oneline -3` on `repair/typecraft-v1`.
+
+### TC-002 (2026-07-29)
+
+| Command | Result |
+|---|---|
+| `git mv` × 9 (7 packages + `__init__.py` + `main.py`) | **PASS** — all 45 files staged as `R` (pure renames), no content change |
+| `python <rewrite script>` | **PASS** — 88 import statements rewritten across 27 files; regex limited to `from\|import TypeCraft.` so prose and UI strings were untouched |
+| `grep -rnE '\b(from\|import)\s+TypeCraft\.' typecraft/` | **PASS** — `NONE` |
+| `grep -rn TypeCraft typecraft/ --include=*.py` | 4 hits, all intentional: window caption, menu title, 2 prose lines |
+| `python -m compileall -q typecraft main.py` | **PASS** — exit 0 |
+| `resource_path()` probe (4 × `data/*.json`, `assets/images`) | **PASS** — all resolve, all exist, anchored at `…\TypeCraft\typecraft` |
+| `writable_data_dir()` probe | **PASS** — `…\TypeCraft\_dev_data`, exists, `typecraft.db` present (dev DB **not** orphaned) |
+| metrics smoke (`stars_for(93)`, `level_for(150)`, `xp_for(88,18,1,1)`) | `2`, `3`, `26` — the XP value matches blueprint §2.4's worked example #1 (Tier 1 @ 88 %/18 wpm → 1★/26 XP). Incidental, not a substitute for TC-005 |
+| `python main.py` | Resolves `main.py` → `typecraft.main` → `typecraft.core.game`, then fails at `import pygame`. Before TC-002 this failed immediately with `No module named 'TypeCraft'` |
+| `python -m typecraft` | Identical behaviour — same pygame boundary |
+| `git diff --stat` after `.gitattributes` | **PASS** — no renormalisation churn |
+| `git status --short` after commits | **PASS** — working tree clean |
+
+**Deferred (not skipped):** "`python main.py` reaches the Main Menu" — impossible until
+pygame exists. Carried into TC-003's check list. Everything up to the pygame import boundary
+is proven; nothing beyond it has been executed, and TC-002 is **not** evidence that the
+application runs.
 
 ---
 

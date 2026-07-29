@@ -1,12 +1,18 @@
-"""main.py — tiny entry point: build the Game, start the loop."""
+"""
+main.py — repository-root launcher.
 
-from TypeCraft.core.game import Game
+Exists so `python main.py` works from a plain checkout with no installation
+and no sys.path manipulation: the repository root is already sys.path[0], and
+the `typecraft` package sits directly inside it.
 
+Equivalent entry points, all reaching the same function:
 
-def main() -> None:
-    game = Game()
-    game.run()
+    python main.py
+    python -m typecraft
+    TypeCraft.exe            (PyInstaller; this file is the spec's script)
+"""
 
+from typecraft.main import main
 
 if __name__ == "__main__":
     main()

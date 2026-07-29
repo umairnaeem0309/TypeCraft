@@ -8,7 +8,10 @@ Anything not marked is true of both.
 
 ## 1. Repository structure
 
-### 1.1 CURRENT
+### 1.1 HISTORICAL — as inherited, before TC-002
+
+> Superseded by §1.2 on 2026-07-29. Kept because several defect descriptions elsewhere in
+> this document refer to the original layout.
 
 The git repository root is `D:\CS\Projects\Type-Craft\TypeCraft` (`.git` lives there).
 That same directory is *also* the Python package `TypeCraft`, because every module imports
@@ -46,26 +49,32 @@ implies bare imports (`from core.game import Game`). The code deviates from the 
 by adding the `TypeCraft.` prefix. Neither arrangement is currently runnable from the repo
 root.
 
-### 1.2 TARGET (ADR-001)
+### 1.2 CURRENT — after TC-002 (ADR-001, ADR-002)
 
-Repository root stays where `.git` is. The application code moves one level down into a
-lowercase package, so the root is a normal Python project root:
+Repository root stays where `.git` is. The application code moved one level down into a
+lowercase package, so the root is a normal Python project root. `✔` = exists today;
+`⬚` = created by a later task.
 
 ```
 TypeCraft/                       <- git root, project root, sys.path[0]
-├─ typecraft/                    <- the package (import prefix `typecraft.`)
-│  ├─ __init__.py  __main__.py
-│  ├─ core/ engine/ managers/ models/ scenes/ ui/
-│  ├─ assets/{images,fonts,sounds}/
-│  └─ data/{lessons,badges,messages,settings.default}.json
-├─ tests/{unit,db,scenes,conftest.py}
-├─ docs/                         <- DOC-002…DOC-007
-├─ main.py                       <- thin shim: `from typecraft.core.game import Game`
-├─ TypeCraft.spec  pyproject.toml  requirements.txt  requirements-dev.txt
-├─ .gitignore  README.md
-├─ REQUIREMENTS.md ARCHITECTURE.md PROJECT_PLAN.md TASKS.md PROJECT_STATE.md
-└─ TypeCraft_Master_Blueprint.md  "TypeCraft Khidmat Proposal.pdf"
+├─ typecraft/                 ✔  <- the package (import prefix `typecraft.`)
+│  ├─ __init__.py  __main__.py  main.py                    ✔
+│  ├─ core/ engine/ managers/ models/ scenes/ ui/           ✔
+│  ├─ assets/{images,fonts,sounds}/                         ✔ (empty, .gitkeep — TC-017)
+│  └─ data/{lessons,badges,messages,settings.default}.json  ✔
+├─ tests/{unit,db,scenes,conftest.py}                    ⬚  TC-004
+├─ docs/                                                 ⬚  TC-021 (DOC-002…DOC-007)
+├─ main.py                    ✔  <- launcher: `from typecraft.main import main`
+├─ requirements.txt           ✔  (empty until TC-003)
+├─ TypeCraft.spec  pyproject.toml  requirements-dev.txt  ⬚  TC-003 / TC-020
+├─ .gitignore  .gitattributes  README.md                 ✔
+├─ REQUIREMENTS.md ARCHITECTURE.md PROJECT_PLAN.md TASKS.md PROJECT_STATE.md  ✔
+├─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
+└─ TypeCraft_Master_Blueprint.md  "TypeCraft Khidmat Proposal.pdf"            ✔
 ```
+
+Three equivalent entry points, all reaching `typecraft.main:main` —
+`python main.py`, `python -m typecraft`, and (once built) `TypeCraft.exe`.
 
 Rationale: `python main.py` and `pytest` both work from the repo root with no `sys.path`
 manipulation; the package is relocatable; top-level generic names (`core`, `ui`, `models`)
@@ -410,17 +419,24 @@ flowchart TD
     G -- no --> P2[repo root / _dev_data]
 ```
 
-**CURRENT:** correct and already implemented in `core/paths.py`. `_project_root()` is
-`paths.py`'s grandparent = the repo root, so `resource_path("data/lessons.json")` and
-`writable_data_dir() == <repo>/_dev_data` both resolve correctly in dev. `ensure_seeded()`
-skips any file that already exists (DR-012 satisfied) and maps `settings.json` to
-`settings.default.json`. `Database` puts the `.db` in the writable dir. No module bypasses
-these helpers.
+**CURRENT (after TC-002):** implemented in `typecraft/core/paths.py` with two distinct
+anchors, verified by execution:
 
-**TARGET:** after the TC-002 move, `_project_root()` becomes the *package* directory
-(`typecraft/`) so `assets/` and `data/` travel with the package; `writable_data_dir()` in
-dev mode points at `<repo>/_dev_data` explicitly (one level up from the package). A new
-`log_path()` returns `writable_data_dir()/"typecraft.log"`. Frozen behaviour is unchanged.
+- `_package_root()` = `typecraft/` — the anchor for `resource_path()` in dev, so `assets/`
+  and `data/` travel with the package. Verified: all four `data/*.json` files and
+  `assets/images` resolve.
+- `_repo_root()` = `_package_root().parent` — used **only** to place
+  `writable_data_dir()` at `<repo>/_dev_data` in dev, i.e. beside the package rather than
+  inside it, so dev data can never be swept into a PyInstaller build. Verified: resolves to
+  the pre-existing `_dev_data/` with `typecraft.db` intact, so the TC-008b migration fixture
+  was not orphaned by the move.
+
+Frozen behaviour is unchanged (`sys._MEIPASS` for read-only,
+`Path(sys.executable).parent` for writable). `ensure_seeded()` skips any file that already
+exists (DR-012) and maps `settings.json` to `settings.default.json`. `Database` puts the
+`.db` in the writable dir. No module bypasses these helpers.
+
+**TARGET:** a new `log_path()` returning `writable_data_dir()/"typecraft.log"` (TC-004).
 
 ---
 
@@ -609,8 +625,11 @@ dist/TypeCraft/
 - `onedir`, not `onefile`: `onefile` re-extracts the whole app to `%TEMP%` on every launch,
   which is slow on 4th-gen Intel with a spinning disk, and puts the writable dir in a
   temporary location.
-- `datas=[("typecraft/assets", "typecraft/assets"), ("typecraft/data", "typecraft/data")]`
-  so `resource_path()` finds them under `sys._MEIPASS` unchanged.
+- `datas=[("typecraft/assets", "assets"), ("typecraft/data", "data")]` — the bundle
+  destination **drops** the package prefix, because `resource_path()` takes paths relative to
+  the package root (`"data/lessons.json"`, `"assets/images/…"`) and its frozen base is
+  `sys._MEIPASS` itself. Mapping to `"typecraft/data"` instead would put the files one level
+  too deep and every resource lookup would miss.
 - `writable_data_dir()` = `Path(sys.executable).parent` = the `dist/TypeCraft/` folder, so
   student data sits beside the exe and an "update" that replaces `TypeCraft.exe` +
   `_internal/` preserves it (PK-008).
@@ -687,8 +706,8 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 
 | ID | Decision | Status | Rationale / consequence |
 |---|---|---|---|
-| ADR-001 | Move code into a lowercase `typecraft/` package at the repo root; `main.py` shim at root | Proposed (TC-002) | Makes the repo importable and testable from its own root; costs one global import rewrite |
-| ADR-002 | `assets/` and `data/` live *inside* the package | Proposed (TC-002) | One stable anchor for `resource_path()` in both dev and frozen modes |
+| ADR-001 | Move code into a lowercase `typecraft/` package at the repo root; `main.py` launcher at root | **Accepted — implemented TC-002** | Repo now imports and tests from its own root; cost was an 88-statement import rewrite across 27 files |
+| ADR-002 | `assets/` and `data/` live *inside* the package; `_dev_data/` stays outside it | **Accepted — implemented TC-002** | One stable anchor for `resource_path()` in both dev and frozen modes; dev data cannot be swept into a build |
 | ADR-003 | `Database` uses `isolation_level=None` + an explicit `transaction()` context manager | Proposed (TC-008) | Current per-statement autocommit makes DR-010 unachievable |
 | ADR-004 | One row per attempt, reserved on the first keystroke, promoted from `in_progress` to `complete`/`incomplete` | Proposed (TC-009) | Prevents duplicate rows once checkpointing exists |
 | ADR-005 | Ledger-style keystroke accounting; delete `_error_counted` | Proposed (TC-006, pending OQ-001) | Makes FR-043/044/045 structural instead of incidental |
@@ -703,12 +722,12 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| R1 — the import-path/package defect blocks every test and the build | Nothing else can be verified | TC-002 first, immediately after the baseline |
+| ~~R1 — the import-path/package defect blocks every test and the build~~ | — | **CLOSED by TC-002.** Both entry points resolve the full internal import graph from the repo root |
 | R2 — auto-commit `Database` silently defeats every transaction | Corrupt half-reset student records | TC-008 before any new multi-write feature |
 | R3 — keystroke accounting is wrong in two modes | Every stored metric, star, XP, badge, and leaderboard entry is suspect | TC-005 (tests first) then TC-006 |
 | R4 — no `in_progress` checkpoint and no window-close save | Silent data loss on a school power cut | TC-009, TC-010 |
 | R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |
 | R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |
 | R7 — no logging | Field failures at the school are undiagnosable | Add logging in TC-011/TC-004 as a prerequisite for FR-024/FR-134 |
-| R8 — `_dev_data/` is untracked and un-ignored | A future commit could publish a database or clobber it | `.gitignore` in TC-001 |
+| ~~R8 — `_dev_data/` is untracked and un-ignored~~ | — | **CLOSED by TC-001.** `.gitignore` added and both `_dev_data/` and `__pycache__/` proven ignored |
 | R9 — the schema is missing keystroke columns while `AttemptResult` has them | Metrics can't be stored or audited | TC-008b migration with `schema_meta` versioning |

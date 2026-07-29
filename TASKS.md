@@ -8,13 +8,13 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 2 DONE, 0 IN_PROGRESS, 25 TODO. Open P0: 10. Open P1: 11.
+**Summary:** 27 tasks — 3 DONE, 0 IN_PROGRESS, 24 TODO. Open P0: 9. Open P1: 11.
 
 | ID | Title | Phase | Status | Pri |
 |---|---|---|---|---|
 | TC-000 | Control files and read-only audit | 0 | DONE | P0 |
 | TC-001 | Baseline inventory, `.gitignore`, dev DB hygiene | 0 | DONE | P0 |
-| TC-002 | Normalise the package and entry point | 1 | TODO | P0 |
+| TC-002 | Normalise the package and entry point | 1 | DONE | P0 |
 | TC-003 | Runtime and dev dependency manifests | 1 | TODO | P0 |
 | TC-004 | pytest infrastructure with isolated data paths | 1 | TODO | P0 |
 | TC-005 | Baseline tests for metrics and the three modes | 2 | TODO | P0 |
@@ -82,7 +82,7 @@ cover.
   Work happens on branch `repair/typecraft-v1` rather than directly on `main`.
 
 ## TC-002 — Normalise the package and entry point
-- **Phase** 1 · **Status** TODO · **Priority** P0
+- **Phase** 1 · **Status** DONE (2026-07-29) · **Priority** P0
 - **Requirements** NFR-001, NFR-011, PK-009, ADR-001, ADR-002
 - **Depends on** TC-001
 - **Goal.** Make the repository importable, testable, and runnable from its own root.
@@ -100,9 +100,19 @@ cover.
   or headless with SDL dummy); `python -c "import typecraft.core.game"` from the repo root;
   a grep proves zero remaining `TypeCraft.` imports; `resource_path("data/lessons.json")`
   and `writable_data_dir()` both resolve to existing paths.
-- **Acceptance.** Repo root is `sys.path[0]`-sufficient; no `sys.path` manipulation anywhere;
-  `_dev_data/` still resolves to the same location so the existing dev DB is not orphaned.
-- **Notes.** The single widest change in the project — commit it alone. Risk R1.
+- **Acceptance.** ✅ Met, with one deferral. `compileall` clean over `typecraft/` + `main.py`;
+  grep confirms **0** remaining `TypeCraft.` imports (the 4 surviving bare mentions are the
+  window caption, the menu title, and two prose lines); 88 import statements rewritten across
+  27 files; all 45 files recorded by git as pure renames; `resource_path()` resolves all four
+  `data/*.json` plus `assets/images`; `writable_data_dir()` resolves to the pre-existing
+  `<repo>/_dev_data` with `typecraft.db` intact, so the dev DB was **not** orphaned; both
+  `python main.py` and `python -m typecraft` resolve the full internal import graph and fail
+  only at `import pygame`. No `sys.path` manipulation exists anywhere.
+- **DEFERRED to TC-003.** "Reaches the Main Menu" cannot be checked: pygame is not installed
+  in this environment (defect D-02). The import chain is proven correct up to the pygame
+  boundary; TC-003 must complete this check and record the result.
+- **Notes.** The single widest change in the project — committed alone. Closes risk R1 and
+  defects D-01 and D-28.
 
 ## TC-003 — Runtime and dev dependency manifests
 - **Phase** 1 · **Status** TODO · **Priority** P0
@@ -116,7 +126,9 @@ cover.
 - **Files.** `requirements.txt`, `requirements-dev.txt`, `pyproject.toml`, `README.md`.
 - **Checks.** From a fresh venv: `pip install -r requirements.txt -r requirements-dev.txt`
   succeeds; `python -c "import pygame; print(pygame.version.ver)"` prints a 2.x version;
-  `pytest --version` and `pyinstaller --version` both work.
+  `pytest --version` and `pyinstaller --version` both work. **Plus the check deferred from
+  TC-002:** `python main.py` reaches the Main Menu (headless with `SDL_VIDEODRIVER=dummy` is
+  acceptable evidence), and `python -m typecraft` behaves identically.
 - **Acceptance.** A clean venv reaches a runnable app and a runnable test suite using only
   the documented commands.
 - **Notes.** The environment audited on 2026-07-29 (MiniConda Python 3.12.9) has **no**
