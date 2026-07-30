@@ -22,9 +22,26 @@ from typecraft.ui.target_text import TargetTextLayout
 # commas, periods, question marks — not just lowercase home-row characters.
 TYPABLE = set(string.ascii_letters + string.digits + string.punctuation + " ")
 
-#: Where the drill text is laid out. Sits between the HUD and the keyboard, and the
-#: layout is clamped to it so nothing can be drawn past the window edge (FR-102).
-TEXT_AREA = pygame.Rect(60, 150, theme.SCREEN_WIDTH - 120, 250)
+# --- Vertical rhythm -------------------------------------------------------
+# Derived rather than hand-picked, because the keyboard used to overlap the footer
+# hint by 5 px: the board is 245 px tall and started at y=440, ending at 685, while
+# the hint sat at 680. Measured: the drill text never needs more than 2 lines
+# (74 px) even for the longest bundled lesson, so the space it had reserved was
+# spent on the overlap instead.
+
+#: Where the drill text is laid out. The layout is clamped to it so nothing can be
+#: drawn past the window edge (FR-102).
+TEXT_AREA = pygame.Rect(60, 200, theme.SCREEN_WIDTH - 120, 130)
+
+#: Footer band, flush with the bottom of the window.
+FOOTER_RECT = pygame.Rect(0, theme.SCREEN_HEIGHT - theme.LAYOUT_FOOTER_HEIGHT,
+                          theme.SCREEN_WIDTH, theme.LAYOUT_FOOTER_HEIGHT)
+
+#: Top of the keyboard. Placed so the board clears the footer band by
+#: LAYOUT_FOOTER_MARGIN, and so its caption (drawn above the board) clears the text
+#: area. Asserted in tests/scenes/test_lesson_layout.py rather than trusted.
+KEYBOARD_Y = (FOOTER_RECT.top - theme.LAYOUT_FOOTER_MARGIN
+              - KeyboardRenderer.size()[1])
 
 
 class LessonScene(Scene):
@@ -41,7 +58,7 @@ class LessonScene(Scene):
 
         kb_w, _kb_h = KeyboardRenderer.size()
         self.keyboard = KeyboardRenderer(
-            self.ctx.resources, origin=((theme.SCREEN_WIDTH - kb_w) // 2, 440))
+            self.ctx.resources, origin=((theme.SCREEN_WIDTH - kb_w) // 2, KEYBOARD_Y))
         self.keyboard.prerender()
 
         self.hud = HUD(pygame.Rect(60, 60, 800, 40), self.ctx.resources)
@@ -64,12 +81,16 @@ class LessonScene(Scene):
         self._quit_requested = False
         self._update_keyboard_hint()
 
-        # The "Esc to quit" hint never changes; render it once.
+        # The "Esc to quit" hint never changes; render it once. Body-sized rather
+        # than small — it is the only way out of the lesson, so a child has to be
+        # able to read it.
         self._hint_surf = self.ctx.resources.text_surface(
             "Esc to quit and save progress",
-            self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL),
+            self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY),
             theme.COLOR_TEXT_MUTED,
         )
+        self._hint_pos = self._hint_surf.get_rect(
+            midleft=(60, FOOTER_RECT.centery)).topleft
 
         # HUD metrics are updated each frame; the renderer is cheap and drawing it
         # unconditionally avoids a one-frame clear/draw race under dirty-rect mode.
@@ -174,9 +195,20 @@ class LessonScene(Scene):
         self.keyboard.render(surface)
         self._render_target_text(surface)
 
-        surface.blit(self._hint_surf, (60, theme.SCREEN_HEIGHT - 40))
-        self.mark_dirty(pygame.Rect(60, theme.SCREEN_HEIGHT - 40,
-                                    self._hint_surf.get_width(), self._hint_surf.get_height()))
+        self._render_footer(surface)
+
+    def _render_footer(self, surface) -> None:
+        """A distinct band at the bottom holding the quit hint.
+
+        Drawn as a band with a top rule rather than floating text, so the keyboard
+        has an unambiguous boundary to sit above and the hint reads as chrome rather
+        than as part of the drill.
+        """
+        pygame.draw.rect(surface, theme.COLOR_CARD_BG, FOOTER_RECT)
+        pygame.draw.line(surface, theme.COLOR_LOCKED,
+                         FOOTER_RECT.topleft, FOOTER_RECT.topright, 2)
+        surface.blit(self._hint_surf, self._hint_pos)
+        self.mark_dirty(FOOTER_RECT)
 
     def _build_line_sprites(self) -> None:
         """Create a cached surface for every line in the pre-computed layout."""

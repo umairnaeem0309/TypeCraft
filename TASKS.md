@@ -44,6 +44,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | DONE (2026-07-30) | P1 |
 | TC-022 | Release acceptance on a clean Windows target | 7 | DONE (2026-07-30) | P1 |
 | TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
+| TC-024 | Playtest UI fixes: results colours, lesson spacing, reset wording, settings scale | 4 | DONE | P2 |
 
 ---
 
@@ -872,3 +873,40 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-D02 | Cross-machine leaderboard | Out of scope — offline only |
 | TC-D03 | Resizable window / fullscreen | Out of scope; fixed 1280×720 per FR-005 |
 | TC-D04 | Progress export/print for teachers | OQ-005 unresolved; backup = copy the DB |
+
+## TC-024 — Playtest UI fixes: results colours, lesson spacing, reset wording, settings scale
+- **Phase** 4 · **Status** DONE (2026-07-31) · **Priority** P2
+- **Requirements** FR-100…FR-104 (spacing), FR-104 (legibility), FR-125 (reset clarity),
+  FR-131 (settings presentation), NFR-006/§5 (child-appropriate sizing)
+- **Depends on** TC-015, TC-016, TC-013, TC-011
+- **Goal.** Four faults found by playing the running app, none of which an existing test could
+  have caught because they concern geometry and wording rather than behaviour.
+- **Scope and outcome.**
+  1. **Results buttons now colour-coded by intent.** Retry grey (`COLOR_NEUTRAL`), Continue
+     green (`COLOR_PRIMARY`), Leaderboard orange (`COLOR_WARNING`). They previously read as
+     three equally-weighted choices, with Retry the *most* prominent in primary green.
+  2. **Lesson screen re-flowed.** The keyboard overlapped the footer hint by exactly 5 px
+     (board 245 px tall from y=440 → 685; hint at 680). Geometry is now derived from
+     `theme.LAYOUT_FOOTER_HEIGHT`/`LAYOUT_FOOTER_MARGIN` and `KeyboardRenderer.size()`
+     instead of hand-picked, so it cannot drift: text 200–330, caption 355, keyboard 391–636,
+     footer band 656–720. The footer is a 64 px band with a top rule and body-sized text
+     (was a small-print line 40 px off the bottom).
+  3. **Reset confirmation reworded** to "Reset Amina's data?" — "Reset Amina?" read as though
+     the child were being deleted, when the profile is deliberately kept (FR-127).
+  4. **Settings rebuilt as two full-width cards** ("Sound", "Teacher PIN") spanning 1000 px of
+     the 1280 px window, with 60–64 px controls, a 560 px volume bar, a live percentage
+     readout, and helper text. It previously occupied a ~360 px centre strip.
+- **Found while fixing, and also fixed.** The space bar was 12 units flush-left, making the
+  board look lopsided — added `ROW_OFFSETS` so rows stagger like a real keyboard and the space
+  bar (6.5 units) sits under the letters. The caption read "use your **either thumb**"; the
+  thumb label is already a complete phrase, so it now takes no possessive.
+- **Checks.** `tests/scenes/test_layout_regressions.py` — 17 new tests asserting the button
+  colours are correct *and mutually distinct*, that no two lesson bands overlap (HUD → text →
+  keyboard → footer checked pairwise), that the caption clears the text area, that the footer
+  is a band and the hint sits inside it, that every settings control lies inside its own card
+  and is ≥ 50 px tall, and that all 20 lessons still fit the narrowed text area.
+- **Acceptance.** OK. **731 passing, 4 skipped, 0 failures.** Verified by rendering the Lesson,
+  Settings and Results screens to PNG and inspecting them, not by geometry alone — which is how
+  the lopsided space bar and the caption grammar were caught.
+- **Scope note.** All changes are in the development source. The release folder is regenerated
+  from it by `scripts/build_release.py`; no release artefact was edited by hand.

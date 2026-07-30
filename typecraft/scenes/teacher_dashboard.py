@@ -262,8 +262,10 @@ class TeacherDashboardScene(Scene):
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
 
+        # "Reset Amina?" reads as though the child is being removed. The thing being
+        # erased is their work, and the profile itself is kept, so say that.
         heading = self.ctx.resources.text_surface(
-            f"Reset {summary['name']}?", font_h, theme.COLOR_TEXT)
+            f"Reset {summary['name']}'s data?", font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(panel.centerx, panel.y + 45)))
 
         for i, line in enumerate((

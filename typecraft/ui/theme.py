@@ -8,6 +8,13 @@ FPS = 30
 LAYOUT_TITLE_Y = 70
 LAYOUT_SUBTITLE_Y = 110
 
+#: Height of the footer band at the bottom of a screen. Tall enough for body-sized
+#: text with breathing room — the hint used to be a small line 40 px from the
+#: bottom, which the keyboard then overlapped by 5 px.
+LAYOUT_FOOTER_HEIGHT = 64
+#: Clear space kept between the keyboard and the footer band.
+LAYOUT_FOOTER_MARGIN = 20
+
 COLOR_BG = (245, 247, 250)
 COLOR_TEXT = (30, 30, 40)
 COLOR_TEXT_MUTED = (120, 125, 135)
