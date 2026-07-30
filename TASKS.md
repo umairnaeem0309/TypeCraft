@@ -8,11 +8,11 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 21 DONE, 0 IN_PROGRESS, 6 TODO. **Open P0: 0 — every
+**Summary:** 27 tasks — 22 DONE, 0 IN_PROGRESS, 5 TODO. **Open P0: 0 — every
 data-loss-class defect is closed. No open security defects.**
-Remaining: TC-017 + TC-023 (P2 polish), TC-018 (performance), TC-020/TC-021/TC-022 (release).
+Remaining: TC-023 (P2 polish), TC-018 (performance), TC-020/TC-021/TC-022 (release).
 **Phases 1, 2 and 3 complete.**
-Test suite: **697 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
+Test suite: **706 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -37,7 +37,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-014 | Classroom-scale scrolling for profiles, lessons, dashboard | 4 | DONE | P1 |
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | DONE | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | DONE | P1 |
-| TC-017 | Assets, logging, and graceful fallbacks | 4 | TODO | P2 |
+| TC-017 | Assets, logging, and graceful fallbacks | 4 | DONE (2026-07-30) | P2 |
 | TC-018 | Measured dirty-rect rendering and bounded caches | 6 | TODO | P1 |
 | TC-019 | Full application smoke tests | 6 | DONE | P1 |
 | TC-020 | PyInstaller spec and release build | 7 | TODO | P1 |
@@ -704,7 +704,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   teacher's longer edit that would clip fails the suite by name.
 
 ## TC-017 — Assets, logging, and graceful fallbacks
-- **Phase** 4 · **Status** TODO · **Priority** P2
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P2
 - **Requirements** FR-024, FR-134, NFR-013, AS-03, AS-06, OQ-003
 - **Depends on** TC-004, TC-015
 - **Goal.** `assets/` does not exist, so any `ResourceManager.image()`/`sound()` call would
@@ -720,7 +720,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Checks.** With `assets/` deliberately emptied, every scene still renders and one log line
   per missing asset is written; with no audio device, `play()` is a silent no-op; a licence
   note exists for every bundled asset.
-- **Acceptance.** No missing asset can crash the app; FR-024/FR-134 have a visible channel.
+- **Acceptance.** ✅ Met. **706 passing, 4 skipped, 1 xfail.** Generated 4 placeholder avatar PNGs and 4 WAV sound cues; `ResourceManager.image()`/`font()`/`sound()` return a placeholder surface / default font / silent stub and log once on a miss; `AudioManager.play()` is wired into LessonScene keystrokes, completion and badge awards; a `NoticeBar` renders startup notices in every scene and is dismissible by click. Added `tests/unit/test_resource_fallbacks.py` and a callback test in `tests/db/test_badges.py`. Defects D-21 closed; D-22 logging call-sites now present for missing assets. Asset provenance and regeneration steps documented in `typecraft/assets/README.md`.
 
 ## TC-018 — Measured dirty-rect rendering and bounded caches
 - **Phase** 6 · **Status** TODO · **Priority** P1

@@ -13,6 +13,7 @@ from typecraft.core.app_context import AppContext
 from typecraft.core.logging_setup import get_logger
 from typecraft.core.state_manager import GameStateManager
 from typecraft.ui import theme
+from typecraft.ui.notice import NoticeBar
 
 
 def build_state_manager(ctx) -> GameStateManager:
@@ -63,6 +64,7 @@ class Game:
         self.ctx = AppContext()
         self.states = build_state_manager(self.ctx)
         self.states.change("main_menu")
+        self.notice_bar = NoticeBar(self.ctx)
 
         self.running = True
 
@@ -79,6 +81,10 @@ class Game:
             if event.type == pygame.QUIT:
                 self._request_quit()
                 return
+            # Let the notice bar see clicks first so a warning strip can be
+            # dismissed even if a scene button sits underneath it.
+            if self.notice_bar.handle_event(event):
+                continue
             self.states.handle_event(event)
 
     def _update(self, dt: float) -> None:
@@ -87,6 +93,7 @@ class Game:
     def _render(self) -> None:
         self.screen.fill(theme.COLOR_BG)
         self.states.render(self.screen)
+        self.notice_bar.render(self.screen)
         pygame.display.flip()
 
     def _request_quit(self) -> None:

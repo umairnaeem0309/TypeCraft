@@ -37,7 +37,8 @@ class AppContext:
         self.badges = BadgeManager(self.db, self.lessons)
         self.streak = StreakManager(self.db)
         self.progression = ProgressionService(
-            self.db, self.lessons, self.badges, self.streak, self.profiles
+            self.db, self.lessons, self.badges, self.streak, self.profiles,
+            on_badge_awarded=lambda: self.audio.play("badge.wav"),
         )
 
         self.active_profile = None
