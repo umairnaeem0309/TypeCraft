@@ -12,8 +12,8 @@ class MainMenuScene(Scene):
         self._showing_quit_popup = False
 
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 420, 64, 24
-        start_y = 250  # anchor below the larger title/subtitle
+        w, h, gap = 520, 72, 26
+        start_y = 240  # anchor below the larger title/subtitle
 
         # Buttons are arranged in the order requested by users.
         self.widgets = [
@@ -35,8 +35,8 @@ class MainMenuScene(Scene):
         ]
 
         # Quit confirmation popup buttons.
-        btn_w, btn_h = 140, 48
-        popup_y = theme.SCREEN_HEIGHT // 2 + 30
+        btn_w, btn_h = 160, 54
+        popup_y = theme.SCREEN_HEIGHT // 2 + 40
         self.yes_button = Button(
             pygame.Rect(cx - btn_w - 20, popup_y, btn_w, btn_h), "Yes",
             self._confirm_quit, self.ctx.resources, bg_color=theme.COLOR_ERROR)
@@ -80,15 +80,15 @@ class MainMenuScene(Scene):
 
     def render(self, surface) -> None:
         # Use a larger title to fill the empty top space.
-        font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE + 16)
+        font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE + 12)
         title = self.ctx.resources.text_surface("TypeCraft", font, theme.COLOR_PRIMARY_DARK)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 130)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 110)))
 
         # Subtitle
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         subtitle = self.ctx.resources.text_surface(
             "Learn to type, one key at a time", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 200)))
+        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 170)))
 
         for w in self.widgets:
             w.render(surface)

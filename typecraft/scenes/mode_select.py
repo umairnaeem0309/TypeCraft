@@ -18,7 +18,7 @@ class ModeSelectScene(Scene):
     def on_enter(self, lesson=None, **kwargs) -> None:
         self.lesson = lesson
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 420, 64, 24
+        w, h, gap = 520, 72, 26
         start_y = 280
 
         # Give every mode a distinct color so no two look the same.
@@ -33,7 +33,7 @@ class ModeSelectScene(Scene):
             self.mode_buttons.append(btn)
 
         self.back_button = Button(
-            pygame.Rect(20, 20, 100, 44), "Back",
+            pygame.Rect(20, 20, 120, 50), "Back",
             lambda: self.ctx.states.change("lesson_select"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
@@ -54,18 +54,18 @@ class ModeSelectScene(Scene):
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         heading = self.ctx.resources.text_surface(self.lesson.title, font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 140)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 120)))
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface("Choose a typing mode", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 195)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 180)))
 
         # Draw a subtle panel behind the mode buttons.
         if self.mode_buttons:
             pad = 28
             top = self.mode_buttons[0].rect.top - pad
             bottom = self.mode_buttons[-1].rect.bottom + pad
-            panel = pygame.Rect(theme.SCREEN_WIDTH // 2 - 240, top, 480, bottom - top)
+            panel = pygame.Rect(theme.SCREEN_WIDTH // 2 - 280, top, 560, bottom - top)
             pygame.draw.rect(surface, theme.COLOR_CARD_BG, panel, border_radius=16)
             pygame.draw.rect(surface, theme.COLOR_LOCKED, panel, width=2, border_radius=16)
 

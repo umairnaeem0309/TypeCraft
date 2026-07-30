@@ -17,13 +17,13 @@ class LeaderboardScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.tab = TAB_WPM
         self.back_button = Button(
-            pygame.Rect(20, 20, 100, 44), "Back",
+            pygame.Rect(20, 20, 120, 50), "Back",
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 210, 150, 200, 46),
+        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 250, 170, 240, 54),
                                    "Top Net WPM", lambda: self._set_tab(TAB_WPM), self.ctx.resources)
-        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 150, 200, 46),
+        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 170, 240, 54),
                                    "Top Accuracy", lambda: self._set_tab(TAB_ACCURACY),
                                    self.ctx.resources, bg_color=theme.COLOR_ACCENT)
         self._load_rows()
@@ -63,17 +63,17 @@ class LeaderboardScene(Scene):
         self.back_button.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        y = 210
+        y = 240
         row_height = 42
-        row_gap = 4
+        row_gap = 2
         unit = "wpm" if self.tab == TAB_WPM else "%"
         for i, row in enumerate(self.rows, start=1):
-            row_rect = pygame.Rect(theme.SCREEN_WIDTH // 2 - 360, y - 6, 720, row_height)
+            row_rect = pygame.Rect(theme.SCREEN_WIDTH // 2 - 380, y - 6, 760, row_height)
             if i % 2 == 0:
                 pygame.draw.rect(surface, (240, 242, 245), row_rect, border_radius=10)
             line = f"{i}. {row['name']} — {row['score']:.0f} {unit}"
             surf = self.ctx.resources.text_surface(line, font_body, theme.COLOR_TEXT)
-            surface.blit(surf, (row_rect.x + 24, row_rect.centery - surf.get_height() // 2))
+            surface.blit(surf, (row_rect.x + 28, row_rect.centery - surf.get_height() // 2))
             y += row_height + row_gap
 
         if not self.rows:
@@ -88,4 +88,4 @@ class LeaderboardScene(Scene):
             "Best score per student, completed lessons only. Equal scores: longest-joined first.",
             font_small, theme.COLOR_TEXT_MUTED)
         surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                 theme.SCREEN_HEIGHT - 40)))
+                                                 theme.SCREEN_HEIGHT - 30)))

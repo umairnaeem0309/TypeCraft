@@ -14,14 +14,14 @@ AVATARS = ["avatar_fox", "avatar_owl", "avatar_cat", "avatar_bear"]
 class ProfileSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profiles = self.ctx.profiles.list_all()
-        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 150, 550, 300, 44),
+        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 170, 560, 340, 52),
                                      self.ctx.resources, placeholder="New student name")
         self.create_button = Button(
-            pygame.Rect(theme.SCREEN_WIDTH // 2 - 90, 610, 180, 46),
+            pygame.Rect(theme.SCREEN_WIDTH // 2 - 110, 630, 220, 54),
             "Create Profile", self._create_profile, self.ctx.resources,
         )
         self.back_button = Button(
-            pygame.Rect(20, 20, 100, 44), "Back",
+            pygame.Rect(20, 20, 120, 50), "Back",
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )

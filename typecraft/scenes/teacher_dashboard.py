@@ -8,20 +8,20 @@ from typecraft.ui.button import Button
 from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
-ROW_HEIGHT = 44
-FIRST_ROW_Y = 170
+ROW_HEIGHT = 52
+FIRST_ROW_Y = 180
 
 #: Column layout: (heading, x, key, formatter). One place to change the table.
 COLUMNS = [
     ("Student", 60, "name", lambda v: str(v)),
-    ("Lvl", 300, "level", lambda v: str(v)),
-    ("XP", 350, "total_xp", lambda v: str(v)),
+    ("Lvl", 280, "level", lambda v: str(v)),
+    ("XP", 340, "total_xp", lambda v: str(v)),
     ("Avg WPM", 420, "avg_wpm_net", lambda v: "—" if v is None else f"{v:.0f}"),
     ("Avg Acc", 520, "avg_accuracy", lambda v: "—" if v is None else f"{v:.0f}%"),
     ("Lessons", 620, "lessons_completed", lambda v: str(v)),
     ("Badges", 720, "badge_count", lambda v: str(v)),
     ("Streak", 810, "current_streak", lambda v: f"{v}d"),
-    ("Best", 880, "longest_streak", lambda v: f"{v}d"),
+    ("Best", 890, "longest_streak", lambda v: f"{v}d"),
 ]
 
 
@@ -32,18 +32,18 @@ class TeacherDashboardScene(Scene):
         #: The student awaiting reset confirmation, or None. Reset is destructive and
         #: irreversible, so it never happens on a single click (FR-125).
         self.pending_reset = None
-        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 460))
+        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 430))
         self._build_pin_widgets()
         self._build_dashboard_widgets()
 
     def _build_pin_widgets(self) -> None:
         cx = theme.SCREEN_WIDTH // 2
-        self.pin_input = TextInput(pygame.Rect(cx - 100, 300, 200, 44), self.ctx.resources,
+        self.pin_input = TextInput(pygame.Rect(cx - 140, 280, 280, 52), self.ctx.resources,
                                     placeholder="Enter PIN", max_length=4, is_password=True,
                                     on_submit=self._try_pin)
-        self.submit_button = Button(pygame.Rect(cx - 90, 360, 180, 46), "Unlock",
+        self.submit_button = Button(pygame.Rect(cx - 110, 350, 220, 54), "Unlock",
                                      self._try_pin, self.ctx.resources)
-        self.back_button = Button(pygame.Rect(20, 20, 100, 44), "Back",
+        self.back_button = Button(pygame.Rect(20, 20, 120, 50), "Back",
                                    lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
                                    bg_color=theme.COLOR_TEXT_MUTED)
 
@@ -59,7 +59,7 @@ class TeacherDashboardScene(Scene):
 
         y = 0
         for summary in self.summaries:
-            rect = pygame.Rect(theme.SCREEN_WIDTH - 180, y - 4, 120, 32)
+            rect = pygame.Rect(theme.SCREEN_WIDTH - 200, y - 4, 150, 44)
             self.reset_buttons.append((summary, Button(
                 rect, "Reset", lambda s=summary: self._ask_reset(s),
                 self.ctx.resources, bg_color=theme.COLOR_ERROR,
