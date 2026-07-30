@@ -7,6 +7,9 @@ active scene through GameStateManager. Uses dirty-rect display updates
 (§5.1) rather than a full-screen flip().
 """
 
+import time
+from typing import List
+
 import pygame
 
 from typecraft.core.app_context import AppContext
@@ -55,7 +58,8 @@ def build_state_manager(ctx) -> GameStateManager:
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, *, full_repaint: bool = False, profile: bool = False,
+                 profile_path: str = "typecraft_profile.csv"):
         pygame.init()
         self.screen = pygame.display.set_mode((theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT))
         pygame.display.set_caption("TypeCraft")
@@ -67,14 +71,48 @@ class Game:
         self.notice_bar = NoticeBar(self.ctx)
 
         self.running = True
+        self.full_repaint = full_repaint
+        self.profile = profile
+        self._profile_file = profile_path
+        self._profile_handle = None
 
     def run(self) -> None:
-        while self.running:
-            dt = self.clock.tick(theme.FPS) / 1000.0
-            self._process_events()
-            self._update(dt)
-            self._render()
+        self._maybe_open_profile()
+        try:
+            while self.running:
+                dt = self.clock.tick(theme.FPS) / 1000.0
+                t0 = time.perf_counter()
+                self._process_events()
+                t1 = time.perf_counter()
+                self._update(dt)
+                t2 = time.perf_counter()
+                self._render()
+                t3 = time.perf_counter()
+                self._profile_row(t1 - t0, t2 - t1, t3 - t2)
+        finally:
+            self._maybe_close_profile()
         self._shutdown()
+
+    def _maybe_open_profile(self) -> None:
+        if not self.profile:
+            return
+        handle = open(self._profile_file, "w", newline="", encoding="utf-8")
+        handle.write("events_ms,update_ms,render_ms,dirty_rect_count\n")
+        self._profile_handle = handle
+
+    def _maybe_close_profile(self) -> None:
+        if self._profile_handle is not None:
+            self._profile_handle.close()
+            self._profile_handle = None
+
+    def _profile_row(self, events_sec: float, update_sec: float, render_sec: float) -> None:
+        if self._profile_handle is None:
+            return
+        scene = self.states.current
+        dirty_count = len(scene.dirty_rects) if scene else 0
+        self._profile_handle.write(
+            f"{events_sec * 1000:.3f},{update_sec * 1000:.3f},"
+            f"{render_sec * 1000:.3f},{dirty_count}\n")
 
     def _process_events(self) -> None:
         for event in pygame.event.get():
@@ -91,10 +129,32 @@ class Game:
         self.states.update(dt)
 
     def _render(self) -> None:
-        self.screen.fill(theme.COLOR_BG)
-        self.states.render(self.screen)
-        self.notice_bar.render(self.screen)
-        pygame.display.flip()
+        scene = self.states.current
+        if self.full_repaint:
+            self.screen.fill(theme.COLOR_BG)
+            self.states.render(self.screen)
+            self.notice_bar.render(self.screen)
+            pygame.display.flip()
+        else:
+            dirty = self._collect_dirty_rects(scene)
+            # Clear changed areas before redrawing so moving objects don't leave trails.
+            for rect in dirty:
+                self.screen.fill(theme.COLOR_BG, rect)
+            self.states.render(self.screen)
+            self.notice_bar.render(self.screen)
+            if dirty:
+                pygame.display.update(dirty)
+            # Next frame starts clean.
+            scene.dirty_rects.clear()
+            self.notice_bar.dirty_rects.clear()
+
+    def _collect_dirty_rects(self, scene) -> List[pygame.Rect]:
+        """Merge scene and notice-bar dirty rects, defaulting to full screen."""
+        rects = list(scene.dirty_rects)
+        rects.extend(self.notice_bar.dirty_rects)
+        if not rects:
+            rects = [pygame.Rect(0, 0, theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT)]
+        return rects
 
     def _request_quit(self) -> None:
         """Window close: give the active scene a chance to save before we stop.

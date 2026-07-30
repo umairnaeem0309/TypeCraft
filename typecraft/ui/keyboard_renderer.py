@@ -142,6 +142,7 @@ class KeyboardRenderer:
         self._active_shift = None
         self._active_finger = None
         self._expected_char = None
+        self._caption_surf = None
 
     # --- geometry ----------------------------------------------------------
 
@@ -191,11 +192,13 @@ class KeyboardRenderer:
 
         if entry is None:
             self._active_key = self._active_shift = self._active_finger = None
+            self._caption_surf = None
             return
 
         self._active_key = entry[0]
         self._active_shift = shift_side_for(char)
         self._active_finger = finger_for(char)
+        self._caption_surf = None
 
     #: Kept so any older call site still works; guidance is what matters now.
     def highlight(self, key, finger=None) -> None:
@@ -204,6 +207,15 @@ class KeyboardRenderer:
     @property
     def expected_finger_label(self):
         return FINGER_LABELS.get(self._active_finger)
+
+    def dirty_rect(self) -> pygame.Rect:
+        """Rectangle covering the keyboard body plus the caption drawn above it.
+
+        Used by LessonScene to mark the right region dirty when guidance changes.
+        """
+        width, height = self.size()
+        y = max(0, self.origin[1] - theme.FONT_SIZE_BODY - 8)
+        return pygame.Rect(self.origin[0], y, width, height + self.origin[1] - y)
 
     @property
     def active_keys(self):
@@ -229,13 +241,15 @@ class KeyboardRenderer:
         if self._active_finger is None:
             return
 
-        font = self.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        shown = "Space" if self._expected_char == " " else self._expected_char
-        parts = [f"Next: {shown}", f"use your {self.expected_finger_label}"]
-        if self._active_shift:
-            side = "right" if self._active_shift == "RSHIFT" else "left"
-            parts.append(f"hold {side} Shift")
+        if self._caption_surf is None:
+            font = self.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+            shown = "Space" if self._expected_char == " " else self._expected_char
+            parts = [f"Next: {shown}", f"use your {self.expected_finger_label}"]
+            if self._active_shift:
+                side = "right" if self._active_shift == "RSHIFT" else "left"
+                parts.append(f"hold {side} Shift")
+            self._caption_surf = self.resources.text_surface(
+                " - ".join(parts), font, theme.COLOR_TEXT)
 
-        text = self.resources.text_surface(" - ".join(parts), font, theme.COLOR_TEXT)
         y = max(0, self.origin[1] - theme.FONT_SIZE_BODY - 8)
-        surface.blit(text, text.get_rect(midleft=(self.origin[0], y)))
+        surface.blit(self._caption_surf, self._caption_surf.get_rect(midleft=(self.origin[0], y)))

@@ -8,6 +8,7 @@ cache rendered text surfaces keyed by (text, font_id, colour) so re-typed
 text isn't re-rasterised every frame (§5.2).
 """
 
+from collections import OrderedDict
 from typing import Union
 
 import pygame
@@ -28,11 +29,15 @@ class _SilentSound:
 
 
 class ResourceManager:
+    #: Maximum number of rendered text surfaces to keep in memory. Bound so a
+    #: long classroom session cannot grow the cache without limit (NFR-014).
+    MAX_TEXT_CACHE = 512
+
     def __init__(self):
         self._images = {}
         self._fonts = {}
         self._sounds = {}
-        self._text_cache = {}
+        self._text_cache = OrderedDict()
         # Tracks missing assets so the warning is logged once per process rather
         # than once per frame.
         self._missing = set()
@@ -98,9 +103,14 @@ class ResourceManager:
 
     def text_surface(self, text: str, font: pygame.font.Font, color) -> pygame.Surface:
         key = (text, id(font), tuple(color))
-        if key not in self._text_cache:
-            self._text_cache[key] = font.render(text, True, color).convert_alpha()
-        return self._text_cache[key]
+        if key in self._text_cache:
+            self._text_cache.move_to_end(key)
+            return self._text_cache[key]
+        surf = font.render(text, True, color).convert_alpha()
+        self._text_cache[key] = surf
+        while len(self._text_cache) > self.MAX_TEXT_CACHE:
+            self._text_cache.popitem(last=False)
+        return surf
 
     def clear_text_cache(self) -> None:
         """Call on scene exit if a scene generated a huge number of one-off

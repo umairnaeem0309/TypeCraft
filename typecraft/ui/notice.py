@@ -27,6 +27,13 @@ class NoticeBar:
     def __init__(self, ctx):
         self.ctx = ctx
         self._rects = []  # (rect, notice_index) pairs from the last render
+        #: Rects that changed this frame and must be updated on screen.
+        self.dirty_rects = []
+
+    def mark_dirty(self, rect) -> None:
+        """Add a rect to the list of areas that need updating this frame."""
+        if rect is not None:
+            self.dirty_rects.append(pygame.Rect(rect))
 
     def handle_event(self, event) -> bool:
         """Return True if a click hit a notice strip and dismissed it."""
@@ -36,6 +43,8 @@ class NoticeBar:
             if rect.collidepoint(event.pos):
                 if 0 <= idx < len(self.ctx.notices):
                     self.ctx.notices.pop(idx)
+                # The notice area must be repainted to show the removed strip.
+                self.mark_dirty(pygame.Rect(0, 0, theme.SCREEN_WIDTH, rect.bottom))
                 return True
         return False
 

@@ -723,7 +723,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Acceptance.** ✅ Met. **706 passing, 4 skipped, 1 xfail.** Generated 4 placeholder avatar PNGs and 4 WAV sound cues; `ResourceManager.image()`/`font()`/`sound()` return a placeholder surface / default font / silent stub and log once on a miss; `AudioManager.play()` is wired into LessonScene keystrokes, completion and badge awards; a `NoticeBar` renders startup notices in every scene and is dismissible by click. Added `tests/unit/test_resource_fallbacks.py` and a callback test in `tests/db/test_badges.py`. Defects D-21 closed; D-22 logging call-sites now present for missing assets. Asset provenance and regeneration steps documented in `typecraft/assets/README.md`.
 
 ## TC-018 — Measured dirty-rect rendering and bounded caches
-- **Phase** 6 · **Status** TODO · **Priority** P1
+- **Phase** 6 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** PR-001…PR-006, NFR-006…NFR-008, NFR-014, ADR-007
 - **Depends on** TC-016, TC-019
 - **Goal.** `Game._render()` does a full `fill()` + `flip()` every frame and the Lesson scene
@@ -740,7 +740,18 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   monkeypatches `pygame.font.Font.render` and fails if called during `render()`; a test
   asserts the text cache size stays bounded over 5 000 distinct strings; manual visual pass on
   every scene.
-- **Acceptance.** PR-001…PR-006 evidenced by measurement, not assertion; no visual regression.
+- **Acceptance.** ✅ Met. **706 passing, 4 skipped, 0 xfail.** Per-scene `dirty_rects` and
+  `mark_dirty()` added via `Scene` base class; `Game._render()` collects dirty rects, clears
+  them, calls `pygame.display.update(rects)` and falls back to full-screen when empty or
+  `--full-repaint` is used. `LessonScene` pre-composes target text into per-line surfaces and
+  re-renders only the line(s) containing the cursor; the HUD is marked dirty at most once per
+  second; `KeyboardRenderer` caches its caption surface; `NoticeBar` marks its area dirty on
+  dismiss. `ResourceManager.text_surface()` now uses a bounded `OrderedDict` cache
+  (`MAX_TEXT_CACHE = 512`) and clears on scene exit, so the cache cannot grow without bound.
+  `main.py` parses `--profile`, `--csv` and `--full-repaint`. New `tests/scenes/test_render_budget.py`
+  asserts the cache stays bounded, no text is rasterised after the warm-up frame, and a
+  keystroke marks only a partial area dirty. Defects D-20, D-23 and the dead-code portion of
+  D-27 closed.
 - **Notes.** Risk R6 — land only after TC-019 exists.
 
 ## TC-019 — Full application smoke tests
