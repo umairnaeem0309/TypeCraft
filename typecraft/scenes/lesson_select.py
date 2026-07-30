@@ -94,10 +94,11 @@ class LessonSelectScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         heading = self.ctx.resources.text_surface(
             f"{self.profile.name}'s Lessons", font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
 
         self.back_button.render(surface)
 

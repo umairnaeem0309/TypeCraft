@@ -33,6 +33,9 @@ class ResultsScene(Scene):
                    bg_color=theme.COLOR_NEUTRAL),
         ]
         self.stars = StarRating(pygame.Rect(cx - 100, 250, 200, 60), stars=attempt.stars)
+        # Italic font for the bottom encouragement message.
+        self._message_font = pygame.font.Font(None, theme.FONT_SIZE_BODY)
+        self._message_font.set_italic(True)
 
     def _retry(self) -> None:
         self.ctx.states.change("mode_select", lesson=self.lesson)
@@ -65,10 +68,10 @@ class ResultsScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         title = "Lesson Complete!" if self.attempt.accuracy >= 85 else "Keep Practising!"
         title_surf = self.ctx.resources.text_surface(title, font_h, theme.COLOR_TEXT)
-        surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 100)))
+        surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 53)))
 
         self.stars.render(surface)
 
@@ -98,9 +101,9 @@ class ResultsScene(Scene):
             value_surf = self.ctx.resources.text_surface(value, value_font, theme.COLOR_PRIMARY_DARK)
             surface.blit(value_surf, value_surf.get_rect(center=(rect.centerx, rect.y + 58)))
 
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        msg_surf = self.ctx.resources.text_surface(self.message, font_small, theme.COLOR_PRIMARY_DARK)
-        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 575)))
+        msg_surf = self.ctx.resources.text_surface(self.message, self._message_font, theme.COLOR_PRIMARY_DARK)
+        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                          theme.SCREEN_HEIGHT - 30)))
 
         for btn in self.buttons:
             btn.render(surface)

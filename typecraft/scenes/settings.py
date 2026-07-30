@@ -82,9 +82,10 @@ class SettingsScene(Scene):
         self.pin_input.update(dt)
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         title = self.ctx.resources.text_surface("Settings", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
 
         self.back_button.render(surface)
         self.volume_bar.render(surface)

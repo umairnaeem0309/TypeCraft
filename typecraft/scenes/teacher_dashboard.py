@@ -33,6 +33,11 @@ class TeacherDashboardScene(Scene):
         #: irreversible, so it never happens on a single click (FR-125).
         self.pending_reset = None
         self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 430))
+        # Reusable italic fonts for consistent page subtitles and bottom notes.
+        self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
+        self._subtitle_font.set_italic(True)
+        self._note_font = pygame.font.Font(None, theme.FONT_SIZE_BODY)
+        self._note_font.set_italic(True)
         self._build_pin_widgets()
         self._build_dashboard_widgets()
 
@@ -174,12 +179,13 @@ class TeacherDashboardScene(Scene):
             self.pin_input.update(dt)
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
 
         if not self.authenticated:
             self.back_button.render(surface)
             title = self.ctx.resources.text_surface("Teacher PIN", font_h, theme.COLOR_TEXT)
-            surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 200)))
+            surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                         self.back_button.rect.centery + 8)))
             self.pin_input.render(surface)
             self.submit_button.render(surface)
             if self.error:
@@ -190,12 +196,12 @@ class TeacherDashboardScene(Scene):
 
         self.back_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
 
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface(
-            "Tap a student row to reset their progress", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_SUBTITLE_Y)))
+            "Tap a student row to reset their progress", self._subtitle_font, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
 
         self._render_table(surface)
 
@@ -238,8 +244,9 @@ class TeacherDashboardScene(Scene):
         # finished yet", which is different from zero (FR-123).
         note = self.ctx.resources.text_surface(
             "Averages use completed lessons only. — means nothing finished yet.",
-            font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(note, (60, theme.SCREEN_HEIGHT - 36))
+            self._note_font, theme.COLOR_TEXT_MUTED)
+        surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                 theme.SCREEN_HEIGHT - 30)))
 
     def _render_confirmation(self, surface) -> None:
         summary = self.pending_reset

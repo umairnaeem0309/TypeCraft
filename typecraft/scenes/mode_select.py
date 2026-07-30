@@ -37,6 +37,9 @@ class ModeSelectScene(Scene):
             lambda: self.ctx.states.change("lesson_select"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
+        # Reusable italic font for the page subtitle.
+        self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
+        self._subtitle_font.set_italic(True)
 
     def _select_mode(self, mode_key: str) -> None:
         self.ctx.states.change("lesson", lesson=self.lesson, mode_key=mode_key)
@@ -52,13 +55,13 @@ class ModeSelectScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         heading = self.ctx.resources.text_surface(self.lesson.title, font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 120)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
 
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
-        sub = self.ctx.resources.text_surface("Choose a typing mode", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 180)))
+        sub = self.ctx.resources.text_surface("Choose a typing mode", self._subtitle_font, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
 
         # Draw a subtle panel behind the mode buttons.
         if self.mode_buttons:
