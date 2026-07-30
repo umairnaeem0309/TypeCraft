@@ -1,0 +1,22 @@
+{
+  "encourage_low": [
+    "Nice try! Let's practice this one again.",
+    "Good effort — every attempt makes you better.",
+    "Keep going, you're learning the keys!"
+  ],
+  "encourage_mid": [
+    "Well done, you passed!",
+    "Great job — your fingers are learning!",
+    "You did it! On to the next one."
+  ],
+  "encourage_high": [
+    "Awesome typing! You're getting fast!",
+    "Excellent work, keep it up!",
+    "Really strong lesson — nice job!"
+  ],
+  "encourage_perfect": [
+    "Perfect! Not a single mistake!",
+    "Flawless! You're a typing star!",
+    "100%! Amazing work!"
+  ]
+}

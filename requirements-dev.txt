@@ -1,0 +1,18 @@
+# TypeCraft development dependencies: test suite + release build.
+#
+# Not needed on a school machine — the packaged build in dist/TypeCraft/ has no
+# Python dependency at all (PK-005). Install these only to develop or release.
+
+-r requirements.txt
+
+# Test suite (AC-02).
+pytest>=8.0,<9.0
+pytest-cov>=5.0
+
+# Property-based tests for the keystroke-accounting invariants FR-043/044/045,
+# which are the hardest thing in the project to cover with hand-written cases.
+hypothesis>=6.100
+
+# Release build (PK-001). Pinned to 6.x: the onedir layout and the
+# sys._MEIPASS contract that core/paths.py depends on are 6.x behaviour.
+pyinstaller>=6.3,<7.0

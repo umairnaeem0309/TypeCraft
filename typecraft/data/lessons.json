@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "tiers": [
+    {
+      "tier": 1, "name": "Home Row", "color": "#4CAF50",
+      "lessons": [
+        {"id": "t1l1", "order": 1, "title": "Home Row: f and j", "finger_focus": ["left_index", "right_index"], "default_mode": "lock_on_error", "target_wpm": 8, "lines": ["fff jjj fff jjj", "fj fj jf jf fjfj", "jff jjf fjj fff"]},
+        {"id": "t1l2", "order": 2, "title": "Home Row: d and k", "finger_focus": ["left_middle", "right_middle"], "default_mode": "lock_on_error", "target_wpm": 8, "lines": ["ddd kkk ddd kkk", "dk dk kd kd dkdk", "dkk dkd kdd ddd"]},
+        {"id": "t1l3", "order": 3, "title": "Home Row: a s d f j k l ;", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "lock_on_error", "target_wpm": 10, "lines": ["asdf jkl; asdf jkl;", "a sad lad asks dad", "all fall; a flask"]},
+        {"id": "t1l4", "order": 4, "title": "Home Row Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "lock_on_error", "target_wpm": 10, "lines": ["ask a lad; add a flask", "sad dad falls; a jak", "salad flask jak all"]}
+      ]
+    },
+    {
+      "tier": 2, "name": "Top Row", "color": "#2196F3",
+      "lessons": [
+        {"id": "t2l1", "order": 5, "title": "Top Row: q w e r t y", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index"], "default_mode": "backspace", "target_wpm": 12, "lines": ["qwe rty qwe rty", "we try to write", "type the query quietly"]},
+        {"id": "t2l2", "order": 6, "title": "Top Row: u i o p", "finger_focus": ["right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 12, "lines": ["uio p uio p", "our pupil quit", "you type it up"]},
+        {"id": "t2l3", "order": 7, "title": "Top Row Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 14, "lines": ["water your quiet pet", "we wrote our story", "the query typed out true"]},
+        {"id": "t2l4", "order": 8, "title": "Home + Top Row Mix", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 14, "lines": ["your quiet dad asks all", "we type stories together", "just add a little salt"]}
+      ]
+    },
+    {
+      "tier": 3, "name": "Bottom Row", "color": "#FF9800",
+      "lessons": [
+        {"id": "t3l1", "order": 9, "title": "Bottom Row: z x c v", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index"], "default_mode": "backspace", "target_wpm": 14, "lines": ["zxc v zxc v", "a lazy cat can zoom", "vex a fox next"]},
+        {"id": "t3l2", "order": 10, "title": "Bottom Row: b n m", "finger_focus": ["left_index", "right_index", "right_index"], "default_mode": "backspace", "target_wpm": 14, "lines": ["bnm bnm bnm", "many men can jump", "a numb thumb bends"]},
+        {"id": "t3l3", "order": 11, "title": "Full Alphabet Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["every zebra can jump quickly", "many black cats nap by day", "next week we visit our town"]},
+        {"id": "t3l4", "order": 12, "title": "Sentences I", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["the quick fox runs by the barn", "we planted seeds in our garden", "birds sing softly at dawn"]}
+      ]
+    },
+    {
+      "tier": 4, "name": "Capitals & Punctuation", "color": "#9C27B0",
+      "lessons": [
+        {"id": "t4l1", "order": 13, "title": "Shift Keys: Capitals", "finger_focus": ["left_pinky", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["My Name Is Sam", "The Sun Is Bright Today", "We Live In Karachi"]},
+        {"id": "t4l2", "order": 14, "title": "Commas and Periods", "finger_focus": ["right_middle", "right_ring"], "default_mode": "backspace", "target_wpm": 16, "lines": ["I like apples, pears, and plums.", "First we run, then we jump.", "She reads, writes, and draws."]},
+        {"id": "t4l3", "order": 15, "title": "Full Sentences", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 18, "lines": ["The Bridge School has bright, curious students.", "We practice typing every single day.", "Good habits build strong, lasting skills."]},
+        {"id": "t4l4", "order": 16, "title": "Question Practice", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 18, "lines": ["Where did you put my book?", "Why is the sky so blue today?", "Who wants to play outside?"]}
+      ]
+    },
+    {
+      "tier": 5, "name": "Speed & Fluency", "color": "#F44336",
+      "lessons": [
+        {"id": "t5l1", "order": 17, "title": "Speed Drill I", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 22, "lines": ["Practice makes progress, not perfection.", "Every keystroke builds a stronger habit.", "Speed comes naturally after accuracy."]},
+        {"id": "t5l2", "order": 18, "title": "Speed Drill II", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 24, "lines": ["Reading and typing go hand in hand.", "Focus on the words, not the keys.", "Small daily practice adds up quickly."]},
+        {"id": "t5l3", "order": 19, "title": "Paragraph Challenge", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 26, "lines": ["Learning to type well takes patience and practice.", "Each lesson adds a new skill to your fingers.", "Soon you will type without even looking down."]},
+        {"id": "t5l4", "order": 20, "title": "Final Challenge", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 30, "lines": ["Congratulations on reaching the final lesson.", "You have worked hard to build this skill.", "Keep practicing and your speed will keep growing."]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# Normalise line endings so a Windows checkout cannot produce whole-file diffs
+# (defect D-28: core.autocrlf was rewriting LF to CRLF on every git operation).
+* text=auto eol=lf
+
+# Binary / generated — never diffed or line-ending-converted.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.ogg binary
+*.db binary
