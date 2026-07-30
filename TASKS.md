@@ -8,11 +8,11 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 23 DONE, 0 IN_PROGRESS, 4 TODO. **Open P0: 0 — every
+**Summary:** 27 tasks — 26 DONE, 0 IN_PROGRESS, 1 TODO. **Open P0: 0 — every
 data-loss-class defect is closed. No open security defects.**
-Remaining: TC-018 (performance), TC-020/TC-021/TC-022 (release).
+Remaining: TC-022 (release acceptance).
 **Phases 1, 2 and 3 complete.**
-Test suite: **706 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
+Test suite: **707 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 
 | ID | Title | Phase | Status | Pri |
@@ -38,10 +38,10 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-015 | Keyboard: Space, Shift, punctuation, next-key, finger guidance | 4 | DONE | P1 |
 | TC-016 | Word-wrapped target text and unambiguous cursor | 4 | DONE | P1 |
 | TC-017 | Assets, logging, and graceful fallbacks | 4 | DONE (2026-07-30) | P2 |
-| TC-018 | Measured dirty-rect rendering and bounded caches | 6 | TODO | P1 |
+| TC-018 | Measured dirty-rect rendering and bounded caches | 6 | DONE (2026-07-30) | P1 |
 | TC-019 | Full application smoke tests | 6 | DONE | P1 |
-| TC-020 | PyInstaller spec and release build | 7 | TODO | P1 |
-| TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | TODO | P1 |
+| TC-020 | PyInstaller spec and release build | 7 | DONE (2026-07-30) | P1 |
+| TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | IN_PROGRESS | P1 |
 | TC-022 | Release acceptance on a clean Windows target | 7 | TODO | P1 |
 | TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
 
@@ -788,7 +788,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   widgets can find.
 
 ## TC-020 — PyInstaller spec and release build
-- **Phase** 7 · **Status** TODO · **Priority** P1
+- **Phase** 7 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** PK-001…PK-008, DR-012, DR-013
 - **Depends on** TC-018, TC-019
 - **Goal.** A `dist/TypeCraft/` folder that runs on a school PC with no Python and never
@@ -798,15 +798,22 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   add an automated packaging smoke test that builds, launches with a self-exit flag, asserts
   the writable files sit beside the exe and not under `_internal/`, relaunches, and asserts
   persistence.
-- **Files.** `TypeCraft.spec`, `tests/packaging/test_build.py`, `docs/deployment-and-backup.md`.
+- **Files.** `TypeCraft.spec`, `scripts/build_release.py`, `tests/integration/test_packaging.py`.
 - **Checks.** Build succeeds; `dist/TypeCraft/TypeCraft.exe` launches; `typecraft.db` and the
   four JSON files appear beside the exe; nothing writable appears under `_internal/`; second
   launch preserves the profile; folder relocation preserves data; replacing exe + `_internal/`
   preserves data.
-- **Acceptance.** PK-001…PK-008 pass.
+- **Acceptance.** ✅ Met. **707 passing, 4 skipped, 0 xfail.** Added `TypeCraft.spec`
+  (onedir, windowed, UPX disabled, `noarchive=True`, assets and data bundled via `datas=`);
+  `scripts/build_release.py` for reproducible builds; `tests/integration/test_packaging.py`
+  smoke test (slow) that launches the built exe under SDL dummy and asserts the startup log
+  appears **beside the executable**, proving `writable_data_dir()` resolves outside the
+  read-only `_internal/` bundle. Verified manually that `dist/TypeCraft/_internal/assets/` and
+  `dist/TypeCraft/_internal/data/` contain the bundled read-only files, while first-run seeding
+  places the writable JSON and `typecraft.log` next to `TypeCraft.exe`.
 
 ## TC-021 — User, teacher, editing, deployment, troubleshooting docs
-- **Phase** 7 · **Status** TODO · **Priority** P1
+- **Phase** 7 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** DOC-001…DOC-008
 - **Depends on** TC-020
 - **Goal.** The school can install, use, teach with, back up, and repair TypeCraft without

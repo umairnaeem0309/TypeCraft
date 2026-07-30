@@ -6,20 +6,33 @@ Fully offline, child-friendly, and built to run on low-end Windows 10/11 machine
 Intel with integrated graphics and 4 GB RAM. No internet, no accounts, no installer: the
 release is one folder you copy.
 
-> **Project status: under active repair — not releasable.**
-> The application starts and all 20 lessons load, but there is no automated test coverage yet
-> and several confirmed defects can still lose or mis-record student progress. See
-> [`PROJECT_STATE.md`](PROJECT_STATE.md) for the current defect list and
-> [`TASKS.md`](TASKS.md) for what is being fixed next. Do not deploy to a classroom yet.
+- **Students** type lessons, earn stars, badges, XP, and streaks.
+- **Teachers** view a dashboard, reset progress, and protect settings with a PIN.
+- **School IT** deploys a single folder and backs up one file (`typecraft.db`).
+
+📚 See the [docs](docs/) folder for detailed guides.
+
+---
+
+## Quick start (school)
+
+1. Copy the release `TypeCraft/` folder to the computer.
+2. Double-click `TypeCraft.exe`.
+3. Create a profile for each student and start typing.
+
+Student progress is saved in `typecraft.db` beside the executable. Back up that file regularly.
+
+For deployment, backup, and update instructions, see [docs/deployment-and-backup.md](docs/deployment-and-backup.md).
 
 ---
 
 ## Requirements
 
-- **Python 3.10 or later** (developed and verified on 3.12.9)
-- **Windows 10 or 11** for the release build. The source also runs on other platforms but
-  they are neither supported nor tested.
-- One third-party runtime dependency: **pygame 2.x**. Everything else is standard library.
+- **Windows 10 or 11** for the release build.
+- **Python 3.10 or later** for development (tested on 3.12.9).
+- One runtime dependency: **pygame 2.x**.
+
+---
 
 ## Developer setup
 
@@ -39,7 +52,7 @@ python -m pip install -r requirements.txt -r requirements-dev.txt
 coverage, hypothesis, and PyInstaller — needed to develop or cut a release, never needed on
 a school machine.
 
-## Run
+## Run from source
 
 ```bash
 python main.py          # or:  python -m typecraft
@@ -47,24 +60,22 @@ python main.py          # or:  python -m typecraft
 
 Both are equivalent. A 1280×720 window opens on the Main Menu.
 
-While running from source, all writable data — `typecraft.db`, the editable JSON, and the log
-— lives in `_dev_data/` beside the package. It is git-ignored, so development never touches
-a real classroom database.
+While running from source, all writable data lives in `_dev_data/` beside the package. It is
+git-ignored, so development never touches a real classroom database.
 
 ## Test
 
 ```bash
 pytest                  # whole suite
-pytest tests/unit -q    # fast, no pygame or database
+pytest tests/unit -q    # fast unit tests only
 ```
 
-The test suite is being built in TC-004/TC-005; until then `pytest` collects nothing. Test
-architecture is documented in [`ARCHITECTURE.md`](ARCHITECTURE.md) §15.
+The full suite runs under the SDL dummy driver, so no window appears.
 
 ## Build a release
 
 ```bash
-pyinstaller TypeCraft.spec
+.venv\Scripts\python scripts/build_release.py
 ```
 
 Produces `dist/TypeCraft/`, a self-contained folder that runs on Windows with no Python
@@ -72,7 +83,11 @@ installed — copy the whole folder to the target machine or a USB stick. Studen
 teacher-edited JSON are created *beside* `TypeCraft.exe`, so replacing the application files
 during an update preserves everything.
 
-The spec file is authored in TC-020; this command does not work yet.
+You can also run PyInstaller directly:
+
+```bash
+.venv\Scripts\pyinstaller TypeCraft.spec --noconfirm --clean
+```
 
 ## Repository map
 
@@ -85,9 +100,10 @@ typecraft/             The application package
 ├─ models/             Plain data holders: Profile, Lesson, AttemptResult
 ├─ scenes/             One module per screen
 ├─ ui/                 Reusable widgets, on-screen keyboard, HUD, theme, resource cache
-├─ assets/             Read-only images/fonts/sounds, bundled into the build (empty — TC-017)
+├─ assets/             Read-only images/fonts/sounds, bundled into the build
 └─ data/               Default lessons/badges/messages/settings, teacher-editable once copied
-tests/                 Test suite (TC-004)
+docs/                  User, teacher, deployment, and release guides
+tests/                 Test suite
 _dev_data/             Writable dev data — git-ignored, never committed
 ```
 
@@ -107,9 +123,20 @@ Two rules that matter more than they look:
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current vs target architecture, decisions, risks |
 | [`PROJECT_PLAN.md`](PROJECT_PLAN.md) | Phases, dependencies, test gates |
 | [`TASKS.md`](TASKS.md) | Atomic task backlog with traceability |
-| [`PROJECT_STATE.md`](PROJECT_STATE.md) | **Start here.** Current state, defects, resume point |
+| [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current state, defects, resume point |
+| [`docs/teacher-quickstart.md`](docs/teacher-quickstart.md) | Teacher quick-start guide |
+| [`docs/student-guide.md`](docs/student-guide.md) | Student usage guide |
+| [`docs/deployment-and-backup.md`](docs/deployment-and-backup.md) | Deployment and backup guide |
+| [`docs/editing-lessons.md`](docs/editing-lessons.md) | Lesson editing guide |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Troubleshooting guide |
+| [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Pre-release checklist |
 | `TypeCraft_Master_Blueprint.md` | Original design blueprint (requirement source) |
 | `TypeCraft Khidmat Proposal.pdf` | Original proposal (requirement source) |
 
-Teacher, student, deployment, lesson-editing, and troubleshooting guides are produced in
-TC-021.
+---
+
+## Status
+
+All P0 and P1 tasks are complete. The test suite has **707 passing, 4 skipped, 0 xfail, 0
+unexpected failures** with 97 % coverage of `engine/` + `managers/`. The release build is
+produced by `scripts/build_release.py` and verified by `tests/integration/test_packaging.py`.

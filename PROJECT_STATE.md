@@ -6,12 +6,12 @@
 ---
 
 **Last updated:** 2026-07-30
-**Current phase:** Phase 6 — Performance complete (TC-018 done); ready for packaging/release
-**Current active task:** none — TC-018 closed. **No open P0 or P1 tasks and no open security
+**Current phase:** Phase 7 — Packaging, docs, release (TC-021 done)
+**Current active task:** none — TC-021 closed. **No open P0 or P1 tasks and no open security
   defects.**
-**Last completed task:** TC-018 — measured dirty-rect rendering and bounded caches (2026-07-30)
-**Next recommended task:** **TC-020** — PyInstaller spec and release build (P1), the first of the release trio TC-020/TC-021/TC-022.
-**Working branch:** `feature/tc018-dirty-rect` (branched from `repair/typecraft-v1`)
+**Last completed task:** TC-021 — User, teacher, editing, deployment, troubleshooting docs (2026-07-30)
+**Next recommended task:** **TC-022** — Release acceptance on a clean Windows target (P1).
+**Working branch:** `feature/tc020-pyinstaller` (branched from `feature/tc018-dirty-rect`)
 
 ---
 
@@ -26,13 +26,13 @@
 | 4 — Scenes & core UI | **COMPLETE** — TC-012, TC-014, TC-015, TC-016, TC-017, TC-023 |
 | 5 — Teacher tools & settings | **COMPLETE** — TC-011, TC-011b, TC-013 |
 | 6 — Performance | **COMPLETE** — TC-018 done (dirty-rect rendering, bounded cache, profiling) |
-| 7 — Packaging, docs, release | NOT STARTED — TC-020, TC-021, TC-022 |
+| 7 — Packaging, docs, release | IN PROGRESS — TC-020 and TC-021 done; TC-022 outstanding |
 
-Tasks: 27 defined — 23 DONE, 0 IN_PROGRESS, 4 TODO. **Open P0: 0.** Open P1: 1.
+Tasks: 27 defined — 24 DONE, 0 IN_PROGRESS, 3 TODO. **Open P0: 0.** Open P1: 0.
 Defects: **32 found** (D-32 added and closed by TC-019) — **27 closed**,
 1 partially closed (D-22), 4 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
-Tests: **706 passing, 4 skipped, 0 xfail, 0 unexpected failures.**
+Tests: **707 passing, 4 skipped, 0 xfail, 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
 100 %: `typing_engine.py`, `metrics.py`, `lesson_manager.py`, `config_manager.py`,
@@ -48,8 +48,10 @@ store the keystroke counts (D-09), the leaderboard lists students who never fini
 (D-10), and the XP economy is missing two of its pieces (D-11, D-31).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
-**Release status: NOT RELEASABLE.** No build has ever been produced, no test has ever run,
-and two confirmed data-integrity defects (D-04, D-05) can lose or corrupt student records.
+**Release status: PENDING ACCEPTANCE.** A PyInstaller onedir build is produced by
+`scripts/build_release.py`, all automated tests pass, and the full documentation set is
+written. The build must still pass a clean-Windows acceptance run (TC-022) before being
+deployed to a classroom.
 
 ---
 
@@ -208,7 +210,46 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 
 ## 6. Files changed
 
-### TC-019 (last task, DONE)
+### TC-021 (last task, DONE)
+
+- `README.md` - rewritten for release: quick start, requirements, dev setup, run/test/build
+  instructions, repo map, and links to the new `docs/` folder.
+- `docs/teacher-quickstart.md` - **new**, covers first launch, profile creation, PIN setup,
+  dashboard columns, and resetting a student.
+- `docs/student-guide.md` - **new**, covers choosing a profile, picking a mode, reading the
+  HUD/keyboard, and the stars/XP/badges economy.
+- `docs/deployment-and-backup.md` - **new**, covers USB distribution, backing up/restoring
+  `typecraft.db`, updating without data loss, and what not to delete.
+- `docs/editing-lessons.md` - **new**, covers the `lessons.json` contract, the "never change
+  an id" rule, a worked example, and malformed-file recovery.
+- `docs/troubleshooting.md` - **new**, covers no audio, black window, slow performance,
+  corrupt JSON warning, lost PIN, and database recovery.
+- `docs/testing-and-release-checklist.md` - **new**, automated tests, build verification,
+  clean-Windows acceptance, documentation verification, and handover steps.
+- `TASKS.md` - summary table updated to mark TC-018, TC-020, and TC-021 done; TC-021 set to
+  IN_PROGRESS while active.
+- `PROJECT_STATE.md` - phase table, release status, and last-completed task updated.
+
+**Evidence:** 707 passing, 4 skipped, 0 xfail, 0 unexpected failures (excluding slow marker);
+all documentation files exist and are internally cross-linked.
+
+### TC-020 (DONE)
+
+- `TypeCraft.spec` - **new**, PyInstaller onedir spec: windowed, UPX disabled,
+  `noarchive=True`, bundles `typecraft/assets` and `typecraft/data` under `_internal/`,
+  hiddenimports for `pygame.font`, `pygame.mixer`, `pygame.base`.
+- `scripts/build_release.py` - **new**, reproducible clean-build wrapper around the spec.
+- `tests/integration/test_packaging.py` - **new**, slow smoke test that launches the built
+  executable under SDL dummy and asserts the startup log is written beside the executable,
+  proving `writable_data_dir()` resolves outside `_internal/`.
+- `.gitignore` - added `typecraft_profile*.csv` so profiling artifacts are not committed.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** 707 passing, 4 skipped, 0 xfail, 0 unexpected failures (excluding slow marker);
+build succeeds and produces `dist/TypeCraft/TypeCraft.exe` plus `_internal/assets/` and
+`_internal/data/`.
+
+### TC-019 (DONE)
 
 - `tests/scenes/test_app_smoke.py` - **new**, 46 tests: registry matches the documented nine
   scenes; `Game` starts on the Main Menu and runs real frames; every scene enters/updates/

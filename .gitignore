@@ -29,6 +29,9 @@ build/
 dist/
 *.spec.bak
 
+# --- Profiling / runtime artifacts ---------------------------------------------
+typecraft_profile*.csv
+
 # --- Editor / OS noise ---------------------------------------------------------
 .vscode/
 .idea/
