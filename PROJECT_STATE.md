@@ -7,14 +7,13 @@
 
 **Last updated:** 2026-07-31
 **Current phase:** Phase 7 — Packaging, docs, release (TC-022 done)
-**Current active task:** none - TC-028 closed (native crash fix).
-**Last completed task:** TC-028 - remove the use-after-free that closed the app on a profile
-click, and make crashes leave evidence (2026-07-31)
+**Current active task:** none - TC-029 closed (dashboard headings and empty state).
+**Last completed task:** TC-029 - dashboard table headings and empty state (2026-07-31)
 **Next recommended task:** re-run `scripts/build_release.py` - `dist/TypeCraft/` predates
-TC-024 through TC-028 and therefore still contains the crashing window code.
+TC-024 through TC-029 and still contains the crashing window code from D-33.
 **Debugging note for future sessions:** a silent close with nothing in `typecraft.log` means a
-*native* crash. Reproduce in a subprocess with `python -u -X faulthandler`, which is how D-33 was
-found; the app now also writes native stacks to `_dev_data/typecraft-crash.log` automatically.
+*native* crash. Reproduce in a subprocess with `python -u -X faulthandler`; the app also writes
+native stacks to `_dev_data/typecraft-crash.log`.
 **Working branch:** `feature/tc022-release-acceptance` (branched from `feature/tc021-docs`)
 
 ---
@@ -220,6 +219,22 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 ---
 
 ## 6. Files changed
+
+### TC-029 (last task, DONE) - dashboard headings and empty state
+
+- `typecraft/scenes/teacher_dashboard.py` - bold upper-case body-sized column headings in the
+  full text colour with a rule beneath (`HEADER_Y`, `HEADER_RULE_Y`, `_header_font`);
+  `COLUMNS` reduced to `(heading, key, formatter)` with positions **measured** by
+  `_measure_columns()` because bold upper-case headings collided (STREAK over BEST);
+  `table_right` property; `empty_state_layout()` returning centred title and hint rects so the
+  placement is testable, with `_render_empty_state()` just blitting them.
+- `tests/scenes/test_layout_regressions.py` - 9 new tests.
+- `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** full suite green; both states rendered to PNG and inspected - which is how the
+STREAK/BEST heading collision was found after the column arithmetic had looked fine.
+
+
 
 ### TC-028 (last task, DONE) - native crash fix
 

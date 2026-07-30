@@ -247,3 +247,113 @@ def test_the_settings_screen_renders_in_both_mute_states(app_ctx, display):
     scene.render(display)
     scene._set_pin()               # populates pin_status, which renders in place of the hint
     scene.render(display)
+
+
+# --------------------------------------------------------------------- 5. dashboard table
+
+@pytest.fixture
+def dashboard(app_ctx, display):
+    from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
+
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    return app_ctx, scene
+
+
+def test_the_column_headings_are_bold_and_body_sized(dashboard):
+    """They were small and muted, so they read as a caption rather than as the labels
+    for the numbers below — and a teacher scans the headings first."""
+    _ctx, scene = dashboard
+    small = pygame.font.Font(None, theme.FONT_SIZE_SMALL)
+
+    assert scene._header_font.get_bold() is True
+    # Compared against the font it replaced rather than against a pixel figure:
+    # pygame's nominal size is not its rendered height (Font(None, 28) is 19 px tall).
+    assert scene._header_font.get_height() > small.get_height()
+    assert scene._header_font.size("STUDENT")[0] > small.size("STUDENT")[0], \
+        "the heading font must be larger than the old small one"
+
+
+def test_no_two_column_headings_overlap(dashboard):
+    """The bug the measured layout fixes: bold upper-case headings are wider than the
+    values under them, and hard-coded x positions put STREAK on top of BEST."""
+    from typecraft.scenes.teacher_dashboard import COLUMNS
+
+    _ctx, scene = dashboard
+    previous_right = 0
+    for (heading, _key, _fmt), x in zip(COLUMNS, scene._column_x):
+        assert x >= previous_right, f"{heading} at {x} overlaps the column ending at {previous_right}"
+        previous_right = x + scene._header_font.size(heading.upper())[0]
+
+
+def test_the_table_stays_clear_of_the_reset_buttons(dashboard):
+    from typecraft.scenes.teacher_dashboard import ACTIONS_WIDTH
+
+    _ctx, scene = dashboard
+    reset_left = min(button.rect.x for _s, button in scene.reset_buttons) \
+        if scene.reset_buttons else theme.SCREEN_WIDTH - ACTIONS_WIDTH
+    assert scene.table_right <= reset_left
+
+
+def test_the_columns_are_ordered_left_to_right(dashboard):
+    _ctx, scene = dashboard
+    assert scene._column_x == sorted(scene._column_x)
+    assert scene._column_x[0] >= 0
+
+
+def test_the_headings_sit_above_the_scrolling_rows(dashboard):
+    """A heading drawn inside the panel would scroll away with the rows."""
+    from typecraft.scenes.teacher_dashboard import HEADER_RULE_Y, HEADER_Y
+
+    _ctx, scene = dashboard
+    assert HEADER_Y + scene._header_font.get_height() <= scene.panel.rect.top
+    assert HEADER_Y < HEADER_RULE_Y <= scene.panel.rect.top
+
+
+def test_the_empty_message_is_centred_in_the_table_area(dashboard):
+    """It used to sit at the far left immediately under the headings, reading as a
+    stray row rather than the state of the screen."""
+    _ctx, scene = dashboard
+    assert scene.summaries == [], "fixture should have no students"
+
+    _title, title_rect, _hint, hint_rect = scene.empty_state_layout()
+    area = scene.panel.rect
+
+    for rect in (title_rect, hint_rect):
+        assert rect.centerx == area.centerx, "not horizontally centred"
+        assert area.contains(rect), "the message escapes the table area"
+    assert abs(title_rect.centery - area.centery) < area.height * 0.25, \
+        "not vertically centred in the table area"
+    assert title_rect.bottom < hint_rect.top, "title and hint overlap"
+
+
+def test_the_empty_message_is_large_enough_to_read(dashboard):
+    """It was FONT_SIZE_SMALL, the same size as a footnote."""
+    _ctx, scene = dashboard
+    _title, title_rect, _hint, hint_rect = scene.empty_state_layout()
+    assert title_rect.height > pygame.font.Font(
+        None, theme.FONT_SIZE_SMALL).get_height()
+    assert hint_rect.height >= pygame.font.Font(
+        None, theme.FONT_SIZE_SMALL).get_height()
+
+
+def test_the_empty_message_is_well_below_the_headings(dashboard):
+    """The specific complaint: it appeared "as left top just below table header"."""
+    from typecraft.scenes.teacher_dashboard import HEADER_RULE_Y
+
+    _ctx, scene = dashboard
+    _title, title_rect, _hint, _hint_rect = scene.empty_state_layout()
+    assert title_rect.top > HEADER_RULE_Y + 100
+
+
+def test_the_dashboard_renders_empty_and_populated(app_ctx, display, attempt_factory):
+    from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
+
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    scene.render(display)                      # empty
+
+    student = app_ctx.profiles.create("Mustafa Iqbal", "avatar_fox")
+    app_ctx.progression.score(attempt_factory(student.id, accuracy=95.0), student)
+    scene.on_enter()
+    scene.render(display)                      # populated

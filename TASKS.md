@@ -49,6 +49,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-026 | UI consistency: shared chrome, spacing and type scales | 4 | DONE | P2 |
 | TC-027 | Launcher explains a wrong-interpreter start | 1 | DONE | P2 |
 | TC-028 | Fix the native crash on profile select; log crashes | 4 | DONE | P0 |
+| TC-029 | Dashboard table headings and empty state | 4 | DONE | P2 |
 
 ---
 
@@ -1026,3 +1027,30 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   one `set_mode()` call - and both were confirmed to fail on the pre-fix code.
 - **Verified live.** Real app, real SDL driver, real 13-profile database: 8 visible students
   clicked through to Lesson Select, 15 characters typed in a live lesson, clean exit, no crash log.
+
+## TC-029 - Dashboard table headings and empty state
+- **Phase** 4 - **Status** DONE (2026-07-31) - **Priority** P2
+- **Requirements** FR-104, FR-122, FR-123
+- **Reported.** Two things on the Teacher Dashboard: the table heading font was too small and
+  plainly styled, and the "no students yet" text was tiny and sat at the top left just under the
+  headings instead of being centred.
+- **Headings.** Now bold, upper-case, body-sized and in the full text colour, with a rule
+  separating them from the rows. At small and muted they read as a caption rather than as labels
+  for the numbers below, which is what a teacher scans first.
+- **Column positions are now measured, not written down.** Making the headings bold and
+  upper-case made them wider than the values beneath, and the hard-coded x values put **STREAK
+  on top of BEST** - visible in the first render after the change. `_measure_columns()` lays the
+  columns out from the rendered width of each heading, with a minimum for Student so a name like
+  "Mustafa Iqbal" still fits. Measured result: the table ends at x=1028, clear of the Reset
+  buttons at x=1080.
+- **Empty state.** Centred in the table area with a heading-sized title and a body-sized hint
+  telling the teacher where profiles are created. `empty_state_layout()` returns the surfaces and
+  rects rather than drawing inline, so the placement is assertable.
+- **Acceptance.** OK. Full suite green. 9 new tests in `tests/scenes/test_layout_regressions.py`:
+  the heading font is bold and larger than the one it replaced; **no two headings overlap**; the
+  table stays clear of the Reset buttons; columns are ordered left to right; headings sit above
+  the scrolling panel so they do not scroll away; the empty message is horizontally centred,
+  inside the table area, vertically near its middle, well below the headings, and larger than the
+  old small text.
+- **Verified visually** in both states by rendering to PNG, which is how the STREAK/BEST collision
+  was caught after the arithmetic looked fine.

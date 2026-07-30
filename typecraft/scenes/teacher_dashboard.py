@@ -11,18 +11,33 @@ from typecraft.ui.text_input import TextInput
 ROW_HEIGHT = 52
 FIRST_ROW_Y = 180
 
-#: Column layout: (heading, x, key, formatter). One place to change the table.
+#: Column headings sit above the scrolling rows, with a rule separating the two.
+HEADER_Y = FIRST_ROW_Y - 40
+HEADER_RULE_Y = FIRST_ROW_Y - 10
+
+#: Column layout: (heading, key, formatter). Positions are **measured**, not written
+#: down — see `_measure_columns()`. Hard-coded x values collided the moment the
+#: headings became bold and upper-case, because they got wider than the numbers
+#: underneath them.
 COLUMNS = [
-    ("Student", 60, "name", lambda v: str(v)),
-    ("Lvl", 280, "level", lambda v: str(v)),
-    ("XP", 340, "total_xp", lambda v: str(v)),
-    ("Avg WPM", 420, "avg_wpm_net", lambda v: "—" if v is None else f"{v:.0f}"),
-    ("Avg Acc", 520, "avg_accuracy", lambda v: "—" if v is None else f"{v:.0f}%"),
-    ("Lessons", 620, "lessons_completed", lambda v: str(v)),
-    ("Badges", 720, "badge_count", lambda v: str(v)),
-    ("Streak", 810, "current_streak", lambda v: f"{v}d"),
-    ("Best", 890, "longest_streak", lambda v: f"{v}d"),
+    ("Student", "name", lambda v: str(v)),
+    ("Lvl", "level", lambda v: str(v)),
+    ("XP", "total_xp", lambda v: str(v)),
+    ("Avg WPM", "avg_wpm_net", lambda v: "—" if v is None else f"{v:.0f}"),
+    ("Avg Acc", "avg_accuracy", lambda v: "—" if v is None else f"{v:.0f}%"),
+    ("Lessons", "lessons_completed", lambda v: str(v)),
+    ("Badges", "badge_count", lambda v: str(v)),
+    ("Streak", "current_streak", lambda v: f"{v}d"),
+    ("Best", "longest_streak", lambda v: f"{v}d"),
 ]
+
+#: Table margins and the gap between columns.
+TABLE_X = 60
+COLUMN_GAP = 22
+#: The Student column also has to fit a name like "Mustafa Iqbal".
+STUDENT_MIN_WIDTH = 200
+#: Right-hand space reserved for the Reset buttons and the scrollbar.
+ACTIONS_WIDTH = 220
 
 
 class TeacherDashboardScene(Scene):
@@ -38,8 +53,43 @@ class TeacherDashboardScene(Scene):
         self._subtitle_font.set_italic(True)
         self._note_font = pygame.font.Font(None, theme.FONT_SIZE_BODY)
         self._note_font.set_italic(True)
+        # Bold body size for the column headings. Held on the scene because
+        # ResourceManager caches rendered text by font identity, so the object must
+        # be stable across frames.
+        self._header_font = pygame.font.Font(None, theme.FONT_SIZE_BODY)
+        self._header_font.set_bold(True)
+        self._column_x = self._measure_columns()
         self._build_pin_widgets()
         self._build_dashboard_widgets()
+
+    def _measure_columns(self) -> list:
+        """Lay the columns out from the *rendered width* of each heading.
+
+        The headings are bold and upper-case, which makes them wider than the values
+        below; with hard-coded x positions "STREAK" and "BEST" overlapped. Measuring
+        means the table stays readable if the heading text, the font or the type
+        scale ever changes.
+        """
+        body_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        x = TABLE_X
+        positions = []
+        for index, (heading, _key, _fmt) in enumerate(COLUMNS):
+            positions.append(x)
+            width = self._header_font.size(heading.upper())[0]
+            if index == 0:
+                width = max(width, STUDENT_MIN_WIDTH)
+            else:
+                # Values are narrower than these headings in practice, but measure
+                # a plausible worst case so a 3-digit XP never runs into "AVG WPM".
+                width = max(width, body_font.size("9999")[0])
+            x += width + COLUMN_GAP
+        return positions
+
+    @property
+    def table_right(self) -> int:
+        """Where the last column ends — must stay clear of the Reset buttons."""
+        last_x = self._column_x[-1]
+        return last_x + self._header_font.size(COLUMNS[-1][0].upper())[0]
 
     def _build_pin_widgets(self) -> None:
         cx = theme.SCREEN_WIDTH // 2
@@ -209,14 +259,19 @@ class TeacherDashboardScene(Scene):
     def _render_table(self, surface) -> None:
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
 
-        for heading, x, _key, _fmt in COLUMNS:
-            surf = self.ctx.resources.text_surface(heading, font_small, theme.COLOR_TEXT_MUTED)
-            surface.blit(surf, (x, FIRST_ROW_Y - 30))
+        # Column headings: body-sized and bold in the full text colour, with a rule
+        # beneath them. At small/muted they read as a caption rather than as the
+        # labels for the numbers below, which is what a teacher scans first.
+        for (heading, _key, _fmt), x in zip(COLUMNS, self._column_x):
+            surf = self.ctx.resources.text_surface(
+                heading.upper(), self._header_font, theme.COLOR_TEXT)
+            surface.blit(surf, (x, HEADER_Y))
+        pygame.draw.line(surface, theme.COLOR_LOCKED,
+                         (TABLE_X, HEADER_RULE_Y),
+                         (theme.SCREEN_WIDTH - 50, HEADER_RULE_Y), 2)
 
         if not self.summaries:
-            empty = self.ctx.resources.text_surface(
-                "No students yet.", font_small, theme.COLOR_TEXT_MUTED)
-            surface.blit(empty, (60, FIRST_ROW_Y))
+            self._render_empty_state(surface)
             return
 
         with self.panel.clipped(surface):
@@ -225,7 +280,7 @@ class TeacherDashboardScene(Scene):
                 row = pygame.Rect(0, y, theme.SCREEN_WIDTH, ROW_HEIGHT)
                 if self.panel.is_visible(row):
                     screen_y = self.panel.screen_rect(row).y
-                    for _heading, x, key, fmt in COLUMNS:
+                    for (_heading, key, fmt), x in zip(COLUMNS, self._column_x):
                         surf = self.ctx.resources.text_surface(
                             fmt(summary[key]), font_small, theme.COLOR_TEXT)
                         surface.blit(surf, (x, screen_y))
@@ -245,6 +300,34 @@ class TeacherDashboardScene(Scene):
             self._note_font, theme.COLOR_TEXT_MUTED)
         surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
                                                  theme.SCREEN_HEIGHT - 30)))
+
+    EMPTY_TITLE = "No students yet"
+    EMPTY_HINT = "Add students from the main menu: Play, then Create Profile."
+
+    def empty_state_layout(self) -> tuple:
+        """(title_surface, title_rect, hint_surface, hint_rect), centred in the table.
+
+        Returned rather than drawn inline so the placement is assertable: the message
+        used to be small muted text at the far left immediately under the column
+        headings, where it read as a stray table row rather than as the state of the
+        whole screen.
+        """
+        area = self.panel.rect
+        heading_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        body_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+
+        title = self.ctx.resources.text_surface(
+            self.EMPTY_TITLE, heading_font, theme.COLOR_TEXT_MUTED)
+        hint = self.ctx.resources.text_surface(
+            self.EMPTY_HINT, body_font, theme.COLOR_TEXT_MUTED)
+
+        return (title, title.get_rect(center=(area.centerx, area.centery - 18)),
+                hint, hint.get_rect(center=(area.centerx, area.centery + 24)))
+
+    def _render_empty_state(self, surface) -> None:
+        title, title_rect, hint, hint_rect = self.empty_state_layout()
+        surface.blit(title, title_rect)
+        surface.blit(hint, hint_rect)
 
     def _render_confirmation(self, surface) -> None:
         summary = self.pending_reset
