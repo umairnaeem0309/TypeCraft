@@ -13,7 +13,7 @@ class MainMenuScene(Scene):
 
         cx = theme.SCREEN_WIDTH // 2
         w, h, gap = 520, 72, 26
-        start_y = 240  # anchor below the larger title/subtitle
+        start_y = 195  # anchor below the larger title/subtitle
 
         # Buttons are arranged in the order requested by users.
         self.widgets = [
@@ -79,16 +79,16 @@ class MainMenuScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        # Use a larger title to fill the empty top space.
+        # Center the whole menu block vertically for balanced top/bottom margins.
         font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE + 12)
         title = self.ctx.resources.text_surface("TypeCraft", font, theme.COLOR_PRIMARY_DARK)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 110)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 95)))
 
         # Subtitle
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         subtitle = self.ctx.resources.text_surface(
             "Learn to type, one key at a time", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 170)))
+        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 165)))
 
         for w in self.widgets:
             w.render(surface)
