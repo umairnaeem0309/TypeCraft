@@ -21,11 +21,18 @@ class LeaderboardScene(Scene):
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 250, 170, 240, 54),
-                                   "Top Net WPM", lambda: self._set_tab(TAB_WPM), self.ctx.resources)
-        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 170, 240, 54),
+        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 290, 170, 280, 64),
+                                   "Top Net WPM", lambda: self._set_tab(TAB_WPM), self.ctx.resources,
+                                   font_size=theme.FONT_SIZE_HEADING)
+        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 170, 280, 64),
                                    "Top Accuracy", lambda: self._set_tab(TAB_ACCURACY),
-                                   self.ctx.resources, bg_color=theme.COLOR_ACCENT)
+                                   self.ctx.resources, bg_color=theme.COLOR_ACCENT,
+                                   font_size=theme.FONT_SIZE_HEADING)
+        # Reusable italic fonts for subtitle and bottom note.
+        self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
+        self._subtitle_font.set_italic(True)
+        self._note_font = pygame.font.Font(None, theme.FONT_SIZE_BODY)
+        self._note_font.set_italic(True)
         self._load_rows()
 
     def _set_tab(self, tab: str) -> None:
@@ -49,21 +56,22 @@ class LeaderboardScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE)
         title = self.ctx.resources.text_surface("Leaderboard", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
+        # Align the heading vertically with the Back button's centre.
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery)))
 
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface(
-            "Top students by speed or accuracy", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_SUBTITLE_Y)))
+            "Top students by speed or accuracy", self._subtitle_font, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 105)))
 
         self.wpm_tab_btn.render(surface)
         self.acc_tab_btn.render(surface)
         self.back_button.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        y = 240
+        y = 250
         row_height = 42
         row_gap = 2
         unit = "wpm" if self.tab == TAB_WPM else "%"
@@ -86,6 +94,6 @@ class LeaderboardScene(Scene):
         # scores are ordered the way they are.
         note = self.ctx.resources.text_surface(
             "Best score per student, completed lessons only. Equal scores: longest-joined first.",
-            font_small, theme.COLOR_TEXT_MUTED)
+            self._note_font, theme.COLOR_TEXT_MUTED)
         surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
                                                  theme.SCREEN_HEIGHT - 30)))
