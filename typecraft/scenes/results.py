@@ -19,8 +19,8 @@ class ResultsScene(Scene):
         self.message = self._pick_message(attempt.accuracy)
 
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 220, 56, 20
-        y = 560
+        w, h, gap = 220, 56, 30
+        y = 600
 
         self.buttons = [
             Button(pygame.Rect(cx - int(1.5 * w) - gap, y, w, h), "Retry",
@@ -30,9 +30,9 @@ class ResultsScene(Scene):
                    bg_color=theme.COLOR_ACCENT),
             Button(pygame.Rect(cx + int(0.5 * w) + gap, y, w, h), "Leaderboard",
                    lambda: self.ctx.states.change("leaderboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_TEXT_MUTED),
+                   bg_color=theme.COLOR_NEUTRAL),
         ]
-        self.stars = StarRating(pygame.Rect(cx - 100, 260, 200, 60), stars=attempt.stars)
+        self.stars = StarRating(pygame.Rect(cx - 100, 250, 200, 60), stars=attempt.stars)
 
     def _retry(self) -> None:
         self.ctx.states.change("mode_select", lesson=self.lesson)
@@ -83,7 +83,7 @@ class ResultsScene(Scene):
         # Draw stat cards in a tidy 2x2 grid.
         card_w, card_h, gap = 240, 90, 24
         start_x = (theme.SCREEN_WIDTH - (2 * card_w + gap)) // 2
-        start_y = 330
+        start_y = 350
         for i, (label, value) in enumerate(stats):
             col = i % 2
             row = i // 2
@@ -100,7 +100,7 @@ class ResultsScene(Scene):
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         msg_surf = self.ctx.resources.text_surface(self.message, font_small, theme.COLOR_PRIMARY_DARK)
-        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 540)))
+        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 575)))
 
         for btn in self.buttons:
             btn.render(surface)

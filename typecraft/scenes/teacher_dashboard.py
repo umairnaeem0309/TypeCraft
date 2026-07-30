@@ -9,7 +9,7 @@ from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
 ROW_HEIGHT = 44
-FIRST_ROW_Y = 150
+FIRST_ROW_Y = 180
 
 #: Column layout: (heading, x, key, formatter). One place to change the table.
 COLUMNS = [
@@ -190,7 +190,12 @@ class TeacherDashboardScene(Scene):
 
         self.back_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 70)))
+
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        sub = self.ctx.resources.text_surface(
+            "Tap a student row to reset their progress", font_small, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 105)))
 
         self._render_table(surface)
 

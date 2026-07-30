@@ -12,9 +12,8 @@ class MainMenuScene(Scene):
         self._showing_quit_popup = False
 
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 320, 58, 18
-        total_height = 5 * h + 4 * gap
-        start_y = (theme.SCREEN_HEIGHT - total_height) // 2
+        w, h, gap = 300, 56, 24
+        start_y = 230  # fixed start below the title/subtitle, not dynamically centered
 
         # Buttons are arranged in the order requested by users.
         self.widgets = [
@@ -26,10 +25,10 @@ class MainMenuScene(Scene):
                    bg_color=theme.COLOR_ACCENT),
             Button(pygame.Rect(cx - w // 2, start_y + 2 * (h + gap), w, h), "Teacher Dashboard",
                    lambda: self.ctx.states.change("teacher_dashboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_PRIMARY_DARK),
+                   bg_color=theme.COLOR_ADMIN),
             Button(pygame.Rect(cx - w // 2, start_y + 3 * (h + gap), w, h), "Settings",
                    lambda: self.ctx.states.change("settings"), self.ctx.resources,
-                   bg_color=theme.COLOR_TEXT_MUTED),
+                   bg_color=theme.COLOR_NEUTRAL),
             Button(pygame.Rect(cx - w // 2, start_y + 4 * (h + gap), w, h), "Quit",
                    self._ask_quit, self.ctx.resources,
                    bg_color=theme.COLOR_ERROR),
@@ -88,7 +87,7 @@ class MainMenuScene(Scene):
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         subtitle = self.ctx.resources.text_surface(
             "Learn to type, one key at a time", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 170)))
+        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 180)))
 
         for w in self.widgets:
             w.render(surface)
@@ -118,10 +117,10 @@ class MainMenuScene(Scene):
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
 
         heading = self.ctx.resources.text_surface("Quit TypeCraft?", font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(panel.centerx, panel.y + 55)))
+        surface.blit(heading, heading.get_rect(center=(panel.centerx, panel.y + 50)))
 
         body = self.ctx.resources.text_surface("Are you sure you want to exit?", font_body, theme.COLOR_TEXT_MUTED)
-        surface.blit(body, body.get_rect(center=(panel.centerx, panel.y + 105)))
+        surface.blit(body, body.get_rect(center=(panel.centerx, panel.y + 100)))
 
         self.yes_button.render(surface)
         self.no_button.render(surface)
