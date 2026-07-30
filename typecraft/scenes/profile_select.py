@@ -90,14 +90,26 @@ class ProfileSelectScene(Scene):
         heading = self.ctx.resources.text_surface("Who's playing?", font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 90)))
 
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        sub = self.ctx.resources.text_surface(
+            "Select a student profile or create a new one", font_small, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 125)))
+
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        mouse_pos = pygame.mouse.get_pos()
         with self.panel.clipped(surface):
             for profile, content_rect in self.profile_buttons:
                 if not self.panel.is_visible(content_rect):
                     continue
                 rect = self.panel.screen_rect(content_rect)
-                pygame.draw.rect(surface, theme.COLOR_CARD_BG, rect, border_radius=14)
-                pygame.draw.rect(surface, theme.COLOR_PRIMARY, rect, width=2, border_radius=14)
+                hovered = rect.collidepoint(mouse_pos)
+                bg = theme.COLOR_CARD_BG
+                border = theme.COLOR_PRIMARY
+                if hovered:
+                    bg = (235, 248, 235)
+                    border = theme.COLOR_PRIMARY_DARK
+                pygame.draw.rect(surface, bg, rect, border_radius=14)
+                pygame.draw.rect(surface, border, rect, width=3, border_radius=14)
                 name_surf = self.ctx.resources.text_surface(profile.name, font_body, theme.COLOR_TEXT)
                 surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 15)))
                 lvl_surf = self.ctx.resources.text_surface(

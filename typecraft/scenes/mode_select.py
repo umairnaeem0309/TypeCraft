@@ -56,7 +56,15 @@ class ModeSelectScene(Scene):
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface("Choose a typing mode", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 190)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 185)))
+
+        # Draw a subtle panel behind the mode buttons.
+        if self.mode_buttons:
+            top = self.mode_buttons[0].rect.top - 20
+            bottom = self.mode_buttons[-1].rect.bottom + 20
+            panel = pygame.Rect(theme.SCREEN_WIDTH // 2 - 200, top, 400, bottom - top)
+            pygame.draw.rect(surface, theme.COLOR_CARD_BG, panel, border_radius=16)
+            pygame.draw.rect(surface, theme.COLOR_LOCKED, panel, width=2, border_radius=16)
 
         for btn in self.mode_buttons:
             btn.render(surface)

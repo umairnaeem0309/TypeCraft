@@ -50,10 +50,10 @@ def create_profile(app, name="Amina"):
 # --------------------------------------------------------------------- main menu
 
 @pytest.mark.parametrize("index,expected", [
-    (0, "ProfileSelectScene"),
-    (1, "LeaderboardScene"),
-    (2, "SettingsScene"),
-    (3, "TeacherDashboardScene"),
+    (0, "ProfileSelectScene"),      # PLAY
+    (1, "LeaderboardScene"),        # Leader
+    (2, "TeacherDashboardScene"),   # Teacher Dashboard
+    (3, "SettingsScene"),           # Settings
 ])
 def test_every_main_menu_button_reaches_its_screen(app, index, expected):
     """FR-001/FR-003, clicked rather than called."""

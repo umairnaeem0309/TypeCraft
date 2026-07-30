@@ -13,7 +13,7 @@ class LessonSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profile = self.ctx.active_profile
         self.back_button = Button(
-            pygame.Rect(20, 20, 160, 44), "Switch Profile",
+            pygame.Rect(20, 20, 100, 44), "Back",
             lambda: self.ctx.states.change("profile_select"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
@@ -79,14 +79,20 @@ class LessonSelectScene(Scene):
             f"{self.profile.name}'s Lessons", font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
 
+        self.back_button.render(surface)
+
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        mouse_pos = pygame.mouse.get_pos()
         with self.panel.clipped(surface):
             for lesson, unlocked, stars, content_rect in self.cards:
                 if not self.panel.is_visible(content_rect):
                     continue
                 rect = self.panel.screen_rect(content_rect)
+                hovered = unlocked and rect.collidepoint(mouse_pos)
                 border_color = pygame.Color(lesson.tier_color) if unlocked else theme.COLOR_LOCKED
                 bg = theme.COLOR_CARD_BG if unlocked else (230, 230, 233)
+                if hovered:
+                    bg = (235, 248, 235)
                 pygame.draw.rect(surface, bg, rect, border_radius=12)
                 pygame.draw.rect(surface, border_color, rect, width=3, border_radius=12)
 

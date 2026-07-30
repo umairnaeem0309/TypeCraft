@@ -3,9 +3,6 @@ scenes/lesson.py
 
 Drives TypingEngine + KeyboardRenderer + HUD. Input is captured only in
 handle_event (§1.3) and pushed straight into TypingEngine.feed_key().
-Metrics are recomputed on keystroke, not every frame (§5.5) — update()
-only advances the live timer display via engine.metrics(), which itself
-is cheap (no rasterisation happens there).
 """
 
 import string
@@ -74,9 +71,8 @@ class LessonScene(Scene):
             theme.COLOR_TEXT_MUTED,
         )
 
-        # Throttle HUD re-renders: the timer only changes once per second.
-        self._hud_dirty = True
-        self._last_hud_elapsed = 0
+        # HUD metrics are updated each frame; the renderer is cheap and drawing it
+        # unconditionally avoids a one-frame clear/draw race under dirty-rect mode.
 
         # Crash recovery (FR-073): the row id reserved by the first checkpoint, and
         # the time since the last one. Both reset per attempt.
@@ -139,7 +135,6 @@ class LessonScene(Scene):
                 self.ctx.audio.play("key_click.wav")
                 self._update_target_text_sprite()
                 self._update_keyboard_hint()
-                self._hud_dirty = True
                 return
 
             char = event.unicode
@@ -154,7 +149,6 @@ class LessonScene(Scene):
 
                 self._update_target_text_sprite()
                 self._update_keyboard_hint()
-                self._hud_dirty = True
 
                 if self.engine.is_finished():
                     scored = self._finish(AttemptStatus.COMPLETE)
@@ -162,15 +156,9 @@ class LessonScene(Scene):
                     self.ctx.states.change("results", attempt=scored, lesson=self.lesson)
 
     def update(self, dt: float) -> None:
-        # Timer display should keep advancing even without a keystroke, but
-        # there is no need to rasterise it more than once per second (TC-018).
-        metrics = self.engine.metrics()
-        current_elapsed = int(metrics["elapsed_sec"])
-        if current_elapsed != self._last_hud_elapsed:
-            self._last_hud_elapsed = current_elapsed
-            self._hud_dirty = True
-        if self._hud_dirty:
-            self.hud.update_metrics(metrics)
+        # Keep the HUD metrics in sync with the running attempt. The renderer is
+        # cheap, so there is no need to throttle it.
+        self.hud.update_metrics(self.engine.metrics())
 
         # Checkpoint on a timer, not per keystroke: database I/O on the keystroke
         # path would be felt as stutter on the target hardware (NFR-007).
@@ -180,10 +168,8 @@ class LessonScene(Scene):
                 self._checkpoint()
 
     def render(self, surface) -> None:
-        if self._hud_dirty:
-            self.hud.render(surface)
-            self.mark_dirty(self.hud.rect)
-            self._hud_dirty = False
+        self.hud.render(surface)
+        self.mark_dirty(self.hud.rect)
 
         self.keyboard.render(surface)
         self._render_target_text(surface)

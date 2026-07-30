@@ -3,8 +3,9 @@ core/game.py
 
 Owns the window and the 30 FPS Event -> Update -> Render loop (§1.3).
 Contains zero screen-specific logic — every phase is forwarded to the
-active scene through GameStateManager. Uses dirty-rect display updates
-(§5.1) rather than a full-screen flip().
+active scene through GameStateManager. Defaults to a full-screen flip
+with a double-buffered display; pass full_repaint=False to use the
+experimental dirty-rect mode instead.
 """
 
 import time
@@ -58,10 +59,13 @@ def build_state_manager(ctx) -> GameStateManager:
 
 
 class Game:
-    def __init__(self, *, full_repaint: bool = False, profile: bool = False,
+    def __init__(self, *, full_repaint: bool = True, profile: bool = False,
                  profile_path: str = "typecraft_profile.csv"):
         pygame.init()
-        self.screen = pygame.display.set_mode((theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT))
+        # Double-buffered display gives clean full-frame flips and eliminates the
+        # tearing/flicker that can happen with partial dirty-rect updates.
+        self.screen = pygame.display.set_mode(
+            (theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT), pygame.DOUBLEBUF)
         pygame.display.set_caption("TypeCraft")
         self.clock = pygame.time.Clock()
 

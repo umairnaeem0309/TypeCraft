@@ -68,26 +68,39 @@ class ResultsScene(Scene):
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         title = "Lesson Complete!" if self.attempt.accuracy >= 85 else "Keep Practising!"
         title_surf = self.ctx.resources.text_surface(title, font_h, theme.COLOR_TEXT)
-        surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 120)))
+        surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 100)))
 
         self.stars.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         stats = [
-            f"Net WPM: {self.attempt.wpm_net:.0f}",
-            f"Accuracy: {self.attempt.accuracy:.0f}%",
-            f"Max Combo: {self.attempt.max_combo}",
-            f"XP Earned: +{self.attempt.xp_awarded}",
+            ("Net WPM", f"{self.attempt.wpm_net:.0f}"),
+            ("Accuracy", f"{self.attempt.accuracy:.0f}%"),
+            ("Max Combo", str(self.attempt.max_combo)),
+            ("XP Earned", f"+{self.attempt.xp_awarded}"),
         ]
-        y = 360
-        for line in stats:
-            surf = self.ctx.resources.text_surface(line, font_body, theme.COLOR_TEXT)
-            surface.blit(surf, surf.get_rect(center=(theme.SCREEN_WIDTH // 2, y)))
-            y += 34
+
+        # Draw stat cards in a tidy 2x2 grid.
+        card_w, card_h, gap = 240, 90, 24
+        start_x = (theme.SCREEN_WIDTH - (2 * card_w + gap)) // 2
+        start_y = 330
+        for i, (label, value) in enumerate(stats):
+            col = i % 2
+            row = i // 2
+            x = start_x + col * (card_w + gap)
+            y = start_y + row * (card_h + gap)
+            rect = pygame.Rect(x, y, card_w, card_h)
+            pygame.draw.rect(surface, theme.COLOR_CARD_BG, rect, border_radius=12)
+            pygame.draw.rect(surface, theme.COLOR_LOCKED, rect, width=2, border_radius=12)
+            label_surf = self.ctx.resources.text_surface(label, font_body, theme.COLOR_TEXT_MUTED)
+            surface.blit(label_surf, label_surf.get_rect(center=(rect.centerx, rect.y + 30)))
+            value_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+            value_surf = self.ctx.resources.text_surface(value, value_font, theme.COLOR_PRIMARY_DARK)
+            surface.blit(value_surf, value_surf.get_rect(center=(rect.centerx, rect.y + 58)))
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         msg_surf = self.ctx.resources.text_surface(self.message, font_small, theme.COLOR_PRIMARY_DARK)
-        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, y + 20)))
+        surface.blit(msg_surf, msg_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 540)))
 
         for btn in self.buttons:
             btn.render(surface)

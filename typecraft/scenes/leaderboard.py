@@ -51,30 +51,38 @@ class LeaderboardScene(Scene):
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         title = self.ctx.resources.text_surface("Leaderboard", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 50)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
+
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        sub = self.ctx.resources.text_surface(
+            "Top students by speed or accuracy", font_small, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 95)))
 
         self.wpm_tab_btn.render(surface)
         self.acc_tab_btn.render(surface)
         self.back_button.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        y = 190
+        y = 210
+        row_height = 44
         unit = "wpm" if self.tab == TAB_WPM else "%"
         for i, row in enumerate(self.rows, start=1):
+            row_rect = pygame.Rect(theme.SCREEN_WIDTH // 2 - 320, y - 6, 640, row_height)
+            if i % 2 == 0:
+                pygame.draw.rect(surface, (240, 242, 245), row_rect, border_radius=8)
             line = f"{i}. {row['name']} — {row['score']:.0f} {unit}"
             surf = self.ctx.resources.text_surface(line, font_body, theme.COLOR_TEXT)
-            surface.blit(surf, (theme.SCREEN_WIDTH // 2 - 200, y))
-            y += 40
+            surface.blit(surf, (row_rect.x + 20, row_rect.centery - surf.get_height() // 2))
+            y += row_height
 
         if not self.rows:
             empty = self.ctx.resources.text_surface(
                 "No completed lessons yet.", font_body, theme.COLOR_TEXT_MUTED)
-            surface.blit(empty, empty.get_rect(center=(theme.SCREEN_WIDTH // 2, 300)))
+            surface.blit(empty, empty.get_rect(center=(theme.SCREEN_WIDTH // 2, 340)))
             return
 
         # FR-113: the tie rule is stated on screen so a child can see why two equal
         # scores are ordered the way they are.
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         note = self.ctx.resources.text_surface(
             "Best score per student, completed lessons only. Equal scores: longest-joined first.",
             font_small, theme.COLOR_TEXT_MUTED)
