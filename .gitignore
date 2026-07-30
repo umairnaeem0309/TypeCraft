@@ -28,6 +28,14 @@ env/
 build/
 dist/
 *.spec.bak
+# Defensive: if PyInstaller or a manual run ever drops artifacts inside the package,
+# never commit them.
+typecraft/*.exe
+typecraft/_internal/
+typecraft/badges.json
+typecraft/lessons.json
+typecraft/messages.json
+typecraft/settings.json
 
 # --- Profiling / runtime artifacts ---------------------------------------------
 typecraft_profile*.csv
