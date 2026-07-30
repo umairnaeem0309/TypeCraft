@@ -62,6 +62,17 @@ def test_a_laptop_screen_is_not_overfilled():
     assert size[1] <= 768 * 0.95
 
 
+def test_the_sizing_rule_is_advisory_only():
+    """`initial_window_size()` is no longer applied to the OS window: the code that
+    did used pygame's private `_sdl2.video.Window`, whose finalizer destroyed the
+    display and crashed the app (see tests/integration/test_no_native_crash.py).
+    The rule is kept because it documents the intended presentation size and is what
+    fullscreen effectively achieves — but nothing may call into `_sdl2` again."""
+    assert not hasattr(window, "apply_window_size"), (
+        "the unsafe OS-window resize must stay removed")
+    assert not hasattr(window, "_resize_os_window")
+
+
 def test_the_window_never_grows_absurdly_on_a_4k_panel():
     """A 3x window would be mostly empty, and the upscale costs fill-rate on
     integrated graphics for nothing (NFR-006)."""
@@ -112,7 +123,6 @@ def test_the_drawing_surface_stays_the_design_size_whatever_the_window(app_ctx, 
     from typecraft.core.game import Game
 
     monkeypatch.setattr(window, "create_display", lambda fullscreen=False: display)
-    monkeypatch.setattr(window, "apply_window_size", lambda size: None)
     monkeypatch.setattr(window, "desktop_size", lambda: (2560, 1440))
 
     game = Game()
@@ -149,7 +159,6 @@ def test_fullscreen_is_toggled_by_f11_and_alt_enter(app_ctx, display, monkeypatc
     from typecraft.core.game import Game
 
     monkeypatch.setattr(window, "create_display", lambda fullscreen=False: display)
-    monkeypatch.setattr(window, "apply_window_size", lambda size: None)
 
     toggles = []
     monkeypatch.setattr(window, "toggle_fullscreen",
@@ -175,7 +184,6 @@ def test_a_plain_return_does_not_toggle_fullscreen(app_ctx, display, monkeypatch
     from typecraft.core.game import Game
 
     monkeypatch.setattr(window, "create_display", lambda fullscreen=False: display)
-    monkeypatch.setattr(window, "apply_window_size", lambda size: None)
     toggles = []
     monkeypatch.setattr(window, "toggle_fullscreen", lambda: toggles.append(True))
 
@@ -195,7 +203,6 @@ def test_a_resize_repaints_the_whole_canvas(app_ctx, display, monkeypatch):
     from typecraft.core.game import Game
 
     monkeypatch.setattr(window, "create_display", lambda fullscreen=False: display)
-    monkeypatch.setattr(window, "apply_window_size", lambda size: None)
 
     game = Game()
     try:
@@ -217,7 +224,6 @@ def test_toggling_fullscreen_does_not_move_any_widget(app_ctx, display, monkeypa
     from typecraft.core.game import Game
 
     monkeypatch.setattr(window, "create_display", lambda fullscreen=False: display)
-    monkeypatch.setattr(window, "apply_window_size", lambda size: None)
     monkeypatch.setattr(window, "toggle_fullscreen", lambda: True)
 
     game = Game()

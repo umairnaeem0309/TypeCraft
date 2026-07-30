@@ -43,6 +43,11 @@ CHROME_ALLOWANCE = 48
 def initial_window_size(desktop_size, design_size=DESIGN_SIZE) -> tuple:
     """Largest window that fits the desktop while preserving the design aspect.
 
+    Advisory: it describes the size the canvas *should* be presented at, and is what
+    the fullscreen/maximised presentation effectively achieves. It is not applied to
+    the OS window at startup — see the note further down about why that is not
+    possible safely.
+
     Args:
         desktop_size: (width, height) of the display, as pygame reports it.
         design_size: the logical canvas being scaled.
@@ -101,44 +106,25 @@ def create_display(fullscreen: bool = False):
     return surface
 
 
-def apply_window_size(size) -> None:
-    """Resize the OS window without disturbing the logical canvas.
-
-    Called once at startup so the app opens at a sensible size for the screen it
-    finds itself on. Failures are swallowed: an unusual driver refusing the resize
-    should leave a working 1280x720 window, not stop the class typing.
-    """
-    try:
-        window = pygame.display.get_wm_info().get("window")
-    except pygame.error:
-        window = None
-    if not window:
-        return
-
-    try:
-        pygame.display.set_mode(
-            DESIGN_SIZE,
-            pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE,
-            vsync=0,
-        )
-        pygame.display.get_surface()
-        _resize_os_window(size)
-    except pygame.error:
-        pass
-
-
-def _resize_os_window(size) -> None:
-    """Ask SDL to resize the window itself, leaving the scaled canvas alone."""
-    try:
-        from pygame._sdl2.video import Window  # noqa: PLC0415 - optional backend
-    except ImportError:
-        return
-    try:
-        window = Window.from_display_module()
-        window.size = size
-        window.position = pygame.WINDOWPOS_CENTERED
-    except Exception:      # pragma: no cover - backend-specific
-        pass
+# --- Why there is no "open the window bigger than the canvas" function -------
+#
+# There was one, and it crashed the application. It used pygame's private
+# `_sdl2.video.Window.from_display_module()` to resize the OS window while leaving
+# the scaled canvas alone. That Window object destroys the underlying SDL window
+# when it is garbage-collected, so the display died at an unpredictable later
+# moment — reported as "click a student and the game suddenly closes", and visible
+# under faulthandler as:
+#
+#     Windows fatal exception: access violation
+#     Current thread ...: Garbage-collecting
+#
+# A native use-after-free, so no Python traceback and no log entry. It also called
+# set_mode() a second time, leaving Game.screen pointing at a freed surface.
+#
+# pygame offers no public way to give a SCALED display a window larger than its
+# logical size, so the feature is gone rather than reimplemented unsafely. The need
+# it served — "use my whole screen" — is met by RESIZABLE (drag or maximise) and by
+# fullscreen below, both of which SCALED handles correctly.
 
 
 def toggle_fullscreen() -> bool:

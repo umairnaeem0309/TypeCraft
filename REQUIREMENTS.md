@@ -43,10 +43,13 @@ selections; only the teacher area is PIN-gated.
   1280×720 and §11 listed resizable/fullscreen as out of scope.)* The application draws into a
   fixed **1280×720 design canvas**; all layout is authored in those coordinates and
   `pygame.SCALED` maps the canvas to the real window, translating mouse input back. The window
-  is titled "TypeCraft", is **resizable**, opens at a size chosen for the detected desktop
-  (never smaller than the canvas when the canvas fits natively, never more than 2× it), and can
-  be toggled fullscreen with **F11** or **Alt+Enter** or started fullscreen with
-  `--fullscreen`. Scaling preserves aspect ratio, so no control is ever distorted or displaced.
+  is titled "TypeCraft", is **resizable** (drag or maximise), and can be toggled fullscreen with
+  **F11** or **Alt+Enter** or started fullscreen with `--fullscreen`. Scaling preserves aspect
+  ratio, so no control is ever distorted or displaced.
+  *Amended again 2026-07-31:* the window **opens at the design size** rather than pre-sized to
+  the desktop. The code that resized the OS window used pygame's private `_sdl2.video.Window`,
+  whose finalizer destroyed the display and crashed the application (defect D-33); pygame offers
+  no safe public equivalent. Maximise or fullscreen achieves the same result.
 - **FR-006** The loop is a fixed Event → Update → Render cycle targeting 30 FPS.
 
 ### 3.2 Profiles

@@ -48,6 +48,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-025 | Responsive window: desktop-aware sizing, resize, fullscreen | 4 | DONE | P2 |
 | TC-026 | UI consistency: shared chrome, spacing and type scales | 4 | DONE | P2 |
 | TC-027 | Launcher explains a wrong-interpreter start | 1 | DONE | P2 |
+| TC-028 | Fix the native crash on profile select; log crashes | 4 | DONE | P0 |
 
 ---
 
@@ -992,3 +993,36 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   `tests/unit/test_launcher.py` cover the message naming the interpreter used, an existing venv
   being offered as a one-command fix, a missing venv getting setup steps, the message staying
   under 20 lines, and the guard not swallowing non-dependency import errors.
+
+## TC-028 - Fix the native crash on profile select; make crashes leave evidence
+- **Phase** 4 - **Status** DONE (2026-07-31) - **Priority** P0
+- **Requirements** FR-005 *(amended again)*, NFR-013, DOC-006
+- **Reported.** "Once i click the profile or any student in profile page game suddenly closes."
+- **Two defects, one of them mine.**
+  - **D-33 (S1)** - `core/window.py` used pygame's **private** `_sdl2.video.Window`
+    `.from_display_module()` to resize the OS window. That object destroys the underlying SDL
+    window in its finalizer, so the display died whenever the garbage collector next ran: a
+    native use-after-free, no Python exception, no log entry. It also called `set_mode()` a
+    second time, leaving `Game.screen` on a freed surface. **I introduced this in TC-025.**
+  - **D-34 (S2)** - nothing wrapped the game loop, so the failure left *no evidence at all*: the
+    user's log contained 43 startup lines and nothing else.
+- **How it was found.** The suite was green and the flow tests already covered
+  profile -> Lesson Select, so the tests were not wrong; the *environment* differed. Under the
+  dummy SDL driver it never reproduced. With the real driver and `-u -X faulthandler`:
+  `Windows fatal exception: access violation` / `Current thread: Garbage-collecting`. Output
+  buffering initially hid everything, which is worth remembering: always pass `-u` when a
+  process dies silently.
+- **Fix.** The resize is **removed**, not reimplemented. pygame offers no public way to give a
+  SCALED display a window larger than its canvas, and the need it served ("use my whole screen")
+  is met by RESIZABLE and fullscreen. FR-005 amended to say the window opens at the design size.
+  `main()` now logs any escaping exception and returns 1, and `faulthandler` writes native stacks
+  to `typecraft-crash.log`.
+- **Acceptance.** OK. 7 tests in `tests/integration/test_no_native_crash.py`, which run in a
+  **subprocess** because an access violation terminates the interpreter - no in-process assertion
+  survives it. That is why 812 passing tests coexisted with an unusable app.
+- **Honest note on those tests.** The five subprocess tests passed on the buggy code in one
+  trial: the fault is GC-timing dependent, so they are a safety net rather than a detector. The
+  deterministic protection is the two **static source guards** - no `_sdl2` anywhere, and exactly
+  one `set_mode()` call - and both were confirmed to fail on the pre-fix code.
+- **Verified live.** Real app, real SDL driver, real 13-profile database: 8 visible students
+  clicked through to Lesson Select, 15 characters typed in a live lesson, clean exit, no crash log.

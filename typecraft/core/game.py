@@ -71,11 +71,10 @@ class Game:
         self.screen = window.create_display(fullscreen=fullscreen)
         self.fullscreen = fullscreen
 
-        # The canvas size is fixed, but the window should not be: opening at a flat
-        # 1280x720 left the app as a small box on a 1080p desktop and a postage
-        # stamp on 1440p. Size it to the screen we actually found.
-        if not fullscreen:
-            window.apply_window_size(window.initial_window_size(window.desktop_size()))
+        # The window is RESIZABLE and F11/Alt+Enter toggles fullscreen; SCALED maps
+        # the 1280x720 canvas to whatever size the window ends up. Deliberately no
+        # attempt to resize the OS window at startup — the version that did crashed
+        # the app with a native use-after-free (see core/window.py).
         self.clock = pygame.time.Clock()
 
         self.ctx = AppContext()

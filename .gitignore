@@ -46,3 +46,8 @@ typecraft_profile*.csv
 desktop.ini
 Thumbs.db
 *.swp
+
+# Transient probe written by tests/integration/test_no_native_crash.py
+_native_crash_probe.py
+_live_check.py
+typecraft-crash.log

@@ -1,10 +1,21 @@
-"""main.py — tiny entry point: configure logging, build the Game, start the loop."""
+"""main.py — tiny entry point: configure logging, build the Game, start the loop.
+
+Two guards live here, both added after a crash that left no evidence at all: the
+app closed on a profile click and `typecraft.log` contained nothing but "starting"
+lines. A silent exit on a school PC is undiagnosable.
+
+  - a top-level `except` that logs the traceback before exiting non-zero
+  - `faulthandler` writing to the log, which captures *native* crashes (access
+    violations, segfaults) that raise no Python exception and so cannot be caught
+"""
 
 import argparse
+import faulthandler
 import sys
 
 from typecraft.core.game import Game
 from typecraft.core.logging_setup import configure_logging, get_logger
+from typecraft.core.paths import log_path
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -28,9 +39,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _enable_native_crash_capture():
+    """Send native crash stacks to a file beside the log.
+
+    A pygame/SDL access violation kills the process without a Python exception, so
+    nothing else here can record it. Returns the open handle, which must stay open
+    for faulthandler to use it.
+    """
+    try:
+        handle = open(log_path().with_name("typecraft-crash.log"), "a", encoding="utf-8")
+        faulthandler.enable(file=handle, all_threads=True)
+        return handle
+    except OSError:
+        faulthandler.enable()        # stderr is better than nothing
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     configure_logging()
     log = get_logger(__name__)
+    _crash_handle = _enable_native_crash_capture()
     log.info("TypeCraft starting")
 
     if argv is None:
@@ -45,8 +73,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         game.run()
+    except Exception:
+        # Anything escaping the loop would otherwise close the window with no
+        # explanation. Log it, then fail loudly rather than exiting 0.
+        log.exception("TypeCraft stopped because of an unhandled error")
+        return 1
     finally:
-        pass
+        log.info("TypeCraft exiting")
     return 0
 
 

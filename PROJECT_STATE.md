@@ -7,15 +7,14 @@
 
 **Last updated:** 2026-07-31
 **Current phase:** Phase 7 — Packaging, docs, release (TC-022 done)
-**Current active task:** none — TC-027 closed (launcher diagnostics).
-**Last completed task:** TC-027 — explain the wrong-interpreter failure instead of
-tracebacking (2026-07-31)
-**Next recommended task:** none outstanding at P0/P1. Optional: migrate the six scene render
-bodies onto `ui/screen.PageHeader`, and re-run `scripts/build_release.py` so `dist/TypeCraft/`
-picks up TC-024 through TC-027.
-**Environment note for every session:** run everything through the project virtualenv —
-`.venv\Scripts\python.exe`. A bare `python` on this machine resolves to `C:\MiniConda\python.exe`,
-which has no pygame; `python main.py` now explains that rather than tracebacking.
+**Current active task:** none - TC-028 closed (native crash fix).
+**Last completed task:** TC-028 - remove the use-after-free that closed the app on a profile
+click, and make crashes leave evidence (2026-07-31)
+**Next recommended task:** re-run `scripts/build_release.py` - `dist/TypeCraft/` predates
+TC-024 through TC-028 and therefore still contains the crashing window code.
+**Debugging note for future sessions:** a silent close with nothing in `typecraft.log` means a
+*native* crash. Reproduce in a subprocess with `python -u -X faulthandler`, which is how D-33 was
+found; the app now also writes native stacks to `_dev_data/typecraft-crash.log` automatically.
 **Working branch:** `feature/tc022-release-acceptance` (branched from `feature/tc021-docs`)
 
 ---
@@ -34,7 +33,7 @@ which has no pygame; `python main.py` now explains that rather than tracebacking
 | 7 — Packaging, docs, release | **COMPLETE** — TC-020, TC-021, TC-022 done |
 
 Tasks: 27 defined — 27 DONE, 0 IN_PROGRESS, 0 TODO. **Open P0: 0.** Open P1: 0.
-Defects: **32 found** (D-32 added and closed by TC-019) — **27 closed**,
+Defects: **34 found** (D-33, D-34 added and closed by TC-028) — **29 closed**,
 1 partially closed (D-22), 4 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
 Tests: **707 passing, 4 skipped, 0 xfail, 0 unexpected failures.**
@@ -166,6 +165,8 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-21~~ | S3 | ~~`assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent.~~ **CLOSED by TC-017.** Four generated avatar PNGs and four WAV cues are bundled; `image()`/`font()`/`sound()` return a placeholder/default/silent stub on a miss and log once; `AudioManager.play()` is wired into LessonScene keystrokes, completion and badge awards. | `ui/resource_manager.py`, `ui/audio_manager.py`, `ui/notice.py`, `scenes/lesson.py`, `managers/progression.py`; `tests/unit/test_resource_fallbacks.py` | TC-017 ✅ |
 | D-22 | S3 | **PARTIALLY CLOSED by TC-004, TC-017 and TC-023.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Asset fallback and malformed `lessons.json` call sites now log and surface notices.** **Still open:** any remaining call sites where a silent fallback or validation failure could hide a problem from the teacher; no specific defect is currently known. | `core/logging_setup.py`; `managers/resource_manager.py`; `managers/lesson_manager.py` | TC-011, TC-017, TC-023 |
 | ~~D-31~~ | S2 | ~~The daily streak bonus was never awarded — `metrics.daily_streak_bonus()` had no caller, so FR-057 was unimplemented and a third of the XP economy contributed nothing.~~ **CLOSED by TC-013b.** Awarded once per local calendar day on the first completed lesson, inside the scoring transaction and after the streak is touched. Verified: 5/10/15/20/25 then saturating, once per day only. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
+| ~~D-33~~ | S1 | **The app closed instantly when a student was selected.** `core/window.py` used pygame's private `_sdl2.video.Window.from_display_module()` to resize the OS window; that object destroys the underlying SDL window when garbage-collected, so the display died at an unpredictable later moment - a native use-after-free with no Python exception and no log entry. It also called `set_mode()` a second time, leaving `Game.screen` pointing at a freed surface. **Introduced by me in TC-025.** **CLOSED by TC-028:** the resize is removed entirely (pygame has no safe public equivalent), guarded by two static source checks plus five subprocess tests. | access violation during Garbage-collecting under `-X faulthandler`; verified fixed against the real 13-profile database with the real SDL driver | TC-028 OK |
+| ~~D-34~~ | S2 | **A crash left no evidence.** Nothing wrapped the game loop, so an unhandled exception closed the window silently and `typecraft.log` held only startup lines - undiagnosable in the field, precisely the case ARCHITECTURE section 11 tier 4 exists for. **CLOSED by TC-028:** `main()` logs any escaping exception and returns 1, and `faulthandler` writes native stacks to `typecraft-crash.log`. | 43 startup lines and no errors in the user's log despite four crashed runs | TC-028 OK |
 | ~~D-32~~ | S3 | **Found and closed by TC-019.** `TextInput` consumed the Return key in order to unfocus itself, so the owning scene never saw it — typing a teacher PIN and pressing Enter did **nothing**, and a teacher had to know to click Unlock instead. Fixed with an `on_submit` callback, wired in the dashboard PIN gate and the Settings PIN field. Only a test clicking and typing through real widgets could have found this. | `ui/text_input.py`, `scenes/teacher_dashboard.py`, `scenes/settings.py`; `tests/scenes/test_flow.py` | TC-019 OK |
 | ~~D-23~~ | S4 | ~~`ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014).~~ **CLOSED by TC-018.** `ResourceManager.text_surface()` now uses a bounded `OrderedDict` cache (`MAX_TEXT_CACHE = 512`); `clear_text_cache()` is called on scene exit so memory is reclaimed between scenes. | `ui/resource_manager.py` | TC-018 ✅ |
 | D-24 | S4 | `_dev_data/` (including `typecraft.db`) and `__pycache__/` are untracked **and un-ignored** — a future `git add -A` would commit a database and byte-code. No `.gitignore` exists. | `git status --short` | TC-001 |
@@ -219,6 +220,31 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 ---
 
 ## 6. Files changed
+
+### TC-028 (last task, DONE) - native crash fix
+
+- `typecraft/core/window.py` - `apply_window_size()` and `_resize_os_window()` **deleted** (the
+  use-after-free), replaced by a post-mortem comment so the mistake is not repeated.
+  `initial_window_size()` kept and documented as advisory.
+- `typecraft/core/game.py` - no longer resizes the OS window at startup.
+- `typecraft/main.py` - top-level `except` logging any escaping exception and returning 1;
+  `_enable_native_crash_capture()` pointing `faulthandler` at `typecraft-crash.log`; an
+  "exiting" log line so a clean shutdown is distinguishable from a crash.
+- `tests/integration/test_no_native_crash.py` - **new**, 7 tests (2 static guards, 5 subprocess).
+- `tests/scenes/test_window.py` - updated for the removed function, plus a test that it stays
+  removed.
+- `.gitignore`, `REQUIREMENTS.md` (FR-005 amended again), `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** reproduced with `-u -X faulthandler`, root-caused to the GC finalizer, fixed, then
+verified by driving the real app against the real 13-profile database under the real SDL driver -
+8 visible students clicked through to Lesson Select, 15 characters typed in a live lesson, clean
+exit, **no crash log written**. The two static guards were confirmed to *fail* on the pre-fix code.
+
+**Worth knowing:** the five subprocess tests passed on the buggy code in one trial - the fault is
+GC-timing dependent. The deterministic protection is the two static source guards; the subprocess
+tests are a safety net, not the primary detector.
+
+
 
 ### TC-025 + TC-026 (last tasks, DONE)
 
