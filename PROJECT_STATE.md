@@ -7,15 +7,15 @@
 
 **Last updated:** 2026-07-31
 **Current phase:** Phase 7 — Packaging, docs, release (TC-022 done)
-**Current active task:** none — TC-025 and TC-026 closed (responsive window, UI consistency).
-**Last completed task:** TC-026 — UI consistency: shared chrome, spacing and type scales
-(2026-07-31)
+**Current active task:** none — TC-027 closed (launcher diagnostics).
+**Last completed task:** TC-027 — explain the wrong-interpreter failure instead of
+tracebacking (2026-07-31)
 **Next recommended task:** none outstanding at P0/P1. Optional: migrate the six scene render
-bodies onto `ui/screen.PageHeader` (mechanical, no visual change), and re-run
-`scripts/build_release.py` so `dist/TypeCraft/` picks up TC-024/025/026.
-**Requirement changed this session:** FR-005 now specifies a resizable, desktop-aware,
-fullscreen-capable window over a fixed 1280x720 design canvas; §11 amended accordingly.
-Reflowing layout remains out of scope.
+bodies onto `ui/screen.PageHeader`, and re-run `scripts/build_release.py` so `dist/TypeCraft/`
+picks up TC-024 through TC-027.
+**Environment note for every session:** run everything through the project virtualenv —
+`.venv\Scripts\python.exe`. A bare `python` on this machine resolves to `C:\MiniConda\python.exe`,
+which has no pygame; `python main.py` now explains that rather than tracebacking.
 **Working branch:** `feature/tc022-release-acceptance` (branched from `feature/tc021-docs`)
 
 ---

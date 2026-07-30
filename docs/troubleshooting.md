@@ -126,3 +126,19 @@ Collect these items when asking for help:
 - Whether the problem happens every time or only sometimes
 
 Attach the log and a description of the steps that led to the problem.
+
+## `python main.py` does nothing, or says pygame is missing
+
+You are running a different Python from the one that has TypeCraft's dependencies.
+The app now prints which interpreter it used and what to run instead; the short
+answer is:
+
+```
+.venv\Scripts\python.exe main.py
+```
+
+Or activate the environment first with `.venv\Scripts\Activate.ps1`, then
+`python main.py`. If there is no `.venv` folder, create it — see README.md.
+
+This only affects running **from source**. The released `TypeCraft.exe` bundles its
+own Python and is unaffected.

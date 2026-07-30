@@ -54,11 +54,25 @@ a school machine.
 
 ## Run from source
 
+**Activate the virtualenv first** — this is the one step people skip:
+
 ```bash
-python main.py          # or:  python -m typecraft
+.venv\Scripts\Activate.ps1             # PowerShell
+python main.py                          # or:  python -m typecraft
 ```
 
-Both are equivalent. A 1280×720 window opens on the Main Menu.
+Or skip activation and name the interpreter directly, which always works:
+
+```bash
+.venv\Scripts\python.exe main.py
+```
+
+> A bare `python main.py` uses whatever `python` is on your PATH. If that is a
+> machine-wide install (Anaconda, the Microsoft Store build, `C:\PythonXX`) it will not
+> have pygame, and TypeCraft will tell you so and print the command to use instead.
+
+A window opens on the Main Menu, sized to suit your screen. **F11** or **Alt+Enter**
+toggles fullscreen; `--fullscreen` starts that way.
 
 While running from source, all writable data lives in `_dev_data/` beside the package. It is
 git-ignored, so development never touches a real classroom database.

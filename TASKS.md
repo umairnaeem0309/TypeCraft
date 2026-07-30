@@ -47,6 +47,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-024 | Playtest UI fixes: results colours, lesson spacing, reset wording, settings scale | 4 | DONE | P2 |
 | TC-025 | Responsive window: desktop-aware sizing, resize, fullscreen | 4 | DONE | P2 |
 | TC-026 | UI consistency: shared chrome, spacing and type scales | 4 | DONE | P2 |
+| TC-027 | Launcher explains a wrong-interpreter start | 1 | DONE | P2 |
 
 ---
 
@@ -971,3 +972,23 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   each scene still renders its own title surface. Migrating the six render bodies onto
   `PageHeader` is a further mechanical step with no visual effect, left undone rather than
   half-done.
+
+## TC-027 — Launcher explains a wrong-interpreter start
+- **Phase** 1 · **Status** DONE (2026-07-31) · **Priority** P2
+- **Requirements** PK-009, DOC-001, DOC-006
+- **Reported.** `python main.py` "not working". Reproduced immediately: `python` on this machine
+  is `C:\MiniConda\python.exe`, which has no pygame, so the launcher died with a bare
+  `ModuleNotFoundError`. The environment was the cause, but the **message** was the defect — a
+  traceback tells a new developer nothing about what to do.
+- **Scope.** The root `main.py` import is now guarded. On a missing third-party dependency it
+  prints the interpreter actually in use, whether the project virtualenv exists, and the exact
+  command to run — then exits 1. A missing `.venv` gets setup instructions instead. The guard
+  whitelists `pygame` only, so a genuine typo inside the package keeps its traceback.
+- **Docs.** `README.md`'s run section now leads with activation and notes that a bare `python`
+  may be the wrong one; `docs/troubleshooting.md` gains a matching entry noting this affects
+  running from source only — the released `TypeCraft.exe` bundles its own Python.
+- **Acceptance.** OK. Verified by running `python main.py` with the wrong interpreter and reading
+  the output, and confirming `.venv\Scripts\python.exe main.py` still starts normally. 7 tests in
+  `tests/unit/test_launcher.py` cover the message naming the interpreter used, an existing venv
+  being offered as a one-command fix, a missing venv getting setup steps, the message staying
+  under 20 lines, and the guard not swallowing non-dependency import errors.
