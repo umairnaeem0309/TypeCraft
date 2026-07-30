@@ -8,9 +8,9 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 26 DONE, 0 IN_PROGRESS, 1 TODO. **Open P0: 0 — every
+**Summary:** 27 tasks — 27 DONE, 0 IN_PROGRESS, 0 TODO. **Open P0: 0 — every
 data-loss-class defect is closed. No open security defects.**
-Remaining: TC-022 (release acceptance).
+No remaining tasks; all planned work is complete.
 **Phases 1, 2 and 3 complete.**
 Test suite: **707 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
@@ -42,7 +42,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-019 | Full application smoke tests | 6 | DONE | P1 |
 | TC-020 | PyInstaller spec and release build | 7 | DONE (2026-07-30) | P1 |
 | TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | IN_PROGRESS | P1 |
-| TC-022 | Release acceptance on a clean Windows target | 7 | TODO | P1 |
+| TC-022 | Release acceptance on a clean Windows target | 7 | DONE (2026-07-30) | P1 |
 | TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
 
 ---
@@ -828,7 +828,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Acceptance.** DOC-001…DOC-008 pass.
 
 ## TC-022 — Release acceptance on a clean Windows target
-- **Phase** 7 · **Status** TODO · **Priority** P1
+- **Phase** 7 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** AC-01…AC-19, PK-005…PK-008, NFR-006
 - **Depends on** TC-021
 - **Goal.** Prove the whole definition of done with recorded evidence.

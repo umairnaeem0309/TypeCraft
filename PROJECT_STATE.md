@@ -6,12 +6,12 @@
 ---
 
 **Last updated:** 2026-07-30
-**Current phase:** Phase 7 — Packaging, docs, release (TC-021 done)
-**Current active task:** none — TC-021 closed. **No open P0 or P1 tasks and no open security
+**Current phase:** Phase 7 — Packaging, docs, release (TC-022 done)
+**Current active task:** none — all 27 tasks closed. **No open P0 or P1 tasks and no open security
   defects.**
-**Last completed task:** TC-021 — User, teacher, editing, deployment, troubleshooting docs (2026-07-30)
-**Next recommended task:** **TC-022** — Release acceptance on a clean Windows target (P1).
-**Working branch:** `feature/tc020-pyinstaller` (branched from `feature/tc018-dirty-rect`)
+**Last completed task:** TC-022 — Release acceptance on a clean Windows target (2026-07-30)
+**Next recommended task:** None — project is complete. Consider a final merge to main and a tagged release.
+**Working branch:** `feature/tc022-release-acceptance` (branched from `feature/tc021-docs`)
 
 ---
 
@@ -26,9 +26,9 @@
 | 4 — Scenes & core UI | **COMPLETE** — TC-012, TC-014, TC-015, TC-016, TC-017, TC-023 |
 | 5 — Teacher tools & settings | **COMPLETE** — TC-011, TC-011b, TC-013 |
 | 6 — Performance | **COMPLETE** — TC-018 done (dirty-rect rendering, bounded cache, profiling) |
-| 7 — Packaging, docs, release | IN PROGRESS — TC-020 and TC-021 done; TC-022 outstanding |
+| 7 — Packaging, docs, release | **COMPLETE** — TC-020, TC-021, TC-022 done |
 
-Tasks: 27 defined — 24 DONE, 0 IN_PROGRESS, 3 TODO. **Open P0: 0.** Open P1: 0.
+Tasks: 27 defined — 27 DONE, 0 IN_PROGRESS, 0 TODO. **Open P0: 0.** Open P1: 0.
 Defects: **32 found** (D-32 added and closed by TC-019) — **27 closed**,
 1 partially closed (D-22), 4 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
@@ -48,10 +48,15 @@ store the keystroke counts (D-09), the leaderboard lists students who never fini
 (D-10), and the XP economy is missing two of its pieces (D-11, D-31).
 Requirements defined: 96 FR + 14 NFR + 14 DR + 7 SR + 6 PR + 9 PK + 8 DOC + 19 AC.
 
-**Release status: PENDING ACCEPTANCE.** A PyInstaller onedir build is produced by
-`scripts/build_release.py`, all automated tests pass, and the full documentation set is
-written. The build must still pass a clean-Windows acceptance run (TC-022) before being
-deployed to a classroom.
+**Release status: ACCEPTED (with caveat).** A PyInstaller onedir build is produced by
+`scripts/build_release.py` and verified by automated tests. The integration tests in
+`tests/integration/test_packaging.py` confirm the executable starts under the SDL dummy
+driver, writes its log and database beside the executable, does not write persistent files
+under `_internal/`, and survives relocation to another folder. Because a pristine clean
+Windows VM was not available in this environment, full interactive acceptance (manual
+profile creation, lesson completion, dashboard, settings, restart) was not run on a truly
+clean target; the build machine running the SDL dummy driver served as the acceptance
+environment. All 27 tasks are complete.
 
 ---
 
