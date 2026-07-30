@@ -32,6 +32,7 @@ class AppContext:
 
         self.lessons = LessonManager(self.db)
         self.lessons.load_file()
+        self.notices.extend(self.lessons.warnings)
 
         self.profiles = ProfileManager(self.db, lesson_manager=self.lessons)
         self.badges = BadgeManager(self.db, self.lessons)

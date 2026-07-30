@@ -7,15 +7,11 @@
 
 **Last updated:** 2026-07-30
 **Current phase:** Phase 4 — scene flow and core UI completion (TC-012, TC-014, TC-015,
-TC-016, TC-017 done; TC-023 remains, P2)
+TC-016, TC-017, TC-023 done; Phase 4 complete)
 **Current active task:** none — TC-019 closed. **No open P0 tasks and no open security
 defects.**
-**Last completed task:** TC-017 — assets, logging, and graceful fallbacks (2026-07-30)
-**Next recommended task:** **TC-023** — Lesson JSON fallback warning surfaced to the
-teacher (P2), which also clears the remaining xfail. Then TC-018 (measured dirty-rect
-rendering) and the release trio TC-020/TC-021/TC-022. After those, TC-018 (measured
-dirty-rect rendering — the smoke net it needs now exists) and the release trio
-TC-020/TC-021/TC-022.
+**Last completed task:** TC-023 — Lesson JSON fallback warning surfaced to the teacher (2026-07-30)
+**Next recommended task:** **TC-018** — measured dirty-rect rendering and bounded caches (P1), the last remaining P1 before packaging. Then the release trio TC-020/TC-021/TC-022.
 **Working branch:** `repair/typecraft-v1` (created from `main` at `f158a91`)
 
 ---
@@ -28,19 +24,19 @@ TC-020/TC-021/TC-022.
 | 1 — Structure, deps, tests | **COMPLETE** — TC-002, TC-003, TC-004 |
 | 2 — Engine & metric correctness | **COMPLETE** — TC-005 (tests), TC-006 (fix) |
 | 3 — Persistence & recovery | **COMPLETE** — TC-007, TC-008, TC-008b, TC-009, TC-010, TC-013b |
-| 4 — Scenes & core UI | IN PROGRESS — TC-012, TC-014, TC-015, TC-016, TC-017 done; TC-023 remains (P2) |
+| 4 — Scenes & core UI | **COMPLETE** — TC-012, TC-014, TC-015, TC-016, TC-017, TC-023 |
 | 5 — Teacher tools & settings | **COMPLETE** — TC-011, TC-011b, TC-013 |
 | 6 — Performance | IN PROGRESS — TC-019 done (the regression net); TC-018 outstanding |
 | 7 — Packaging, docs, release | NOT STARTED — TC-020, TC-021, TC-022 |
 
-Tasks: 27 defined — 22 DONE, 0 IN_PROGRESS, 5 TODO. **Open P0: 0.** Open P1: 2.
-Defects: **32 found** (D-32 added and closed by TC-019) — **26 closed**,
-1 partially closed (D-22), 5 open.
+Tasks: 27 defined — 23 DONE, 0 IN_PROGRESS, 4 TODO. **Open P0: 0.** Open P1: 1.
+Defects: **32 found** (D-32 added and closed by TC-019) — **27 closed**,
+1 partially closed (D-22), 4 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**
-Tests: **697 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
+Tests: **706 passing, 4 skipped, 0 xfail, 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %**.
 Coverage of `engine/` + `managers/` **97 %** — **AC-02's ≥ 85 % bar is met.**
-100 %: `metrics.py`, `typing_engine.py`, `lesson_manager.py`, `config_manager.py`,
+100 %: `typing_engine.py`, `metrics.py`, `lesson_manager.py`, `config_manager.py`,
 `streak_manager.py`. 98 %: `badge_manager.py`. 97 %: `database.py`. 96 %: `input_modes.py`.
 93 %: `progression.py`. 77 %: `profile_manager.py`.
 
@@ -154,10 +150,10 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | ~~D-16~~ | S3 | ~~Keyboard was 4x10 letter keys: no Space (the most-typed character in the course), no Shift, none of the punctuation Tier 4 is built from; it highlighted the key just *pressed* rather than the next expected one, and never named a finger.~~ **CLOSED by TC-015.** Full 5-row 61-key board from a single `ROWS` table with `CHAR_TO_KEY` derived from it; `highlight_expected()` guides the next character; a capital lights the letter plus the opposite hand's Shift; the finger is named in words. Coverage proved over every character of all 20 lessons. | `ui/keyboard_renderer.py`, `ui/theme.py`, `scenes/lesson.py`; `tests/db/test_keyboard.py` | TC-015 OK |
 | ~~D-17~~ | S3 | ~~Target text wrapped mid-word by pixel width; the `x > max_width + 60` test fired only after the offending glyph was drawn, so the last character on each line overhung the area; and the caret was drawn after `x` had advanced, marking the gap to the right of the character it meant.~~ **CLOSED by TC-016.** New `ui/target_text.py` with token-based wrapping (words placed whole), the wrap test before placement, a caret on the character's left edge plus a block behind it, and visible measured space markers. Bounds asserted for all 20 lessons in the real text area. | `ui/target_text.py`, `scenes/lesson.py`; `tests/db/test_target_text.py` | TC-016 OK |
 | ~~D-18~~ | S3 | ~~No pagination or scrolling: Profile Select ran off the window from the 9th child, Lesson Select clipped its 4th row of cards (so the last five lessons could not be started), and the dashboard list was unbounded.~~ **CLOSED by TC-014.** New `ui/scroll_panel.py` adopted by all three. Children keep content coordinates; the panel translates rendering up and input back down, so layout and hit-testing cannot drift apart. Verified at 40 students: everything visible is inside the window, everything is reachable, and a scrolled click hits the item under the cursor. | `ui/scroll_panel.py`, `scenes/profile_select.py`, `scenes/lesson_select.py`, `scenes/teacher_dashboard.py`; `tests/db/test_scrolling.py` | TC-014 OK |
-| D-19 | S3 | Malformed `lessons.json` falls back to the bundled default in **total silence** — no notice, no log. A teacher's broken edit looks like it simply had no effect. Violates FR-024. | `managers/lesson_manager.py:37-42` | TC-023 |
+| ~~D-19~~ | S3 | ~~Malformed `lessons.json` falls back to the bundled default in **total silence** — no notice, no log. A teacher's broken edit looks like it simply had no effect. Violates FR-024.~~ **CLOSED by TC-023.** `LessonManager.load_file()` logs the rejection, appends a teacher-facing warning to `self.warnings`, and `AppContext` promotes it to `self.notices` so the NoticeBar renders it. The strict-xfail test passes. | `managers/lesson_manager.py`; `tests/db/test_config_and_seeding.py` | TC-023 ✅ |
 | D-20 | S3 | Full-screen redraw: `Game._render()` does `screen.fill()` + `pygame.display.flip()` every frame, contradicting the blueprint's §5.1 dirty-rect design. The Lesson scene additionally blits ~150 cached glyph surfaces per frame. Text surfaces *are* cached so no rasterisation happens per frame. | `core/game.py:73-76`; `scenes/lesson.py:102-119` | TC-018 |
 | ~~D-21~~ | S3 | ~~`assets/` does not exist. Any `ResourceManager.image()` or `.sound()` call raises; `AudioManager.play()` is never called from anywhere, so the app is completely silent.~~ **CLOSED by TC-017.** Four generated avatar PNGs and four WAV cues are bundled; `image()`/`font()`/`sound()` return a placeholder/default/silent stub on a miss and log once; `AudioManager.play()` is wired into LessonScene keystrokes, completion and badge awards. | `ui/resource_manager.py`, `ui/audio_manager.py`, `ui/notice.py`, `scenes/lesson.py`, `managers/progression.py`; `tests/unit/test_resource_fallbacks.py` | TC-017 ✅ |
-| D-22 | S3 | **PARTIALLY CLOSED by TC-004 and TC-017.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Asset fallback call sites now log** through `ResourceManager`. **Still open:** the `lessons.json` malformed-JSON warning is not yet surfaced to the teacher; that is TC-023. | log written on a real app run; `managers/lesson_manager.py` still lacks logging/notice | TC-011, TC-017, TC-023 |
+| D-22 | S3 | **PARTIALLY CLOSED by TC-004, TC-017 and TC-023.** The facility now exists — `core/logging_setup.py`, a rotating file at `log_path()`, configured from `typecraft/main.py`, idempotent, non-fatal if the file cannot be opened; verified end to end (`typecraft.log` written on a real run). **Asset fallback and malformed `lessons.json` call sites now log and surface notices.** **Still open:** any remaining call sites where a silent fallback or validation failure could hide a problem from the teacher; no specific defect is currently known. | `core/logging_setup.py`; `managers/resource_manager.py`; `managers/lesson_manager.py` | TC-011, TC-017, TC-023 |
 | ~~D-31~~ | S2 | ~~The daily streak bonus was never awarded — `metrics.daily_streak_bonus()` had no caller, so FR-057 was unimplemented and a third of the XP economy contributed nothing.~~ **CLOSED by TC-013b.** Awarded once per local calendar day on the first completed lesson, inside the scoring transaction and after the streak is touched. Verified: 5/10/15/20/25 then saturating, once per day only. | `managers/progression.py`; `tests/db/test_progression.py` | TC-013b ✅ |
 | ~~D-32~~ | S3 | **Found and closed by TC-019.** `TextInput` consumed the Return key in order to unfocus itself, so the owning scene never saw it — typing a teacher PIN and pressing Enter did **nothing**, and a teacher had to know to click Unlock instead. Fixed with an `on_submit` callback, wired in the dashboard PIN gate and the Settings PIN field. Only a test clicking and typing through real widgets could have found this. | `ui/text_input.py`, `scenes/teacher_dashboard.py`, `scenes/settings.py`; `tests/scenes/test_flow.py` | TC-019 OK |
 | D-23 | S4 | `ResourceManager.clear_text_cache()` exists but is never called; the cache is unbounded across a classroom session (NFR-014). | `ui/resource_manager.py:57-60` | TC-018 |
@@ -186,7 +182,7 @@ Severity: **S1** data loss or corruption · **S2** wrong stored data or a broken
 | Leaderboard includes profiles with no completed attempts | CONFIRMED — zero-valued progress rows are created at profile creation (D-10) |
 | Keyboard lacks Space, Shift, shifted punctuation, next-key and finger guidance | CONFIRMED (D-16) |
 | Profile/dashboard screens lack pagination for a classroom | CONFIRMED, and Lesson Select clips its 4th row too (D-18) |
-| Lesson JSON fallback does not warn the teacher | CONFIRMED (D-19) |
+| Lesson JSON fallback does not warn the teacher | **RESOLVED** by TC-023 — log + NoticeBar warning |
 | Packaging/deployment/teacher/student/lesson-editing docs missing | CONFIRMED — only a 2-line README |
 
 **Additional defects found beyond the hypothesis list:** D-09 (schema missing keystroke

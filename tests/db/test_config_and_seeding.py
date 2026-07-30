@@ -107,20 +107,38 @@ def test_fallback_does_not_overwrite_the_teachers_broken_file(seeded_dir, db):
     assert (seeded_dir / "lessons.json").read_text(encoding="utf-8") == broken
 
 
-@pytest.mark.xfail(strict=True, reason="defect D-19: the lessons.json fallback is still silent "
-                                      "- no log record and no teacher-visible notice (TC-023)")
+def test_a_broken_lessons_file_surfaces_a_notice(writable_dir, display):
+    """FR-024. AppContext.notices should contain the warning so the NoticeBar
+    renders it in every scene."""
+    (writable_dir / "lessons.json").write_text("{ invalid", encoding="utf-8")
+
+    from typecraft.core.app_context import AppContext
+
+    ctx = AppContext()
+    try:
+        notices = " ".join(ctx.notices)
+        assert "lessons.json" in notices
+        assert "invalid" in notices
+    finally:
+        ctx.db.close()
+
+
 def test_a_broken_lessons_file_is_reported(seeded_dir, db, caplog):
+
     """FR-024. Without this, a teacher's broken edit looks exactly like an edit
     that had no effect: the class sees the default lessons and nobody knows why.
     TC-023 adds the log record and the on-screen notice."""
     (seeded_dir / "lessons.json").write_text("{ broken", encoding="utf-8")
 
     with caplog.at_level(logging.WARNING, logger="typecraft"):
-        LessonManager(db).load_file()
+        lessons = LessonManager(db)
+        lessons.load_file()
 
+    assert lessons.warnings, "no warning was recorded for the rejected file"
     messages = " ".join(r.getMessage() for r in caplog.records)
     assert "lessons.json" in messages
     assert caplog.records, "nothing was logged about the rejected file"
+
 
 
 # --------------------------------------------------------------------- settings & PIN
