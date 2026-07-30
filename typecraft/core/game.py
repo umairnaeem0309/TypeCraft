@@ -64,8 +64,14 @@ class Game:
         pygame.init()
         # Double-buffered display gives clean full-frame flips and eliminates the
         # tearing/flicker that can happen with partial dirty-rect updates.
+        # SCALED keeps the internal coordinate space at 1280x720 and automatically
+        # scales the output to the actual window/pixel size, so every scene and UI
+        # widget keeps its hard-coded coordinates without refactoring. RESIZABLE
+        # lets the user resize the window at runtime while PyGame handles scaling.
         self.screen = pygame.display.set_mode(
-            (theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT), pygame.DOUBLEBUF)
+            (theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT),
+            pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE,
+        )
         pygame.display.set_caption("TypeCraft")
         self.clock = pygame.time.Clock()
 
