@@ -8,9 +8,9 @@ Priority: `P0` release-blocking data-integrity or "nothing works without it";
 evidence recorded in `PROJECT_STATE.md`. Tests change in the same task as the behaviour they
 cover.
 
-**Summary:** 27 tasks — 22 DONE, 0 IN_PROGRESS, 5 TODO. **Open P0: 0 — every
+**Summary:** 27 tasks — 23 DONE, 0 IN_PROGRESS, 4 TODO. **Open P0: 0 — every
 data-loss-class defect is closed. No open security defects.**
-Remaining: TC-023 (P2 polish), TC-018 (performance), TC-020/TC-021/TC-022 (release).
+Remaining: TC-018 (performance), TC-020/TC-021/TC-022 (release).
 **Phases 1, 2 and 3 complete.**
 Test suite: **706 passing, 4 skipped, 1 strict-xfail (D-19), 0 unexpected failures.**
 Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
@@ -43,7 +43,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-020 | PyInstaller spec and release build | 7 | TODO | P1 |
 | TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | TODO | P1 |
 | TC-022 | Release acceptance on a clean Windows target | 7 | TODO | P1 |
-| TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | TODO | P2 |
+| TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
 
 ---
 
@@ -825,7 +825,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 - **Acceptance.** AC-01…AC-19 all pass; no open P0/P1 task remains.
 
 ## TC-023 — Lesson JSON fallback warning surfaced to the teacher
-- **Phase** 4 · **Status** TODO · **Priority** P2
+- **Phase** 4 · **Status** DONE (2026-07-30) · **Priority** P2
 - **Requirements** FR-023, FR-024
 - **Depends on** TC-017
 - **Goal.** A malformed `lessons.json` currently falls back to the bundled default in total
@@ -834,11 +834,15 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   appends a notice to `AppContext.notices`, and logs the file path, line, and reason; the
   notice bar shows a teacher-facing message on the Main Menu and Lesson Select.
 - **Files.** `typecraft/managers/lesson_manager.py`, `typecraft/core/app_context.py`,
-  `typecraft/ui/notice.py`, `tests/db/test_lesson_fallback.py`.
+  `typecraft/ui/notice.py`, `tests/db/test_config_and_seeding.py`.
 - **Checks.** Write a syntactically invalid `lessons.json` into the temp writable dir: the app
   starts, 20 default lessons load, a notice exists with the filename and reason, and a log
   line is written; a `schema_version` mismatch produces a distinct message.
-- **Acceptance.** FR-023/024 pass.
+- **Acceptance.** ✅ Met. **706 passing, 4 skipped, 0 xfail.** `LessonManager` now has a
+  `warnings` list reset on each `load_file()` call; a malformed file is logged at `WARNING`
+  and a teacher-facing notice is added to `AppContext.notices`. The strict-xfail test
+  covering D-19 passes and its marker is removed; a new test verifies the notice reaches
+  `AppContext`. Defect D-19 is closed and D-22 is no longer partially open for this call site.
 
 ---
 

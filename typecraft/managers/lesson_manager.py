@@ -8,9 +8,12 @@ the previous lesson unlocks the next; WPM never gates progress).
 
 import json
 
+from typecraft.core.logging_setup import get_logger
 from typecraft.core.paths import resource_path, writable_data_dir
 from typecraft.managers.database import Database
 from typecraft.models.lesson import Lesson
+
+log = get_logger(__name__)
 
 SCHEMA_VERSION = 1
 UNLOCK_ACCURACY_THRESHOLD = 85.0
@@ -22,9 +25,17 @@ class LessonManager:
         self._tiers_raw = []
         self._by_id = {}
         self._ordered = []  # flat list, in tier/order sequence
+        #: Human-readable warnings produced while loading lessons.json, surfaced in
+        #: the UI via AppContext.notices (FR-024).
+        self.warnings = []
+
+    @property
+    def _live_path(self):
+        return writable_data_dir() / "lessons.json"
 
     def load_file(self) -> None:
-        live_path = writable_data_dir() / "lessons.json"
+        self.warnings = []
+        live_path = self._live_path
         default_path = resource_path("data/lessons.json")
 
         path_to_read = live_path if live_path.exists() else default_path
@@ -34,9 +45,14 @@ class LessonManager:
             if data.get("schema_version") != SCHEMA_VERSION:
                 raise ValueError("schema_version mismatch")
             self._parse(data)
-        except (json.JSONDecodeError, ValueError, KeyError, FileNotFoundError):
+        except (json.JSONDecodeError, ValueError, KeyError, FileNotFoundError) as exc:
             # Malformed teacher-edited file: fall back to the bundled default
-            # and let the caller (main.py / a scene) surface a warning.
+            # and record a warning so the UI can surface it (FR-024, TC-023).
+            self.warnings.append(
+                "Your edited lessons.json is invalid and has been ignored; "
+                "the bundled default lessons are being used."
+            )
+            log.warning("lessons.json rejected at %s: %s", live_path, exc)
             with open(default_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             self._parse(data)
