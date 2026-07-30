@@ -56,11 +56,11 @@ class LeaderboardScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         title = self.ctx.resources.text_surface("Leaderboard", font_h, theme.COLOR_TEXT)
-        # Align the heading vertically with the Back button's centre.
+        # Keep the heading slightly below the Back button's centre.
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery)))
+                                                     self.back_button.rect.centery + 8)))
 
         sub = self.ctx.resources.text_surface(
             "Top students by speed or accuracy", self._subtitle_font, theme.COLOR_TEXT_MUTED)
