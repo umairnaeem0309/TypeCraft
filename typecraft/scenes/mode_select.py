@@ -18,8 +18,8 @@ class ModeSelectScene(Scene):
     def on_enter(self, lesson=None, **kwargs) -> None:
         self.lesson = lesson
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 520, 72, 26
-        start_y = 280
+        w, h, gap = 620, 86, 30
+        start_y = 220
 
         # Give every mode a distinct color so no two look the same.
         mode_colors = [theme.COLOR_PRIMARY, theme.COLOR_ACCENT, theme.COLOR_WARNING]
@@ -29,7 +29,8 @@ class ModeSelectScene(Scene):
             rect = pygame.Rect(cx - w // 2, start_y + i * (h + gap), w, h)
             btn = Button(rect, MODE_LABELS[mode_key],
                          lambda mk=mode_key: self._select_mode(mk), self.ctx.resources,
-                         bg_color=mode_colors[i])
+                         bg_color=mode_colors[i],
+                         font_size=theme.FONT_SIZE_HEADING)
             self.mode_buttons.append(btn)
 
         self.back_button = Button(
@@ -68,7 +69,7 @@ class ModeSelectScene(Scene):
             pad = 28
             top = self.mode_buttons[0].rect.top - pad
             bottom = self.mode_buttons[-1].rect.bottom + pad
-            panel = pygame.Rect(theme.SCREEN_WIDTH // 2 - 280, top, 560, bottom - top)
+            panel = pygame.Rect(theme.SCREEN_WIDTH // 2 - 360, top, 720, bottom - top)
             pygame.draw.rect(surface, theme.COLOR_CARD_BG, panel, border_radius=16)
             pygame.draw.rect(surface, theme.COLOR_LOCKED, panel, width=2, border_radius=16)
 
