@@ -1,5 +1,9 @@
 """core/state_manager.py — holds exactly one active Scene and handles transitions."""
 
+import pygame
+
+from typecraft.ui import theme
+
 
 class GameStateManager:
     def __init__(self, ctx):
@@ -20,6 +24,8 @@ class GameStateManager:
         scene_cls = self.registry[name]
         self.current = scene_cls(self.ctx)
         self.current.on_enter(**kwargs)
+        # A new scene needs the whole screen repainted.
+        self.current.mark_dirty(pygame.Rect(0, 0, theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT))
 
     def handle_event(self, event) -> None:
         if self.current:

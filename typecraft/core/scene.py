@@ -2,10 +2,20 @@
 
 from abc import ABC, abstractmethod
 
+import pygame
+
 
 class Scene(ABC):
     def __init__(self, ctx):
         self.ctx = ctx
+        #: Rects that changed this frame and must be updated on screen. Scenes
+        #: add to this list from render() whenever they blit a changed area.
+        self.dirty_rects = []
+
+    def mark_dirty(self, rect) -> None:
+        """Add a rect to the list of areas that need updating this frame."""
+        if rect is not None:
+            self.dirty_rects.append(pygame.Rect(rect))
 
     def on_enter(self, **kwargs) -> None:
         """Called once when the scene becomes active. Build widgets, load data here."""
