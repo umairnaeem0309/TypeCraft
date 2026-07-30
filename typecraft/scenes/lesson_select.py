@@ -56,6 +56,26 @@ class LessonSelectScene(Scene):
     def _select_lesson(self, lesson) -> None:
         self.ctx.states.change("mode_select", lesson=lesson)
 
+    def _render_lock_icon(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
+        """Draw a simple vector padlock in the centre of a locked lesson card."""
+        color = theme.COLOR_TEXT_MUTED
+        cx, cy = rect.centerx, rect.centery + 6
+
+        # Shackle (thick arc so the card background shows through naturally)
+        shackle_w, shackle_h = 20, 18
+        shackle_rect = pygame.Rect(cx - shackle_w // 2, cy - shackle_h, shackle_w, shackle_h)
+        pygame.draw.arc(surface, color, shackle_rect, 0, 3.14159, 4)
+
+        # Body of the lock
+        body_w, body_h = 28, 22
+        body_rect = pygame.Rect(cx - body_w // 2, cy - 2, body_w, body_h)
+        pygame.draw.rect(surface, color, body_rect, border_radius=4)
+
+        # Keyhole
+        keyhole_color = theme.COLOR_CARD_BG
+        pygame.draw.circle(surface, keyhole_color, (cx, cy + 4), 3)
+        pygame.draw.rect(surface, keyhole_color, (cx - 1, cy + 4, 2, 6))
+
     def handle_event(self, event) -> None:
         if self.back_button.handle_event(event):
             return
@@ -105,5 +125,7 @@ class LessonSelectScene(Scene):
                 if unlocked:
                     StarRating(pygame.Rect(rect.x, rect.centery, rect.width, 40),
                                stars=stars).render(surface)
+                else:
+                    self._render_lock_icon(surface, rect)
 
         self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)

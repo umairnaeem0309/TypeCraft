@@ -12,26 +12,26 @@ class MainMenuScene(Scene):
         self._showing_quit_popup = False
 
         cx = theme.SCREEN_WIDTH // 2
-        w, h, gap = 300, 56, 24
-        start_y = 230  # fixed start below the title/subtitle, not dynamically centered
+        w, h, gap = 420, 64, 24
+        start_y = 250  # anchor below the larger title/subtitle
 
         # Buttons are arranged in the order requested by users.
         self.widgets = [
             Button(pygame.Rect(cx - w // 2, start_y, w, h), "PLAY",
                    lambda: self.ctx.states.change("profile_select"), self.ctx.resources,
-                   bg_color=theme.COLOR_PRIMARY),
+                   bg_color=theme.COLOR_PRIMARY, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + (h + gap), w, h), "Leader",
                    lambda: self.ctx.states.change("leaderboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_ACCENT),
+                   bg_color=theme.COLOR_ACCENT, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + 2 * (h + gap), w, h), "Teacher Dashboard",
                    lambda: self.ctx.states.change("teacher_dashboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_ADMIN),
+                   bg_color=theme.COLOR_ADMIN, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + 3 * (h + gap), w, h), "Settings",
                    lambda: self.ctx.states.change("settings"), self.ctx.resources,
-                   bg_color=theme.COLOR_NEUTRAL),
+                   bg_color=theme.COLOR_NEUTRAL, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + 4 * (h + gap), w, h), "Quit",
                    self._ask_quit, self.ctx.resources,
-                   bg_color=theme.COLOR_ERROR),
+                   bg_color=theme.COLOR_ERROR, font_size=theme.FONT_SIZE_HEADING),
         ]
 
         # Quit confirmation popup buttons.
@@ -79,15 +79,16 @@ class MainMenuScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE)
+        # Use a larger title to fill the empty top space.
+        font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE + 16)
         title = self.ctx.resources.text_surface("TypeCraft", font, theme.COLOR_PRIMARY_DARK)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 120)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 130)))
 
         # Subtitle
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         subtitle = self.ctx.resources.text_surface(
             "Learn to type, one key at a time", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 180)))
+        surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 200)))
 
         for w in self.widgets:
             w.render(surface)
