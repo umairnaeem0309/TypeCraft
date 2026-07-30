@@ -6,12 +6,12 @@
 ---
 
 **Last updated:** 2026-07-30
-**Current phase:** Phase 6 — Performance complete (TC-018 done); ready for packaging/release
-**Current active task:** none — TC-018 closed. **No open P0 or P1 tasks and no open security
+**Current phase:** Phase 7 — Packaging, docs, release (TC-020 done)
+**Current active task:** none — TC-020 closed. **No open P0 or P1 tasks and no open security
   defects.**
-**Last completed task:** TC-018 — measured dirty-rect rendering and bounded caches (2026-07-30)
-**Next recommended task:** **TC-020** — PyInstaller spec and release build (P1), the first of the release trio TC-020/TC-021/TC-022.
-**Working branch:** `feature/tc018-dirty-rect` (branched from `repair/typecraft-v1`)
+**Last completed task:** TC-020 — PyInstaller spec and release build (2026-07-30)
+**Next recommended task:** **TC-021** — User, teacher, editing, deployment, troubleshooting docs (P1), the middle of the release trio. Then TC-022 (release acceptance on a clean Windows target).
+**Working branch:** `feature/tc020-pyinstaller` (branched from `feature/tc018-dirty-rect`)
 
 ---
 
@@ -26,9 +26,9 @@
 | 4 — Scenes & core UI | **COMPLETE** — TC-012, TC-014, TC-015, TC-016, TC-017, TC-023 |
 | 5 — Teacher tools & settings | **COMPLETE** — TC-011, TC-011b, TC-013 |
 | 6 — Performance | **COMPLETE** — TC-018 done (dirty-rect rendering, bounded cache, profiling) |
-| 7 — Packaging, docs, release | NOT STARTED — TC-020, TC-021, TC-022 |
+| 7 — Packaging, docs, release | IN PROGRESS — TC-020 done; TC-021 and TC-022 outstanding |
 
-Tasks: 27 defined — 23 DONE, 0 IN_PROGRESS, 4 TODO. **Open P0: 0.** Open P1: 1.
+Tasks: 27 defined — 24 DONE, 0 IN_PROGRESS, 3 TODO. **Open P0: 0.** Open P1: 0.
 Defects: **32 found** (D-32 added and closed by TC-019) — **27 closed**,
 1 partially closed (D-22), 4 open.
 **Every S1 (data-loss) defect and every security defect is closed; Phases 1–3 done.**

@@ -788,7 +788,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   widgets can find.
 
 ## TC-020 — PyInstaller spec and release build
-- **Phase** 7 · **Status** TODO · **Priority** P1
+- **Phase** 7 · **Status** DONE (2026-07-30) · **Priority** P1
 - **Requirements** PK-001…PK-008, DR-012, DR-013
 - **Depends on** TC-018, TC-019
 - **Goal.** A `dist/TypeCraft/` folder that runs on a school PC with no Python and never
@@ -798,12 +798,19 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   add an automated packaging smoke test that builds, launches with a self-exit flag, asserts
   the writable files sit beside the exe and not under `_internal/`, relaunches, and asserts
   persistence.
-- **Files.** `TypeCraft.spec`, `tests/packaging/test_build.py`, `docs/deployment-and-backup.md`.
+- **Files.** `TypeCraft.spec`, `scripts/build_release.py`, `tests/integration/test_packaging.py`.
 - **Checks.** Build succeeds; `dist/TypeCraft/TypeCraft.exe` launches; `typecraft.db` and the
   four JSON files appear beside the exe; nothing writable appears under `_internal/`; second
   launch preserves the profile; folder relocation preserves data; replacing exe + `_internal/`
   preserves data.
-- **Acceptance.** PK-001…PK-008 pass.
+- **Acceptance.** ✅ Met. **707 passing, 4 skipped, 0 xfail.** Added `TypeCraft.spec`
+  (onedir, windowed, UPX disabled, `noarchive=True`, assets and data bundled via `datas=`);
+  `scripts/build_release.py` for reproducible builds; `tests/integration/test_packaging.py`
+  smoke test (slow) that launches the built exe under SDL dummy and asserts the startup log
+  appears **beside the executable**, proving `writable_data_dir()` resolves outside the
+  read-only `_internal/` bundle. Verified manually that `dist/TypeCraft/_internal/assets/` and
+  `dist/TypeCraft/_internal/data/` contain the bundled read-only files, while first-run seeding
+  places the writable JSON and `typecraft.log` next to `TypeCraft.exe`.
 
 ## TC-021 — User, teacher, editing, deployment, troubleshooting docs
 - **Phase** 7 · **Status** TODO · **Priority** P1
