@@ -3,7 +3,7 @@
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 from typecraft.ui.progress_bar import ProgressBar
 from typecraft.ui.text_input import TextInput
@@ -20,9 +20,7 @@ PIN_CARD = pygame.Rect(CARD_X, 410, CARD_W, 210)
 
 class SettingsScene(Scene):
     def on_enter(self, **kwargs) -> None:
-        self.back_button = Button(pygame.Rect(20, 20, 120, 50), "Back",
-                                   lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
-                                   bg_color=theme.COLOR_NEUTRAL)
+        self.back_button = screen.back_button(self.ctx, "main_menu")
 
         # --- Sound card ---------------------------------------------------
         # FR-131: show what is actually stored, not a hard-coded guess. These used
@@ -111,13 +109,13 @@ class SettingsScene(Scene):
         surface.blit(surf, (rect.x + 40, rect.y + 32))
 
     def render(self, surface) -> None:
-        font_title = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_title = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
 
         title = self.ctx.resources.text_surface("Settings", font_title, theme.COLOR_TEXT)
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
         self.back_button.render(surface)
 
         self._card(surface, SOUND_CARD, "Sound")

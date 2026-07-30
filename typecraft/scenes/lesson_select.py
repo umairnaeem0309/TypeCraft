@@ -3,7 +3,7 @@
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.star_rating import StarRating
@@ -12,11 +12,7 @@ from typecraft.ui.star_rating import StarRating
 class LessonSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profile = self.ctx.active_profile
-        self.back_button = Button(
-            pygame.Rect(20, 20, 120, 50), "Back",
-            lambda: self.ctx.states.change("profile_select"), self.ctx.resources,
-            bg_color=theme.COLOR_TEXT_MUTED,
-        )
+        self.back_button = screen.back_button(self.ctx, "profile_select")
         self.panel = ScrollPanel(pygame.Rect(0, 110, theme.SCREEN_WIDTH, 580))
         self._build_cards()
 
@@ -94,11 +90,11 @@ class LessonSelectScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         heading = self.ctx.resources.text_surface(
             f"{self.profile.name}'s Lessons", font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
 
         self.back_button.render(surface)
 

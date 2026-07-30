@@ -3,7 +3,7 @@
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
@@ -48,9 +48,7 @@ class TeacherDashboardScene(Scene):
                                     on_submit=self._try_pin)
         self.submit_button = Button(pygame.Rect(cx - 110, 350, 220, 54), "Unlock",
                                      self._try_pin, self.ctx.resources)
-        self.back_button = Button(pygame.Rect(20, 20, 120, 50), "Back",
-                                   lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
-                                   bg_color=theme.COLOR_TEXT_MUTED)
+        self.back_button = screen.back_button(self.ctx, "main_menu")
 
     def _build_dashboard_widgets(self) -> None:
         """One row per student inside a scrolling viewport (FR-124).
@@ -179,13 +177,13 @@ class TeacherDashboardScene(Scene):
             self.pin_input.update(dt)
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
 
         if not self.authenticated:
             self.back_button.render(surface)
             title = self.ctx.resources.text_surface("Teacher PIN", font_h, theme.COLOR_TEXT)
             surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                         self.back_button.rect.centery + 8)))
+                                                         screen.TITLE_Y)))
             self.pin_input.render(surface)
             self.submit_button.render(surface)
             if self.error:
@@ -197,11 +195,11 @@ class TeacherDashboardScene(Scene):
         self.back_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
 
         sub = self.ctx.resources.text_surface(
             "Tap a student row to reset their progress", self._subtitle_font, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, screen.SUBTITLE_Y)))
 
         self._render_table(surface)
 

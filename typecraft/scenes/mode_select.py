@@ -3,7 +3,7 @@
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 
 MODE_LABELS = {
@@ -33,11 +33,7 @@ class ModeSelectScene(Scene):
                          font_size=theme.FONT_SIZE_HEADING)
             self.mode_buttons.append(btn)
 
-        self.back_button = Button(
-            pygame.Rect(20, 20, 120, 50), "Back",
-            lambda: self.ctx.states.change("lesson_select"), self.ctx.resources,
-            bg_color=theme.COLOR_TEXT_MUTED,
-        )
+        self.back_button = screen.back_button(self.ctx, "lesson_select")
         # Reusable italic font for the page subtitle.
         self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
         self._subtitle_font.set_italic(True)
@@ -56,13 +52,13 @@ class ModeSelectScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         heading = self.ctx.resources.text_surface(self.lesson.title, font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
 
         sub = self.ctx.resources.text_surface("Choose a typing mode", self._subtitle_font, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, screen.SUBTITLE_Y)))
 
         # Draw a subtle panel behind the mode buttons.
         if self.mode_buttons:

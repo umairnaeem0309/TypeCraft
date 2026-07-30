@@ -7,13 +7,15 @@
 
 **Last updated:** 2026-07-31
 **Current phase:** Phase 7 — Packaging, docs, release (TC-022 done)
-**Current active task:** none — TC-024 closed (playtest UI fixes).
-**Last completed task:** TC-024 — results button colours, lesson spacing, reset wording,
-settings scale (2026-07-31)
-**Next recommended task:** none outstanding at P0/P1. Optional follow-ups: re-run
-`scripts/build_release.py` so `dist/TypeCraft/` picks up these UI fixes, and a second playtest
-pass on the remaining screens (Profile Select, Lesson Select, Leaderboard) using the same
-render-and-look method that found these four.
+**Current active task:** none — TC-025 and TC-026 closed (responsive window, UI consistency).
+**Last completed task:** TC-026 — UI consistency: shared chrome, spacing and type scales
+(2026-07-31)
+**Next recommended task:** none outstanding at P0/P1. Optional: migrate the six scene render
+bodies onto `ui/screen.PageHeader` (mechanical, no visual change), and re-run
+`scripts/build_release.py` so `dist/TypeCraft/` picks up TC-024/025/026.
+**Requirement changed this session:** FR-005 now specifies a resizable, desktop-aware,
+fullscreen-capable window over a fixed 1280x720 design canvas; §11 amended accordingly.
+Reflowing layout remains out of scope.
 **Working branch:** `feature/tc022-release-acceptance` (branched from `feature/tc021-docs`)
 
 ---
@@ -217,6 +219,35 @@ D-15 (weak PIN hash), D-17 (mid-word wrap + caret offset), D-22 (no logging), D-
 ---
 
 ## 6. Files changed
+
+### TC-025 + TC-026 (last tasks, DONE)
+
+- `typecraft/core/window.py` — **new.** `DESIGN_SIZE`, `initial_window_size()` (pure),
+  `desktop_size()`, `create_display()`, `apply_window_size()`, `toggle_fullscreen()`.
+- `typecraft/core/game.py` — sizes the window to the detected desktop; `_handle_display_event()`
+  for F11 / Alt+Enter / resize; `_mark_everything_dirty()`; `fullscreen` constructor argument.
+- `typecraft/main.py` — `--fullscreen` flag.
+- `typecraft/ui/screen.py` — **new.** `BACK_RECT`, `back_button()`, `PageHeader`,
+  `render_footer()`, `TITLE_Y` (derived from `BACK_RECT`), `SUBTITLE_Y`.
+- `typecraft/ui/theme.py` — six-step spacing scale, `FONT_SIZE_PAGE_TITLE`.
+- Six scenes (`profile_select`, `lesson_select`, `mode_select`, `leaderboard`,
+  `teacher_dashboard`, `settings`) — adopt the shared Back button and header constants;
+  `results` adopts the named title size.
+- `tests/scenes/test_window.py` — **new**, 30 tests. `tests/scenes/test_ui_consistency.py` —
+  **new**, 41 tests.
+- `REQUIREMENTS.md` (FR-005 revised, §11 amended, traceability), `TASKS.md`, `PROJECT_STATE.md`.
+
+**Evidence:** all scene tests green; window sizing measured across 11 resolutions
+(1366x768 → 1.00x, 1920x1080 → 1.35x, 2560x1440 → 1.80x, 3840x2160 → 2.00x capped,
+1024x768 → 0.75x). A scene renders byte-identically under two different notional desktops,
+which is what proves the canvas indirection changes nothing about layout.
+
+**Recorded honestly:** TC-026 is a *structural* consistency win, not a visual one —
+`COLOR_NEUTRAL == COLOR_TEXT_MUTED` and `FONT_SIZE_PAGE_TITLE == FONT_SIZE_TITLE - 8`, so the
+consolidation looks identical on screen. The only visible drift fixed was a 3 px subtitle
+difference. The screens were already consistent; they are now consistent *by construction*.
+
+
 
 ### TC-024 (last task, DONE) — four playtest UI fixes
 

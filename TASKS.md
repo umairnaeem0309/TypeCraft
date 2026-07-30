@@ -45,6 +45,8 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-022 | Release acceptance on a clean Windows target | 7 | DONE (2026-07-30) | P1 |
 | TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
 | TC-024 | Playtest UI fixes: results colours, lesson spacing, reset wording, settings scale | 4 | DONE | P2 |
+| TC-025 | Responsive window: desktop-aware sizing, resize, fullscreen | 4 | DONE | P2 |
+| TC-026 | UI consistency: shared chrome, spacing and type scales | 4 | DONE | P2 |
 
 ---
 
@@ -910,3 +912,62 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
   the lopsided space bar and the caption grammar were caught.
 - **Scope note.** All changes are in the development source. The release folder is regenerated
   from it by `scripts/build_release.py`; no release artefact was edited by hand.
+
+## TC-025 — Responsive window: desktop-aware sizing, resize, fullscreen
+- **Phase** 4 · **Status** DONE (2026-07-31) · **Priority** P2
+- **Requirements** FR-005 *(revised — see below)*, NFR-005, NFR-006
+- **Requirement change, recorded.** FR-005 fixed the window at 1280x720 and §11 listed
+  "resizable/fullscreen window" as **out of scope**. The user asked for responsiveness, so
+  FR-005 was rewritten and §11 amended rather than the code silently contradicting the spec.
+  Reflowing layout stays out of scope: the canvas scales as a whole and letterboxes at
+  non-16:9 aspect ratios.
+- **What was already right.** The display was already created with `SCALED | RESIZABLE`, so
+  pygame was maintaining a 1280x720 logical canvas and translating mouse coordinates for free.
+  No canvas system needed building — worth checking before assuming.
+- **What was actually wrong.** The window always *opened* at exactly 1280x720 regardless of the
+  screen: correct on a 1366x768 laptop, a small box on 1920x1080, a postage stamp on 2560x1440.
+  So the app looked worse on newer hardware than on old. There was no fullscreen at all, and
+  nothing tested any of it.
+- **Scope.** New `core/window.py`: `initial_window_size()` (pure, therefore testable at
+  resolutions no dev machine has), `desktop_size()`, `create_display()`, `apply_window_size()`,
+  `toggle_fullscreen()`. `Game` sizes the window to the detected desktop, handles F11 and
+  Alt+Enter, and repaints the whole canvas on resize or mode change. `main.py` gains
+  `--fullscreen`.
+- **The refinement that mattered.** A naive "90 % of the desktop" rule *shrank* 1366x768 — the
+  commonest school laptop — to 0.96x, blurring every glyph where 1280x720 fits natively. The
+  rule now never downscales when the canvas fits, and only genuinely smaller panels scale down.
+  Measured: 1366x768 → 1.00x, 1600x900 → 1.12x, 1920x1080 → 1.35x, 2560x1440 → 1.80x,
+  3840x2160 → 2.00x (capped), 1024x768 → 0.75x.
+- **Acceptance.** OK. 30 tests in `tests/scenes/test_window.py`: fits-and-not-stretched across
+  11 real resolutions including 4K and ultra-wide, larger desktops get larger windows, the 4K
+  cap, the small-screen floor, unknown/zero desktop falls back safely, the drawing surface stays
+  1280x720 whatever the window, a scene renders **byte-identically** under two different
+  notional desktops, F11 and Alt+Enter both toggle while a plain Return does not, a resize marks
+  the whole canvas dirty, and toggling fullscreen moves no widget.
+
+## TC-026 — UI consistency: shared chrome, spacing and type scales
+- **Phase** 4 · **Status** DONE (2026-07-31) · **Priority** P2
+- **Requirements** FR-004, FR-104
+- **Goal.** Make the consistency that already existed *structural*, so it stays true.
+- **Finding, stated plainly.** The screens were already visually consistent — earlier phases had
+  done that work. `Rect(20, 20, 120, 50), "Back"` was copy-pasted into six scenes and
+  `FONT_SIZE_TITLE - 8` into six places; because `COLOR_NEUTRAL == COLOR_TEXT_MUTED` and
+  `FONT_SIZE_PAGE_TITLE == FONT_SIZE_TITLE - 8`, consolidating them is a **pure refactor with no
+  visual change**. The only genuine visible drift was subtitles at 105 px in one scene and 108
+  in three others.
+- **Scope.** New `ui/screen.py`: one `BACK_RECT`, `back_button()`, `PageHeader`,
+  `render_footer()`, and `TITLE_Y`/`SUBTITLE_Y` — with `TITLE_Y` *derived from* `BACK_RECT` so a
+  title stays optically aligned with the button by construction rather than by six copies of
+  `back_button.rect.centery + 8`. `theme.py` gains a six-step spacing scale and a named
+  `FONT_SIZE_PAGE_TITLE`. Six scenes adopt them.
+- **Acceptance.** OK. 41 tests in `tests/scenes/test_ui_consistency.py`, written to assert
+  *sameness* rather than specific values so the design can be restyled without touching them:
+  every Back button shares one rect and one colour; no scene hard-codes either any more (a
+  source scan, so a new scene cannot regress it); the type and spacing scales are ordered and
+  distinct; body text meets FR-104's floor; the danger colour is used only for destructive
+  actions; no widget on any of the nine scenes falls outside the canvas; and every interactive
+  control is at least 44 px tall.
+- **Honest limitation.** `PageHeader` is available but only the header *constants* are adopted;
+  each scene still renders its own title surface. Migrating the six render bodies onto
+  `PageHeader` is a further mechanical step with no visual effect, left undone rather than
+  half-done.

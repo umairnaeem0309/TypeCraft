@@ -72,7 +72,7 @@ class ResultsScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         title = "Lesson Complete!" if self.attempt.accuracy >= 85 else "Keep Practising!"
         title_surf = self.ctx.resources.text_surface(title, font_h, theme.COLOR_TEXT)
         surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 53)))
