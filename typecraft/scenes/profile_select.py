@@ -14,10 +14,10 @@ AVATARS = ["avatar_fox", "avatar_owl", "avatar_cat", "avatar_bear"]
 class ProfileSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profiles = self.ctx.profiles.list_all()
-        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 170, 560, 340, 52),
+        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 200, 565, 400, 60),
                                      self.ctx.resources, placeholder="New student name")
         self.create_button = Button(
-            pygame.Rect(theme.SCREEN_WIDTH // 2 - 110, 630, 220, 54),
+            pygame.Rect(theme.SCREEN_WIDTH // 2 - 150, 640, 300, 60),
             "Create Profile", self._create_profile, self.ctx.resources,
         )
         self.back_button = Button(
@@ -25,7 +25,7 @@ class ProfileSelectScene(Scene):
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.panel = ScrollPanel(pygame.Rect(0, 150, theme.SCREEN_WIDTH, 370))
+        self.panel = ScrollPanel(pygame.Rect(0, 150, theme.SCREEN_WIDTH, 400))
         self._build_profile_buttons()
 
     def _build_profile_buttons(self) -> None:
@@ -37,7 +37,7 @@ class ProfileSelectScene(Scene):
         """
         self.profile_buttons = []
         cols = 4
-        card_w, card_h, gap = 220, 140, 24
+        card_w, card_h, gap = 280, 160, 24
         start_x = (theme.SCREEN_WIDTH - (cols * card_w + (cols - 1) * gap)) // 2
         for i, profile in enumerate(self.profiles):
             row, col = divmod(i, cols)
@@ -110,11 +110,12 @@ class ProfileSelectScene(Scene):
                     border = theme.COLOR_PRIMARY_DARK
                 pygame.draw.rect(surface, bg, rect, border_radius=14)
                 pygame.draw.rect(surface, border, rect, width=3, border_radius=14)
-                name_surf = self.ctx.resources.text_surface(profile.name, font_body, theme.COLOR_TEXT)
-                surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 15)))
+                name_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+                name_surf = self.ctx.resources.text_surface(profile.name, name_font, theme.COLOR_TEXT)
+                surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 20)))
                 lvl_surf = self.ctx.resources.text_surface(
                     f"Level {profile.level}", font_body, theme.COLOR_TEXT_MUTED)
-                surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 25)))
+                surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 30)))
         self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
 
         self.name_input.render(surface)
