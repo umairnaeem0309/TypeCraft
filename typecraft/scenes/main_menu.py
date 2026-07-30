@@ -20,12 +20,12 @@ class MainMenuScene(Scene):
             Button(pygame.Rect(cx - w // 2, start_y, w, h), "PLAY",
                    lambda: self.ctx.states.change("profile_select"), self.ctx.resources,
                    bg_color=theme.COLOR_PRIMARY, font_size=theme.FONT_SIZE_HEADING),
-            Button(pygame.Rect(cx - w // 2, start_y + (h + gap), w, h), "Leader",
+            Button(pygame.Rect(cx - w // 2, start_y + (h + gap), w, h), "Leaderboard",
                    lambda: self.ctx.states.change("leaderboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_ACCENT, font_size=theme.FONT_SIZE_HEADING),
+                   bg_color=theme.COLOR_WARNING, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + 2 * (h + gap), w, h), "Teacher Dashboard",
                    lambda: self.ctx.states.change("teacher_dashboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_ADMIN, font_size=theme.FONT_SIZE_HEADING),
+                   bg_color=theme.COLOR_ACCENT, font_size=theme.FONT_SIZE_HEADING),
             Button(pygame.Rect(cx - w // 2, start_y + 3 * (h + gap), w, h), "Settings",
                    lambda: self.ctx.states.change("settings"), self.ctx.resources,
                    bg_color=theme.COLOR_NEUTRAL, font_size=theme.FONT_SIZE_HEADING),
@@ -43,6 +43,10 @@ class MainMenuScene(Scene):
         self.no_button = Button(
             pygame.Rect(cx + 20, popup_y, btn_w, btn_h), "No",
             self._cancel_quit, self.ctx.resources, bg_color=theme.COLOR_TEXT_MUTED)
+
+        # Larger, italic subtitle font — created once so the text cache stays stable.
+        self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_BODY + 6)
+        self._subtitle_font.set_italic(True)
 
     def _ask_quit(self) -> None:
         self._showing_quit_popup = True
@@ -84,10 +88,9 @@ class MainMenuScene(Scene):
         title = self.ctx.resources.text_surface("TypeCraft", font, theme.COLOR_PRIMARY_DARK)
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 95)))
 
-        # Subtitle
-        font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        # Subtitle: larger and italic for emphasis
         subtitle = self.ctx.resources.text_surface(
-            "Learn to type, one key at a time", font_small, theme.COLOR_TEXT_MUTED)
+            "Learn to type, one key at a time", self._subtitle_font, theme.COLOR_TEXT_MUTED)
         surface.blit(subtitle, subtitle.get_rect(center=(theme.SCREEN_WIDTH // 2, 165)))
 
         for w in self.widgets:
