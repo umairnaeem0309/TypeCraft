@@ -9,7 +9,7 @@ from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
 ROW_HEIGHT = 44
-FIRST_ROW_Y = 180
+FIRST_ROW_Y = 170
 
 #: Column layout: (heading, x, key, formatter). One place to change the table.
 COLUMNS = [
@@ -32,7 +32,7 @@ class TeacherDashboardScene(Scene):
         #: The student awaiting reset confirmation, or None. Reset is destructive and
         #: irreversible, so it never happens on a single click (FR-125).
         self.pending_reset = None
-        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 500))
+        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 460))
         self._build_pin_widgets()
         self._build_dashboard_widgets()
 
@@ -179,7 +179,7 @@ class TeacherDashboardScene(Scene):
         if not self.authenticated:
             self.back_button.render(surface)
             title = self.ctx.resources.text_surface("Teacher PIN", font_h, theme.COLOR_TEXT)
-            surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 220)))
+            surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 200)))
             self.pin_input.render(surface)
             self.submit_button.render(surface)
             if self.error:
@@ -190,12 +190,12 @@ class TeacherDashboardScene(Scene):
 
         self.back_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 70)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface(
             "Tap a student row to reset their progress", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 105)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_SUBTITLE_Y)))
 
         self._render_table(surface)
 

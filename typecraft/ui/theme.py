@@ -4,6 +4,10 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 FPS = 30
 
+# Standard vertical rhythm (avoids arbitrary y-values scattered across scenes)
+LAYOUT_TITLE_Y = 70
+LAYOUT_SUBTITLE_Y = 110
+
 COLOR_BG = (245, 247, 250)
 COLOR_TEXT = (30, 30, 40)
 COLOR_TEXT_MUTED = (120, 125, 135)

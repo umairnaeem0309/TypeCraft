@@ -21,9 +21,9 @@ class LeaderboardScene(Scene):
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 210, 100, 200, 46),
+        self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 210, 150, 200, 46),
                                    "Top Net WPM", lambda: self._set_tab(TAB_WPM), self.ctx.resources)
-        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 100, 200, 46),
+        self.acc_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 + 10, 150, 200, 46),
                                    "Top Accuracy", lambda: self._set_tab(TAB_ACCURACY),
                                    self.ctx.resources, bg_color=theme.COLOR_ACCENT)
         self._load_rows()
@@ -51,21 +51,21 @@ class LeaderboardScene(Scene):
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         title = self.ctx.resources.text_surface("Leaderboard", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface(
             "Top students by speed or accuracy", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 95)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_SUBTITLE_Y)))
 
         self.wpm_tab_btn.render(surface)
         self.acc_tab_btn.render(surface)
         self.back_button.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
-        y = 180
-        row_height = 44
-        row_gap = 8
+        y = 210
+        row_height = 42
+        row_gap = 4
         unit = "wpm" if self.tab == TAB_WPM else "%"
         for i, row in enumerate(self.rows, start=1):
             row_rect = pygame.Rect(theme.SCREEN_WIDTH // 2 - 360, y - 6, 720, row_height)
@@ -79,7 +79,7 @@ class LeaderboardScene(Scene):
         if not self.rows:
             empty = self.ctx.resources.text_surface(
                 "No completed lessons yet.", font_body, theme.COLOR_TEXT_MUTED)
-            surface.blit(empty, empty.get_rect(center=(theme.SCREEN_WIDTH // 2, 360)))
+            surface.blit(empty, empty.get_rect(center=(theme.SCREEN_WIDTH // 2, 400)))
             return
 
         # FR-113: the tie rule is stated on screen so a child can see why two equal

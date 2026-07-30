@@ -19,20 +19,20 @@ class SettingsScene(Scene):
         # FR-131: show what is actually stored, not a hard-coded guess. These used
         # to be fixed at 0.7/unmuted, so the screen contradicted the running app and
         # nothing the teacher changed here survived a restart.
-        self.volume_bar = ProgressBar(pygame.Rect(cx - 150, 220, 300, 24))
+        self.volume_bar = ProgressBar(pygame.Rect(cx - 150, 150, 300, 24))
         self.volume_bar.set_value(self.ctx.audio.volume)
-        self.vol_down = Button(pygame.Rect(cx - 220, 210, 50, 44), "-", self._vol_down, self.ctx.resources)
-        self.vol_up = Button(pygame.Rect(cx + 170, 210, 50, 44), "+", self._vol_up, self.ctx.resources)
+        self.vol_down = Button(pygame.Rect(cx - 220, 140, 50, 44), "-", self._vol_down, self.ctx.resources)
+        self.vol_up = Button(pygame.Rect(cx + 170, 140, 50, 44), "+", self._vol_up, self.ctx.resources)
 
         self.muted = self.ctx.audio.muted
-        self.mute_button = Button(pygame.Rect(cx - 90, 280, 180, 46),
+        self.mute_button = Button(pygame.Rect(cx - 90, 200, 180, 46),
                                    "Unmute" if self.muted else "Mute",
                                    self._toggle_mute, self.ctx.resources)
 
-        self.pin_input = TextInput(pygame.Rect(cx - 100, 420, 200, 44), self.ctx.resources,
+        self.pin_input = TextInput(pygame.Rect(cx - 100, 300, 200, 44), self.ctx.resources,
                                     placeholder="New 4-digit PIN", max_length=4,
                                     is_password=True, on_submit=self._set_pin)
-        self.set_pin_button = Button(pygame.Rect(cx - 90, 480, 180, 46), "Set Teacher PIN",
+        self.set_pin_button = Button(pygame.Rect(cx - 90, 360, 180, 46), "Set Teacher PIN",
                                       self._set_pin, self.ctx.resources)
         self.pin_status = ""
 
@@ -84,7 +84,7 @@ class SettingsScene(Scene):
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         title = self.ctx.resources.text_surface("Settings", font_h, theme.COLOR_TEXT)
-        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, 100)))
+        surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
 
         self.back_button.render(surface)
         self.volume_bar.render(surface)
@@ -99,11 +99,11 @@ class SettingsScene(Scene):
         if self.pin_status:
             status_surf = self.ctx.resources.text_surface(
                 self.pin_status, font_small, theme.COLOR_PRIMARY_DARK)
-            surface.blit(status_surf, status_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 540)))
+            surface.blit(status_surf, status_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 430)))
 
         # FR-134: a settings file that could not be read must say so, or the teacher
         # sees their choices silently reverting with no explanation.
-        y = 620
+        y = 470
         for notice in getattr(self.ctx, "notices", []):
             surf = self.ctx.resources.text_surface(notice, font_small, theme.COLOR_ERROR)
             surface.blit(surf, surf.get_rect(center=(theme.SCREEN_WIDTH // 2, y)))

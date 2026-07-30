@@ -25,7 +25,7 @@ class ProfileSelectScene(Scene):
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.panel = ScrollPanel(pygame.Rect(0, 140, theme.SCREEN_WIDTH, 380))
+        self.panel = ScrollPanel(pygame.Rect(0, 150, theme.SCREEN_WIDTH, 370))
         self._build_profile_buttons()
 
     def _build_profile_buttons(self) -> None:
@@ -88,12 +88,12 @@ class ProfileSelectScene(Scene):
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
         heading = self.ctx.resources.text_surface("Who's playing?", font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 90)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_TITLE_Y)))
 
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
         sub = self.ctx.resources.text_surface(
             "Select a student profile or create a new one", font_small, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 125)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, theme.LAYOUT_SUBTITLE_Y)))
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         mouse_pos = pygame.mouse.get_pos()
