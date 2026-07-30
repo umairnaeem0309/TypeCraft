@@ -18,6 +18,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path for the profiling CSV (default: typecraft_profile.csv)."
     )
     parser.add_argument(
+        "--fullscreen", action="store_true",
+        help="Start fullscreen. F11 or Alt+Enter toggles it at any time."
+    )
+    parser.add_argument(
         "--full-repaint", action="store_true",
         help="Force a full-screen flip() every frame instead of dirty-rect updates."
     )
@@ -37,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         full_repaint=args.full_repaint,
         profile=args.profile,
         profile_path=args.csv,
+        fullscreen=args.fullscreen,
     )
     try:
         game.run()

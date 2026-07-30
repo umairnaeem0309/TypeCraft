@@ -39,7 +39,14 @@ selections; only the teacher area is PIN-gated.
 - **FR-002** Exactly one Scene is active at a time; transitions occur through a single state manager.
 - **FR-003** Scene flow: Main Menu → Profile Select → Lesson Select → Mode Select → Lesson → Results → (Retry | Lesson Select | Leaderboard).
 - **FR-004** Every scene except Main Menu provides a visible way back to its logical parent.
-- **FR-005** The default window is 1280×720, windowed, titled "TypeCraft".
+- **FR-005** *(revised 2026-07-31, at the user's request — the original fixed the window at
+  1280×720 and §11 listed resizable/fullscreen as out of scope.)* The application draws into a
+  fixed **1280×720 design canvas**; all layout is authored in those coordinates and
+  `pygame.SCALED` maps the canvas to the real window, translating mouse input back. The window
+  is titled "TypeCraft", is **resizable**, opens at a size chosen for the detected desktop
+  (never smaller than the canvas when the canvas fits natively, never more than 2× it), and can
+  be toggled fullscreen with **F11** or **Alt+Enter** or started fullscreen with
+  `--fullscreen`. Scaling preserves aspect ratio, so no control is ever distorted or displaced.
 - **FR-006** The loop is a fixed Event → Update → Render cycle targeting 30 FPS.
 
 ### 3.2 Profiles
@@ -288,7 +295,10 @@ The project is accepted when all of the following are objectively evidenced in
 - Multi-user OS accounts, per-student OS logins, or encryption of the database.
 - In-app lesson authoring UI (lessons are edited as JSON in a text editor).
 - Networked or cross-machine leaderboards; printing or exporting reports (beyond copying the DB).
-- Touch, gamepad, accessibility screen-reader support, resizable/fullscreen window.
+- Touch, gamepad, accessibility screen-reader support.
+- *(Resizable/fullscreen window was out of scope until 2026-07-31; it is now FR-005.)*
+- Reflowing layout: the canvas scales as a whole rather than re-arranging for narrow or
+  ultra-wide windows. Letterboxing is accepted at non-16:9 aspect ratios.
 - Audio content creation beyond a minimal permitted-licence set of short cues.
 
 ## 12. Assumptions
@@ -339,7 +349,7 @@ The project is accepted when all of the following are objectively evidenced in
 
 | Requirement group | Tasks |
 |---|---|
-| FR-001…FR-006, NFR-001…NFR-003 | TC-001, TC-002, TC-003, TC-019 |
+| FR-001…FR-006, NFR-001…NFR-003 | TC-001, TC-002, TC-003, TC-019, **TC-025** |
 | FR-010…FR-016 | TC-007, TC-014 |
 | FR-020…FR-027 | TC-005, TC-007, TC-014, TC-016 |
 | FR-030…FR-036 | TC-005, TC-006 |
@@ -350,7 +360,7 @@ The project is accepted when all of the following are objectively evidenced in
 | FR-080…FR-087 | TC-007, TC-013b |
 | FR-057 (daily streak bonus — unimplemented, D-31) | TC-013b |
 | FR-090…FR-096 | TC-015 |
-| FR-100…FR-104 | TC-016 |
+| FR-100…FR-104 | TC-016, TC-024, **TC-026** |
 | FR-110…FR-114 | TC-012 |
 | FR-120…FR-127 | TC-008, TC-013, TC-014 |
 | FR-130…FR-135 | TC-011, TC-011b |
