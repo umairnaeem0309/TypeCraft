@@ -116,6 +116,7 @@ class LessonScene(Scene):
 
             if event.key == pygame.K_BACKSPACE:
                 self.engine.feed_key("\b")
+                self.ctx.audio.play("key_click.wav")
                 self.hud.update_metrics(self.engine.metrics())
                 # A backspace moves the cursor, so the expected key changes too.
                 self._update_keyboard_hint()
@@ -123,12 +124,20 @@ class LessonScene(Scene):
 
             char = event.unicode
             if char in TYPABLE:
-                self.engine.feed_key(char)
+                result = self.engine.feed_key(char)
+                # Sound feedback: a soft click on every keystroke, an error tone
+                # when the wrong key was typed, and a success fanfare on completion.
+                if result.is_error:
+                    self.ctx.audio.play("error.wav")
+                else:
+                    self.ctx.audio.play("key_click.wav")
+
                 self.hud.update_metrics(self.engine.metrics())
                 self._update_keyboard_hint()
 
                 if self.engine.is_finished():
                     scored = self._finish(AttemptStatus.COMPLETE)
+                    self.ctx.audio.play("success.wav")
                     self.ctx.states.change("results", attempt=scored, lesson=self.lesson)
 
     def update(self, dt: float) -> None:

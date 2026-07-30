@@ -183,3 +183,15 @@ def test_badge_bonus_xp_is_persisted(profile, attempt_factory):
     stored = ctx.db.query(
         "SELECT total_xp FROM profiles WHERE id=?", (student.id,))[0]["total_xp"]
     assert stored == attempt.xp_awarded + 25 + m.daily_streak_bonus(1)
+
+
+def test_badge_award_invokes_ui_callback(profile, attempt_factory):
+    """ProgressionService must notify the UI when a badge is newly awarded so the
+    sound/visual effect can be triggered without managers depending on pygame."""
+    ctx, student = profile
+    calls = []
+    ctx.progression._on_badge_awarded = lambda: calls.append(None)
+
+    ctx.progression.score(attempt_factory(student.id, accuracy=90.0), student)
+
+    assert len(calls) == 1

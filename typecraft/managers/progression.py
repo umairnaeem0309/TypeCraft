@@ -13,12 +13,16 @@ from typecraft.models.attempt import AttemptResult, AttemptStatus
 
 
 class ProgressionService:
-    def __init__(self, db, lesson_manager, badge_manager, streak_manager, profile_manager):
+    def __init__(self, db, lesson_manager, badge_manager, streak_manager, profile_manager,
+                 on_badge_awarded=None):
         self.db = db
         self.lesson_manager = lesson_manager
         self.badge_manager = badge_manager
         self.streak_manager = streak_manager
         self.profile_manager = profile_manager
+        # Optional callback so badge awards can trigger UI feedback (e.g. a
+        # sound) without managers importing pygame or depending on AudioManager.
+        self._on_badge_awarded = on_badge_awarded
 
     #: Profile fields score() mutates in memory. Snapshotted so a rolled-back
     #: transaction cannot leave the live Profile object disagreeing with the row on
@@ -81,7 +85,7 @@ class ProgressionService:
                 # Level must be current *before* badges are judged, because
                 # rising_star and keyboard_master test it.
                 self._recompute_level(profile)
-                self.badge_manager.evaluate(profile, attempt)
+                self._evaluate_badges(profile, attempt)
 
                 # Badge bonuses are XP too, so the level may have moved again. That
                 # used to be missed entirely (defect D-11): _award_xp() computed the
@@ -90,7 +94,7 @@ class ProgressionService:
                 # recompute. One extra pass — deliberately not a loop, so a badge
                 # cannot cascade forever.
                 if self._recompute_level(profile):
-                    self.badge_manager.evaluate(profile, attempt)
+                    self._evaluate_badges(profile, attempt)
                     self._recompute_level(profile)
 
                 self.profile_manager.save(profile)
@@ -241,6 +245,12 @@ class ProgressionService:
         """`student_summary` for every profile, ordered by name for a register."""
         ids = [r["id"] for r in self.db.query("SELECT id FROM profiles ORDER BY name, id")]
         return [self.student_summary(pid) for pid in ids]
+
+    def _evaluate_badges(self, profile, attempt) -> None:
+        """Run badge evaluation and notify the UI if anything new was earned."""
+        newly_awarded = self.badge_manager.evaluate(profile, attempt)
+        if newly_awarded and self._on_badge_awarded is not None:
+            self._on_badge_awarded()
 
     def xp_for(self, attempt: AttemptResult) -> int:
         return attempt.xp_awarded
