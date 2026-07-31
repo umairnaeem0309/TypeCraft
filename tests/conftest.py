@@ -18,6 +18,7 @@ pick up the redirect too. (Recorded in docs/architecture.md §15 as a design sme
 calling `paths.writable_data_dir()` would need no patching at all.)
 """
 
+import logging
 import os
 import sys
 
@@ -164,3 +165,37 @@ def profile(app_ctx):
     created = app_ctx.profiles.create("Test Student", "avatar_fox")
     app_ctx.active_profile = created
     return app_ctx, created
+
+
+@pytest.fixture(autouse=True)
+def restore_typecraft_logger():
+    """Undo any global logging configuration a test leaves behind.
+
+    `configure_logging()` sets `propagate = False` on the `typecraft` logger, which is
+    right in production: records reach our own handlers and are not duplicated by the
+    root's. But `caplog` captures *through* the root logger, so once any test has called
+    `configure_logging()`, every later test asserting on `caplog.records` silently sees
+    an empty list — the behaviour under test still works, only the observation breaks.
+
+    That made the suite order-dependent, which is worse than a plain failure because it
+    passes and fails on the same code. `pytest` collects `tests/db` before `tests/unit`
+    and was green; `pytest tests/unit tests/db` reversed the order and six tests failed.
+    Autouse so no future test has to remember this.
+    """
+    logger = logging.getLogger("typecraft")
+    saved_handlers = logger.handlers[:]
+    saved_propagate = logger.propagate
+    saved_level = logger.level
+
+    yield
+
+    for handler in logger.handlers[:]:
+        if handler not in saved_handlers:
+            logger.removeHandler(handler)
+            try:
+                handler.close()      # release the file so tmp_path cleanup can unlink it
+            except OSError:
+                pass
+    logger.handlers[:] = saved_handlers
+    logger.propagate = saved_propagate
+    logger.level = saved_level
