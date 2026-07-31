@@ -6,7 +6,7 @@ TC-006 had an objective target. The tests named `test_D07_*` / `test_D08_*` /
 made them pass and the markers were removed. The names are kept so the defect
 they guard against stays traceable.
 
-The accounting policy asserted is the OQ-001 resolution (REQUIREMENTS.md 13):
+The accounting policy asserted is the OQ-001 resolution (docs/requirements.md 13):
 Backspace moves the cursor and clears the on-screen status only. It never edits
 total_keystrokes, errors, or correct_keystrokes, so every character-producing
 keystroke posts exactly one ledger entry that is never reversed. A corrected

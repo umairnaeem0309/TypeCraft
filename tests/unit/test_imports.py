@@ -26,7 +26,7 @@ def _all_modules():
 
 
 def test_package_layout_is_as_documented():
-    """ARCHITECTURE.md 1.2: six subpackages inside typecraft/."""
+    """docs/architecture.md 1.2: six subpackages inside typecraft/."""
     names = {n.split(".")[1] for n in _all_modules() if n.count(".") >= 2}
     missing = EXPECTED_SUBPACKAGES - names
     assert not missing, f"expected subpackages missing: {sorted(missing)}"

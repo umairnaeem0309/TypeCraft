@@ -49,7 +49,7 @@ def test_child_loggers_sit_under_the_typecraft_root(writable_dir):
 
 
 def test_configure_logging_survives_an_unwritable_location(writable_dir, monkeypatch):
-    """Tier 3 of the error strategy (ARCHITECTURE.md 11): losing the log must
+    """Tier 3 of the error strategy (docs/architecture.md 11): losing the log must
     never stop the app from starting."""
     reset_logging()
     monkeypatch.setattr(paths, "log_path", lambda: writable_dir / "no" / "such" / "dir" / "x.log")

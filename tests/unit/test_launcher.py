@@ -96,3 +96,41 @@ def test_only_third_party_imports_are_intercepted():
         "the guard should whitelist third-party packages, not swallow every "
         "ModuleNotFoundError"
     )
+
+
+# --------------------------------------------------------------------- crash log hygiene
+
+def test_an_empty_crash_log_is_discarded_on_a_clean_exit(writable_dir):
+    """faulthandler must open the file before a crash can happen, so it is created
+    on every launch. Left behind empty beside the exe it would worry a teacher and
+    make the release README wrong: the file existing is supposed to mean something
+    went wrong."""
+    from typecraft import main as launcher
+
+    handle = launcher._enable_native_crash_capture()
+    assert launcher.crash_log_path().exists(), "faulthandler should have created it"
+
+    launcher._discard_empty_crash_log(handle)
+
+    assert not launcher.crash_log_path().exists(), "an empty crash log was left behind"
+
+
+def test_a_crash_log_with_content_is_kept(writable_dir):
+    """The whole point of the file: if something was written, it must survive."""
+    from typecraft import main as launcher
+
+    handle = launcher._enable_native_crash_capture()
+    handle.write("Windows fatal exception: access violation\n")
+    handle.flush()
+
+    launcher._discard_empty_crash_log(handle)
+
+    assert launcher.crash_log_path().exists()
+    assert "access violation" in launcher.crash_log_path().read_text(encoding="utf-8")
+
+
+def test_discarding_tolerates_a_missing_handle(writable_dir):
+    """When the file could not be opened at all, shutdown must still be quiet."""
+    from typecraft import main as launcher
+
+    launcher._discard_empty_crash_log(None)      # must not raise

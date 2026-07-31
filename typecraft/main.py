@@ -39,6 +39,10 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def crash_log_path():
+    return log_path().with_name("typecraft-crash.log")
+
+
 def _enable_native_crash_capture():
     """Send native crash stacks to a file beside the log.
 
@@ -47,12 +51,32 @@ def _enable_native_crash_capture():
     for faulthandler to use it.
     """
     try:
-        handle = open(log_path().with_name("typecraft-crash.log"), "a", encoding="utf-8")
+        handle = open(crash_log_path(), "a", encoding="utf-8")
         faulthandler.enable(file=handle, all_threads=True)
         return handle
     except OSError:
         faulthandler.enable()        # stderr is better than nothing
         return None
+
+
+def _discard_empty_crash_log(handle) -> None:
+    """Remove the crash file on a clean exit if nothing was written to it.
+
+    faulthandler needs the file open *before* a crash, so it is created on every
+    launch. Left behind empty, a file called typecraft-crash.log sitting beside the
+    exe would worry a teacher and make the documentation wrong — its presence is
+    supposed to mean something went wrong.
+    """
+    if handle is None:
+        return
+    faulthandler.disable()
+    try:
+        empty = handle.tell() == 0
+        handle.close()
+        if empty:
+            crash_log_path().unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         log.info("TypeCraft exiting")
+    _discard_empty_crash_log(_crash_handle)
     return 0
 
 

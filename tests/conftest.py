@@ -14,7 +14,7 @@ object into each importing module's namespace at import time. Patching only
 `typecraft.core.paths` would leave those bindings pointing at the real folder.
 The fixture therefore patches every already-imported `typecraft.*` module that
 holds such a binding, *and* the `paths` module itself so modules imported later
-pick up the redirect too. (Recorded in ARCHITECTURE.md §15 as a design smell:
+pick up the redirect too. (Recorded in docs/architecture.md §15 as a design smell:
 calling `paths.writable_data_dir()` would need no patching at all.)
 """
 

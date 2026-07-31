@@ -8,7 +8,7 @@ standing in front of a broken school PC:
   - FR-024   a malformed teacher-edited lessons.json must log why it was rejected
   - FR-134   a corrupt settings.json must log its fallback
   - NFR-013  a broad `except` is only acceptable if the reason is recorded
-  - tier 3/4 error handling in ARCHITECTURE.md §11
+  - tier 3/4 error handling in docs/architecture.md §11
 
 Deliberately boring: stdlib logging, one rotating file in the writable data
 directory (never inside the read-only bundle), no third-party dependency, no

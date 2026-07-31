@@ -5,8 +5,8 @@
 schema of `_dev_data/typecraft.db`.
 
 **Authority rule:** where the blueprint and the code disagree, this document records the
-requirement and `PROJECT_STATE.md` records the defect. The implementation plus the
-automated test suite become the executable source of truth once Phase 2 completes.
+requirement. The implementation plus the automated test suite are the executable source of
+truth; git history records how each requirement was met and which defects were fixed.
 
 ---
 
@@ -268,7 +268,6 @@ selections; only the teacher area is PIN-gated.
 ## 10. Acceptance criteria
 
 The project is accepted when all of the following are objectively evidenced in
-`PROJECT_STATE.md`:
 
 - **AC-01** A clean checkout reaches a running application using only the documented commands.
 - **AC-02** `pytest` passes with zero failures and zero errors; coverage of `engine/` and `managers/` >= 85 % statements.
@@ -288,7 +287,7 @@ The project is accepted when all of the following are objectively evidenced in
 - **AC-16** First run does not overwrite a pre-existing edited `lessons.json`.
 - **AC-17** `dist/TypeCraft/` launches on a clean Windows machine without Python, survives relocation and restart.
 - **AC-18** All DOC-001…DOC-007 files exist and are accurate.
-- **AC-19** `TASKS.md` has no `TODO`/`IN_PROGRESS`/`BLOCKED` item at priority P0 or P1.
+- **AC-19** No known P0 or P1 defect remains open.
 
 ## 11. Out of scope
 
@@ -375,5 +374,5 @@ The project is accepted when all of the following are objectively evidenced in
 | AC-01…AC-19 | TC-022 |
 
 Coverage rule: every FR/NFR/DR/SR/PR/PK/DOC id above must appear in at least one task's
-"Requirement IDs" field in `TASKS.md`. Any requirement without a task, or task without a
-requirement, is a traceability defect to be fixed before the next task starts.
+commit that implemented it (search the git log for the requirement id). Any requirement with no
+implementing commit and no test is a traceability gap.

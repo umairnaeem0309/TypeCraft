@@ -131,21 +131,26 @@ Two rules that matter more than they look:
 
 ## Project documents
 
-| File | What it is |
+| File | Who it is for |
 |---|---|
-| [`REQUIREMENTS.md`](REQUIREMENTS.md) | Numbered, testable requirements and acceptance criteria |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current vs target architecture, decisions, risks |
-| [`PROJECT_PLAN.md`](PROJECT_PLAN.md) | Phases, dependencies, test gates |
-| [`TASKS.md`](TASKS.md) | Atomic task backlog with traceability |
-| [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current state, defects, resume point |
-| [`docs/teacher-quickstart.md`](docs/teacher-quickstart.md) | Teacher quick-start guide |
-| [`docs/student-guide.md`](docs/student-guide.md) | Student usage guide |
-| [`docs/deployment-and-backup.md`](docs/deployment-and-backup.md) | Deployment and backup guide |
-| [`docs/editing-lessons.md`](docs/editing-lessons.md) | Lesson editing guide |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Troubleshooting guide |
-| [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Pre-release checklist |
-| `TypeCraft_Master_Blueprint.md` | Original design blueprint (requirement source) |
-| `TypeCraft Khidmat Proposal.pdf` | Original proposal (requirement source) |
+| [`docs/teacher-quickstart.md`](docs/teacher-quickstart.md) | Teachers — first launch, profiles, PIN, dashboard |
+| [`docs/student-guide.md`](docs/student-guide.md) | Students — how to play |
+| [`docs/deployment-and-backup.md`](docs/deployment-and-backup.md) | School IT — install, back up, update |
+| [`docs/editing-lessons.md`](docs/editing-lessons.md) | Teachers — editing `lessons.json` safely |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Anyone — when something misbehaves |
+| [`docs/requirements.md`](docs/requirements.md) | Developers — numbered, testable requirements (`FR-`/`NFR-` ids cited throughout the code) |
+| [`docs/architecture.md`](docs/architecture.md) | Developers — structure, decisions (ADRs), risks |
+| [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Developers — pre-release gate |
+
+The requirement sources — `TypeCraft_Master_Blueprint.md` and the Khidmat proposal PDF — are kept
+in the working folder but deliberately **not tracked** (see `.gitignore`): they are reference
+material rather than deliverables. `docs/requirements.md` carries everything from them that the
+implementation is actually held to.
+
+Project tracking (task backlog, phase plan, running state) lived in the repo during the rebuild
+and has been retired now that the work is complete — **the git history is the record**. Each
+commit names the requirement ids it satisfies and the defects it closed, so
+`git log --grep=FR-073` still answers "how was this implemented, and why".
 
 ---
 

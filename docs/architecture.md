@@ -63,12 +63,12 @@ TypeCraft/                       <- git root, project root, sys.path[0]
 │  ├─ assets/{images,fonts,sounds}/                         ✔ (empty, .gitkeep — TC-017)
 │  └─ data/{lessons,badges,messages,settings.default}.json  ✔
 ├─ tests/{unit,db,scenes,conftest.py}                    ⬚  TC-004
-├─ docs/                                                 ⬚  TC-021 (DOC-002…DOC-007)
+├─ docs/                      ✔  <- guides, requirements, architecture
 ├─ main.py                    ✔  <- launcher: `from typecraft.main import main`
 ├─ requirements.txt           ✔  (empty until TC-003)
 ├─ TypeCraft.spec  pyproject.toml  requirements-dev.txt  ⬚  TC-003 / TC-020
 ├─ .gitignore  .gitattributes  README.md                 ✔
-├─ REQUIREMENTS.md ARCHITECTURE.md PROJECT_PLAN.md TASKS.md PROJECT_STATE.md  ✔
+├─ docs/requirements.md  docs/architecture.md  (this file)              ✔
 ├─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
 └─ TypeCraft_Master_Blueprint.md  "TypeCraft Khidmat Proposal.pdf"            ✔
 ```
@@ -616,7 +616,7 @@ without terminating.
 
 Measurement protocol (TC-018): instrument `Game.run()` behind a `--profile` flag to log
 per-phase timings and blit counts to CSV, capture a 60-second Lesson-scene baseline, apply
-one change, re-measure, and record both numbers in `PROJECT_STATE.md`. No optimisation
+one change, re-measure, and record both numbers in the commit message. No optimisation
 lands without a before/after number, except the two obvious frame-loop violations above.
 
 ---
