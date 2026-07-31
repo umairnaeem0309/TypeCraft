@@ -41,7 +41,7 @@ Coverage of `engine/` + `managers/` **97 %** (AC-02 target ≥ 85 % — met).
 | TC-018 | Measured dirty-rect rendering and bounded caches | 6 | DONE (2026-07-30) | P1 |
 | TC-019 | Full application smoke tests | 6 | DONE | P1 |
 | TC-020 | PyInstaller spec and release build | 7 | DONE (2026-07-30) | P1 |
-| TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | IN_PROGRESS | P1 |
+| TC-021 | User, teacher, editing, deployment, troubleshooting docs | 7 | DONE (2026-07-30) | P1 |
 | TC-022 | Release acceptance on a clean Windows target | 7 | DONE (2026-07-30) | P1 |
 | TC-023 | Lesson JSON fallback warning surfaced to the teacher | 4 | DONE (2026-07-30) | P2 |
 

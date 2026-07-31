@@ -14,18 +14,21 @@ AVATARS = ["avatar_fox", "avatar_owl", "avatar_cat", "avatar_bear"]
 class ProfileSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profiles = self.ctx.profiles.list_all()
-        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 150, 550, 300, 44),
+        self.name_input = TextInput(pygame.Rect(theme.SCREEN_WIDTH // 2 - 200, 565, 400, 60),
                                      self.ctx.resources, placeholder="New student name")
         self.create_button = Button(
-            pygame.Rect(theme.SCREEN_WIDTH // 2 - 90, 610, 180, 46),
+            pygame.Rect(theme.SCREEN_WIDTH // 2 - 150, 640, 300, 60),
             "Create Profile", self._create_profile, self.ctx.resources,
         )
         self.back_button = Button(
-            pygame.Rect(20, 20, 100, 44), "Back",
+            pygame.Rect(20, 20, 120, 50), "Back",
             lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
-        self.panel = ScrollPanel(pygame.Rect(0, 140, theme.SCREEN_WIDTH, 380))
+        self.panel = ScrollPanel(pygame.Rect(0, 150, theme.SCREEN_WIDTH, 400))
+        # Reusable italic font for the page subtitle.
+        self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
+        self._subtitle_font.set_italic(True)
         self._build_profile_buttons()
 
     def _build_profile_buttons(self) -> None:
@@ -37,7 +40,7 @@ class ProfileSelectScene(Scene):
         """
         self.profile_buttons = []
         cols = 4
-        card_w, card_h, gap = 220, 140, 24
+        card_w, card_h, gap = 280, 160, 24
         start_x = (theme.SCREEN_WIDTH - (cols * card_w + (cols - 1) * gap)) // 2
         for i, profile in enumerate(self.profiles):
             row, col = divmod(i, cols)
@@ -86,23 +89,36 @@ class ProfileSelectScene(Scene):
         self.name_input.update(dt)
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         heading = self.ctx.resources.text_surface("Who's playing?", font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 90)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
+
+        sub = self.ctx.resources.text_surface(
+            "Select a student profile or create a new one", self._subtitle_font, theme.COLOR_TEXT_MUTED)
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        mouse_pos = pygame.mouse.get_pos()
         with self.panel.clipped(surface):
             for profile, content_rect in self.profile_buttons:
                 if not self.panel.is_visible(content_rect):
                     continue
                 rect = self.panel.screen_rect(content_rect)
-                pygame.draw.rect(surface, theme.COLOR_CARD_BG, rect, border_radius=14)
-                pygame.draw.rect(surface, theme.COLOR_PRIMARY, rect, width=2, border_radius=14)
-                name_surf = self.ctx.resources.text_surface(profile.name, font_body, theme.COLOR_TEXT)
-                surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 15)))
+                hovered = rect.collidepoint(mouse_pos)
+                bg = theme.COLOR_CARD_BG
+                border = theme.COLOR_PRIMARY
+                if hovered:
+                    bg = (235, 248, 235)
+                    border = theme.COLOR_PRIMARY_DARK
+                pygame.draw.rect(surface, bg, rect, border_radius=14)
+                pygame.draw.rect(surface, border, rect, width=3, border_radius=14)
+                name_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+                name_surf = self.ctx.resources.text_surface(profile.name, name_font, theme.COLOR_TEXT)
+                surface.blit(name_surf, name_surf.get_rect(center=(rect.centerx, rect.centery - 20)))
                 lvl_surf = self.ctx.resources.text_surface(
                     f"Level {profile.level}", font_body, theme.COLOR_TEXT_MUTED)
-                surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 25)))
+                surface.blit(lvl_surf, lvl_surf.get_rect(center=(rect.centerx, rect.centery + 30)))
         self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
 
         self.name_input.render(surface)

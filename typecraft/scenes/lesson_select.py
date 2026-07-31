@@ -13,7 +13,7 @@ class LessonSelectScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.profile = self.ctx.active_profile
         self.back_button = Button(
-            pygame.Rect(20, 20, 160, 44), "Switch Profile",
+            pygame.Rect(20, 20, 120, 50), "Back",
             lambda: self.ctx.states.change("profile_select"), self.ctx.resources,
             bg_color=theme.COLOR_TEXT_MUTED,
         )
@@ -56,6 +56,26 @@ class LessonSelectScene(Scene):
     def _select_lesson(self, lesson) -> None:
         self.ctx.states.change("mode_select", lesson=lesson)
 
+    def _render_lock_icon(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
+        """Draw a simple vector padlock in the centre of a locked lesson card."""
+        color = theme.COLOR_TEXT_MUTED
+        cx, cy = rect.centerx, rect.centery + 6
+
+        # Shackle (thick arc so the card background shows through naturally)
+        shackle_w, shackle_h = 20, 18
+        shackle_rect = pygame.Rect(cx - shackle_w // 2, cy - shackle_h, shackle_w, shackle_h)
+        pygame.draw.arc(surface, color, shackle_rect, 0, 3.14159, 4)
+
+        # Body of the lock
+        body_w, body_h = 28, 22
+        body_rect = pygame.Rect(cx - body_w // 2, cy - 2, body_w, body_h)
+        pygame.draw.rect(surface, color, body_rect, border_radius=4)
+
+        # Keyhole
+        keyhole_color = theme.COLOR_CARD_BG
+        pygame.draw.circle(surface, keyhole_color, (cx, cy + 4), 3)
+        pygame.draw.rect(surface, keyhole_color, (cx - 1, cy + 4, 2, 6))
+
     def handle_event(self, event) -> None:
         if self.back_button.handle_event(event):
             return
@@ -74,19 +94,26 @@ class LessonSelectScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
         heading = self.ctx.resources.text_surface(
             f"{self.profile.name}'s Lessons", font_h, theme.COLOR_TEXT)
-        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2, 60)))
+        surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
+                                                     self.back_button.rect.centery + 8)))
+
+        self.back_button.render(surface)
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        mouse_pos = pygame.mouse.get_pos()
         with self.panel.clipped(surface):
             for lesson, unlocked, stars, content_rect in self.cards:
                 if not self.panel.is_visible(content_rect):
                     continue
                 rect = self.panel.screen_rect(content_rect)
+                hovered = unlocked and rect.collidepoint(mouse_pos)
                 border_color = pygame.Color(lesson.tier_color) if unlocked else theme.COLOR_LOCKED
                 bg = theme.COLOR_CARD_BG if unlocked else (230, 230, 233)
+                if hovered:
+                    bg = (235, 248, 235)
                 pygame.draw.rect(surface, bg, rect, border_radius=12)
                 pygame.draw.rect(surface, border_color, rect, width=3, border_radius=12)
 
@@ -99,5 +126,7 @@ class LessonSelectScene(Scene):
                 if unlocked:
                     StarRating(pygame.Rect(rect.x, rect.centery, rect.width, 40),
                                stars=stars).render(surface)
+                else:
+                    self._render_lock_icon(surface, rect)
 
         self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
