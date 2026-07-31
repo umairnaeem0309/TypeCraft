@@ -61,8 +61,13 @@ ROWS = [
      (",", ",", 1.0, "right_middle"), (".", ".", 1.0, "right_ring"),
      ("/", "/", 1.0, "right_pinky"), ("Shift", "RSHIFT", 2.75, "right_pinky")],
 
-    [("Space", " ", 12.0, "thumb")],
+    [("Space", " ", 6.5, "thumb")],
 ]
+
+#: Horizontal offset per row, in key-units. Real keyboards stagger their rows, and
+#: the space bar sits under the letters rather than flush left — without this the
+#: board looked lopsided, with a 12-unit space bar hanging off the left edge.
+ROW_OFFSETS = [0.0, 0.0, 0.25, 0.0, 3.75]
 
 #: Unshifted -> shifted for the number row and punctuation. Capitals are derived
 #: from str.upper(), so they are not listed here.
@@ -148,7 +153,10 @@ class KeyboardRenderer:
 
     @staticmethod
     def size():
-        width = max(sum(w * KEY_W + GAP for _l, _c, w, _f in row) for row in ROWS)
+        width = max(
+            ROW_OFFSETS[i] * KEY_W + sum(w * KEY_W + GAP for _l, _c, w, _f in row)
+            for i, row in enumerate(ROWS)
+        )
         return int(width), len(ROWS) * (KEY_H + GAP)
 
     def prerender(self) -> None:
@@ -161,8 +169,8 @@ class KeyboardRenderer:
         self.key_rects = {}
 
         y = 0
-        for row in ROWS:
-            x = 0
+        for row_index, row in enumerate(ROWS):
+            x = ROW_OFFSETS[row_index] * KEY_W
             for label, char, units, finger in row:
                 key_w = int(units * KEY_W)
                 rect = pygame.Rect(int(x), y, key_w, KEY_H)
@@ -244,7 +252,12 @@ class KeyboardRenderer:
         if self._caption_surf is None:
             font = self.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
             shown = "Space" if self._expected_char == " " else self._expected_char
-            parts = [f"Next: {shown}", f"use your {self.expected_finger_label}"]
+            label = self.expected_finger_label
+            # "use your either thumb" is not English. The thumb label already reads
+            # as a complete phrase, so it takes no possessive.
+            phrase = (f"use {label}" if label.startswith("either")
+                      else f"use your {label}")
+            parts = [f"Next: {shown}", phrase]
             if self._active_shift:
                 side = "right" if self._active_shift == "RSHIFT" else "left"
                 parts.append(f"hold {side} Shift")

@@ -60,18 +60,24 @@ TypeCraft/                       <- git root, project root, sys.path[0]
 ├─ typecraft/                 ✔  <- the package (import prefix `typecraft.`)
 │  ├─ __init__.py  __main__.py  main.py                    ✔
 │  ├─ core/ engine/ managers/ models/ scenes/ ui/           ✔
-│  ├─ assets/{images,fonts,sounds}/                         ✔ (empty, .gitkeep — TC-017)
+│  ├─ assets/{images,fonts,sounds}/                         ✔ (TC-017; fonts/ still empty)
 │  └─ data/{lessons,badges,messages,settings.default}.json  ✔
 ├─ tests/{unit,db,scenes,conftest.py}                    ⬚  TC-004
-├─ docs/                                                 ⬚  TC-021 (DOC-002…DOC-007)
+├─ docs/                      ✔  <- guides, requirements, architecture
 ├─ main.py                    ✔  <- launcher: `from typecraft.main import main`
 ├─ requirements.txt           ✔  (empty until TC-003)
 ├─ TypeCraft.spec  pyproject.toml  requirements-dev.txt  ⬚  TC-003 / TC-020
 ├─ .gitignore  .gitattributes  README.md                 ✔
-├─ REQUIREMENTS.md ARCHITECTURE.md PROJECT_PLAN.md TASKS.md PROJECT_STATE.md  ✔
-├─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
-└─ TypeCraft_Master_Blueprint.md  "TypeCraft Khidmat Proposal.pdf"            ✔
+├─ docs/requirements.md  docs/architecture.md  (this file)              ✔
+├─ scripts/                   ✔  <- build_release.py, generate_assets.py
+└─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
 ```
+
+The blueprint and the Khidmat proposal sat at the root during the rebuild and have since been
+removed: `docs/requirements.md` carries everything the implementation is held to, so keeping
+two more copies of the same intent invited them to drift apart. References to "the blueprint"
+in older commit messages and in code comments below are historical, and point at decisions
+now recorded here as ADRs.
 
 Three equivalent entry points, all reaching `typecraft.main:main` —
 `python main.py`, `python -m typecraft`, and (once built) `TypeCraft.exe`.
@@ -616,7 +622,7 @@ without terminating.
 
 Measurement protocol (TC-018): instrument `Game.run()` behind a `--profile` flag to log
 per-phase timings and blit counts to CSV, capture a 60-second Lesson-scene baseline, apply
-one change, re-measure, and record both numbers in `PROJECT_STATE.md`. No optimisation
+one change, re-measure, and record both numbers in the commit message. No optimisation
 lands without a before/after number, except the two obvious frame-loop violations above.
 
 ---

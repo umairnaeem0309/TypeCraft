@@ -54,11 +54,25 @@ a school machine.
 
 ## Run from source
 
+**Activate the virtualenv first** — this is the one step people skip:
+
 ```bash
-python main.py          # or:  python -m typecraft
+.venv\Scripts\Activate.ps1             # PowerShell
+python main.py                          # or:  python -m typecraft
 ```
 
-Both are equivalent. A 1280×720 window opens on the Main Menu.
+Or skip activation and name the interpreter directly, which always works:
+
+```bash
+.venv\Scripts\python.exe main.py
+```
+
+> A bare `python main.py` uses whatever `python` is on your PATH. If that is a
+> machine-wide install (Anaconda, the Microsoft Store build, `C:\PythonXX`) it will not
+> have pygame, and TypeCraft will tell you so and print the command to use instead.
+
+A window opens on the Main Menu, sized to suit your screen. **F11** or **Alt+Enter**
+toggles fullscreen; `--fullscreen` starts that way.
 
 While running from source, all writable data lives in `_dev_data/` beside the package. It is
 git-ignored, so development never touches a real classroom database.
@@ -117,26 +131,19 @@ Two rules that matter more than they look:
 
 ## Project documents
 
-| File | What it is |
+| File | Who it is for |
 |---|---|
-| [`REQUIREMENTS.md`](REQUIREMENTS.md) | Numbered, testable requirements and acceptance criteria |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Current vs target architecture, decisions, risks |
-| [`PROJECT_PLAN.md`](PROJECT_PLAN.md) | Phases, dependencies, test gates |
-| [`TASKS.md`](TASKS.md) | Atomic task backlog with traceability |
-| [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current state, defects, resume point |
-| [`docs/teacher-quickstart.md`](docs/teacher-quickstart.md) | Teacher quick-start guide |
-| [`docs/student-guide.md`](docs/student-guide.md) | Student usage guide |
-| [`docs/deployment-and-backup.md`](docs/deployment-and-backup.md) | Deployment and backup guide |
-| [`docs/editing-lessons.md`](docs/editing-lessons.md) | Lesson editing guide |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Troubleshooting guide |
-| [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Pre-release checklist |
-| `TypeCraft_Master_Blueprint.md` | Original design blueprint (requirement source) |
-| `TypeCraft Khidmat Proposal.pdf` | Original proposal (requirement source) |
+| [`docs/teacher-quickstart.md`](docs/teacher-quickstart.md) | Teachers — first launch, profiles, PIN, dashboard |
+| [`docs/student-guide.md`](docs/student-guide.md) | Students — how to play |
+| [`docs/deployment-and-backup.md`](docs/deployment-and-backup.md) | School IT — install, back up, update |
+| [`docs/editing-lessons.md`](docs/editing-lessons.md) | Teachers — editing `lessons.json` safely |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Anyone — when something misbehaves |
+| [`docs/requirements.md`](docs/requirements.md) | Developers — numbered, testable requirements (`FR-`/`NFR-` ids cited throughout the code) |
+| [`docs/architecture.md`](docs/architecture.md) | Developers — structure, decisions (ADRs), risks |
+| [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Developers — pre-release gate |
 
----
-
-## Status
-
-All P0 and P1 tasks are complete. The test suite has **707 passing, 4 skipped, 0 xfail, 0
-unexpected failures** with 97 % coverage of `engine/` + `managers/`. The release build is
-produced by `scripts/build_release.py` and verified by `tests/integration/test_packaging.py`.
+Project tracking (task backlog, phase plan, running state) and the original requirement sources
+(the master blueprint and the Khidmat proposal) lived in the repo during the rebuild and have
+been retired — **`docs/requirements.md` and the git history are the record**. Each commit names
+the requirement ids it satisfies and the defects it closed, so `git log --grep=FR-073` still
+answers "how was this implemented, and why".

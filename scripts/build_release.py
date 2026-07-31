@@ -22,6 +22,12 @@ SPEC = REPO_ROOT / "TypeCraft.spec"
 DIST_DIR = REPO_ROOT / "dist"
 BUILD_DIR = REPO_ROOT / "build"
 
+#: Plain-language README copied in beside the exe. Written for the teacher or IT
+#: volunteer who opens the folder, not for a developer — dist/ is generated, so the
+#: file has to be sourced from the repo or it would vanish on the next build.
+RELEASE_README_SOURCE = REPO_ROOT / "docs" / "release-readme.md"
+RELEASE_README_NAME = "README.md"
+
 
 def run_build(*, clean_dist: bool = True, clean_build: bool = True) -> Path:
     if clean_dist and DIST_DIR.exists():
@@ -39,7 +45,23 @@ def run_build(*, clean_dist: bool = True, clean_build: bool = True) -> Path:
     dist = DIST_DIR / "TypeCraft"
     if not dist.exists():
         raise RuntimeError(f"Expected distribution folder not found: {dist}")
+
+    copy_release_readme(dist)
     return dist
+
+
+def copy_release_readme(dist: Path) -> Path:
+    """Place the end-user README beside the executable.
+
+    Whoever copies this folder onto a school PC opens it before they open anything
+    else, so it must explain starting up, backing up typecraft.db, and updating
+    without losing progress.
+    """
+    if not RELEASE_README_SOURCE.exists():
+        raise RuntimeError(f"Missing release README source: {RELEASE_README_SOURCE}")
+    target = dist / RELEASE_README_NAME
+    shutil.copy2(RELEASE_README_SOURCE, target)
+    return target
 
 
 def main() -> int:

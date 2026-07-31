@@ -6,7 +6,7 @@ TypingEngine never contains mode-specific branching — it holds one
 InputMode and delegates every keystroke to it.
 
 Backspace correction policy (BackspaceMode only, since it is the only mode
-where Backspace is allowed at all). Resolved as OQ-001, REQUIREMENTS.md 13 —
+where Backspace is allowed at all). Resolved as OQ-001, docs/requirements.md 13 —
 this supersedes an earlier note here that claimed the opposite:
 
   - Backspace is **navigation, not scoring**. It moves the cursor and clears

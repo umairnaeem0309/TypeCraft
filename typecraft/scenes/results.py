@@ -22,15 +22,19 @@ class ResultsScene(Scene):
         w, h, gap = 220, 56, 30
         y = 600
 
+        # Colour carries the meaning here, because a child reads the colour before
+        # the word: grey for "go back and try again", green for the way onward,
+        # orange for the optional detour.
         self.buttons = [
             Button(pygame.Rect(cx - int(1.5 * w) - gap, y, w, h), "Retry",
-                   self._retry, self.ctx.resources),
+                   self._retry, self.ctx.resources,
+                   bg_color=theme.COLOR_NEUTRAL),
             Button(pygame.Rect(cx - w // 2, y, w, h), "Continue",
                    lambda: self.ctx.states.change("lesson_select"), self.ctx.resources,
-                   bg_color=theme.COLOR_ACCENT),
+                   bg_color=theme.COLOR_PRIMARY),
             Button(pygame.Rect(cx + int(0.5 * w) + gap, y, w, h), "Leaderboard",
                    lambda: self.ctx.states.change("leaderboard"), self.ctx.resources,
-                   bg_color=theme.COLOR_NEUTRAL),
+                   bg_color=theme.COLOR_WARNING),
         ]
         self.stars = StarRating(pygame.Rect(cx - 100, 250, 200, 60), stars=attempt.stars)
         # Italic font for the bottom encouragement message.
@@ -68,7 +72,7 @@ class ResultsScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         title = "Lesson Complete!" if self.attempt.accuracy >= 85 else "Keep Practising!"
         title_surf = self.ctx.resources.text_surface(title, font_h, theme.COLOR_TEXT)
         surface.blit(title_surf, title_surf.get_rect(center=(theme.SCREEN_WIDTH // 2, 53)))

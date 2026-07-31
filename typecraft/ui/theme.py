@@ -4,9 +4,27 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 FPS = 30
 
+# --- Spacing scale ---------------------------------------------------------
+# One set of steps instead of arbitrary gaps. Using a scale is what makes
+# unrelated screens look like the same product: margins, gutters and the space
+# under a heading all come from here.
+SPACE_XS = 8
+SPACE_SM = 12
+SPACE_MD = 16
+SPACE_LG = 20
+SPACE_XL = 32
+SPACE_XXL = 48
+
 # Standard vertical rhythm (avoids arbitrary y-values scattered across scenes)
 LAYOUT_TITLE_Y = 70
 LAYOUT_SUBTITLE_Y = 110
+
+#: Height of the footer band at the bottom of a screen. Tall enough for body-sized
+#: text with breathing room — the hint used to be a small line 40 px from the
+#: bottom, which the keyboard then overlapped by 5 px.
+LAYOUT_FOOTER_HEIGHT = 64
+#: Clear space kept between the keyboard and the footer band.
+LAYOUT_FOOTER_MARGIN = 20
 
 COLOR_BG = (245, 247, 250)
 COLOR_TEXT = (30, 30, 40)
@@ -27,6 +45,9 @@ COLOR_BUTTON_TEXT = (255, 255, 255)
 
 FONT_DEFAULT = "default"
 FONT_SIZE_TITLE = 56
+#: Size for a screen's page title. Six scenes independently wrote
+#: `FONT_SIZE_TITLE - 8`; naming it means the header can be restyled in one place.
+FONT_SIZE_PAGE_TITLE = 48
 FONT_SIZE_HEADING = 36
 FONT_SIZE_BODY = 28
 FONT_SIZE_SMALL = 22

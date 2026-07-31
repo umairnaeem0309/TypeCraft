@@ -13,6 +13,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.hypothesis/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -46,3 +47,14 @@ typecraft_profile*.csv
 desktop.ini
 Thumbs.db
 *.swp
+
+# Transient probe written by tests/integration/test_no_native_crash.py
+_native_crash_probe.py
+_live_check.py
+typecraft-crash.log
+
+# --- Requirement sources: retired, never to be committed -----------------------
+# Superseded by docs/requirements.md. Kept as patterns so dropping either file back
+# into the working folder cannot put it in the repo by accident.
+TypeCraft Khidmat Proposal.pdf
+TypeCraft_Master_Blueprint.md

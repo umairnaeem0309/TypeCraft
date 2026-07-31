@@ -16,6 +16,7 @@ import pygame
 from typecraft.core.app_context import AppContext
 from typecraft.core.logging_setup import get_logger
 from typecraft.core.state_manager import GameStateManager
+from typecraft.core import window
 from typecraft.ui import theme
 from typecraft.ui.notice import NoticeBar
 
@@ -60,19 +61,20 @@ def build_state_manager(ctx) -> GameStateManager:
 
 class Game:
     def __init__(self, *, full_repaint: bool = True, profile: bool = False,
-                 profile_path: str = "typecraft_profile.csv"):
+                 profile_path: str = "typecraft_profile.csv",
+                 fullscreen: bool = False):
         pygame.init()
-        # Double-buffered display gives clean full-frame flips and eliminates the
-        # tearing/flicker that can happen with partial dirty-rect updates.
-        # SCALED keeps the internal coordinate space at 1280x720 and automatically
-        # scales the output to the actual window/pixel size, so every scene and UI
-        # widget keeps its hard-coded coordinates without refactoring. RESIZABLE
-        # lets the user resize the window at runtime while PyGame handles scaling.
-        self.screen = pygame.display.set_mode(
-            (theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT),
-            pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE,
-        )
-        pygame.display.set_caption("TypeCraft")
+        # Every scene draws into a fixed 1280x720 design canvas; SCALED maps that
+        # canvas onto the real window and translates mouse positions back, which is
+        # what makes the app resolution-independent without any scene knowing.
+        # See core/window.py.
+        self.screen = window.create_display(fullscreen=fullscreen)
+        self.fullscreen = fullscreen
+
+        # The window is RESIZABLE and F11/Alt+Enter toggles fullscreen; SCALED maps
+        # the 1280x720 canvas to whatever size the window ends up. Deliberately no
+        # attempt to resize the OS window at startup — the version that did crashed
+        # the app with a native use-after-free (see core/window.py).
         self.clock = pygame.time.Clock()
 
         self.ctx = AppContext()
@@ -129,11 +131,42 @@ class Game:
             if event.type == pygame.QUIT:
                 self._request_quit()
                 return
+            if self._handle_display_event(event):
+                continue
             # Let the notice bar see clicks first so a warning strip can be
             # dismissed even if a scene button sits underneath it.
             if self.notice_bar.handle_event(event):
                 continue
             self.states.handle_event(event)
+
+    #: Keys that toggle fullscreen. F11 is the near-universal convention; Alt+Enter
+    #: is what a Windows user is likely to try first.
+    def _handle_display_event(self, event) -> bool:
+        """Consume window-level input (fullscreen, resize). Returns True if used.
+
+        Handled here rather than in a scene because it concerns the window, not the
+        screen being shown, and must work identically on all nine of them.
+        """
+        if event.type == pygame.KEYDOWN:
+            alt_enter = (event.key == pygame.K_RETURN and event.mod & pygame.KMOD_ALT)
+            if event.key == pygame.K_F11 or alt_enter:
+                self.fullscreen = window.toggle_fullscreen()
+                # The whole canvas must be repainted after the mode change.
+                self._mark_everything_dirty()
+                return True
+
+        if event.type in (pygame.VIDEORESIZE, pygame.WINDOWSIZECHANGED,
+                          pygame.WINDOWEXPOSED):
+            # SCALED rescales the canvas for us; we only need to redraw all of it.
+            self._mark_everything_dirty()
+            return False        # let scenes see it too, in case one cares
+
+        return False
+
+    def _mark_everything_dirty(self) -> None:
+        scene = self.states.current
+        if scene is not None:
+            scene.mark_dirty(self.screen.get_rect())
 
     def _update(self, dt: float) -> None:
         self.states.update(dt)

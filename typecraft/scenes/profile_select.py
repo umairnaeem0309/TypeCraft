@@ -3,7 +3,7 @@
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
@@ -20,11 +20,7 @@ class ProfileSelectScene(Scene):
             pygame.Rect(theme.SCREEN_WIDTH // 2 - 150, 640, 300, 60),
             "Create Profile", self._create_profile, self.ctx.resources,
         )
-        self.back_button = Button(
-            pygame.Rect(20, 20, 120, 50), "Back",
-            lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
-            bg_color=theme.COLOR_TEXT_MUTED,
-        )
+        self.back_button = screen.back_button(self.ctx, "main_menu")
         self.panel = ScrollPanel(pygame.Rect(0, 150, theme.SCREEN_WIDTH, 400))
         # Reusable italic font for the page subtitle.
         self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
@@ -89,14 +85,14 @@ class ProfileSelectScene(Scene):
         self.name_input.update(dt)
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         heading = self.ctx.resources.text_surface("Who's playing?", font_h, theme.COLOR_TEXT)
         surface.blit(heading, heading.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
 
         sub = self.ctx.resources.text_surface(
             "Select a student profile or create a new one", self._subtitle_font, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 108)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, screen.SUBTITLE_Y)))
 
         font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
         mouse_pos = pygame.mouse.get_pos()

@@ -1,10 +1,10 @@
-"""Enforce the dependency direction rules from ARCHITECTURE.md 2.
+"""Enforce the dependency direction rules from docs/architecture.md 2.
 
 These are the rules that keep the project testable. The two that earn their keep:
 
   - `engine/` and `managers/` must not import pygame. That is what lets every
     metric, mode, and persistence rule be tested with no display and no window
-    (ARCHITECTURE.md 15), and it is the first thing a well-meaning "just render
+    (docs/architecture.md 15), and it is the first thing a well-meaning "just render
     it here" change breaks.
   - Only `managers/database.py` may import sqlite3, and only `core/paths.py` may
     compute a filesystem location (NFR-011). Both rules exist because a stray
@@ -68,7 +68,7 @@ ALL = list(_modules())
 
 @pytest.mark.parametrize("subpackage,rel,path", ALL, ids=[m[1] for m in ALL])
 def test_dependency_direction(subpackage, rel, path):
-    """A module may only import the subpackages ARCHITECTURE.md 2 allows it."""
+    """A module may only import the subpackages docs/architecture.md 2 allows it."""
     allowed = ALLOWED[subpackage]
     violations = []
     for name in _module_level_imports(path):
@@ -88,7 +88,7 @@ def test_dependency_direction(subpackage, rel, path):
 @pytest.mark.parametrize("subpackage,rel,path", ALL, ids=[m[1] for m in ALL])
 def test_no_pygame_in_logic_layers(subpackage, rel, path):
     """engine/, managers/ and models/ stay renderable-free so they are testable
-    with no display (ARCHITECTURE.md 15)."""
+    with no display (docs/architecture.md 15)."""
     if subpackage not in PYGAME_FREE:
         return
     offenders = [n for n in _module_level_imports(path) if n == "pygame" or n.startswith("pygame.")]
@@ -96,7 +96,7 @@ def test_no_pygame_in_logic_layers(subpackage, rel, path):
 
 
 def test_only_database_module_imports_sqlite3():
-    """One gateway to the database (ARCHITECTURE.md 5)."""
+    """One gateway to the database (docs/architecture.md 5)."""
     offenders = [
         rel
         for _, rel, path in ALL
@@ -108,7 +108,7 @@ def test_only_database_module_imports_sqlite3():
 
 def test_no_scene_imports_another_scene():
     """Scenes transition by name through GameStateManager, never by importing
-    each other (ARCHITECTURE.md 2 rule 6)."""
+    each other (docs/architecture.md 2 rule 6)."""
     offenders = []
     for subpackage, rel, path in ALL:
         if subpackage != "scenes":

@@ -6,7 +6,7 @@ every attempt row."""
 import pygame
 
 from typecraft.core.scene import Scene
-from typecraft.ui import theme
+from typecraft.ui import screen, theme
 from typecraft.ui.button import Button
 
 TAB_WPM = "wpm"
@@ -16,11 +16,7 @@ TAB_ACCURACY = "accuracy"
 class LeaderboardScene(Scene):
     def on_enter(self, **kwargs) -> None:
         self.tab = TAB_WPM
-        self.back_button = Button(
-            pygame.Rect(20, 20, 120, 50), "Back",
-            lambda: self.ctx.states.change("main_menu"), self.ctx.resources,
-            bg_color=theme.COLOR_TEXT_MUTED,
-        )
+        self.back_button = screen.back_button(self.ctx, "main_menu")
         self.wpm_tab_btn = Button(pygame.Rect(theme.SCREEN_WIDTH // 2 - 290, 170, 280, 64),
                                    "Top Net WPM", lambda: self._set_tab(TAB_WPM), self.ctx.resources,
                                    font_size=theme.FONT_SIZE_HEADING)
@@ -56,15 +52,15 @@ class LeaderboardScene(Scene):
         pass
 
     def render(self, surface) -> None:
-        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TITLE - 8)
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
         title = self.ctx.resources.text_surface("Leaderboard", font_h, theme.COLOR_TEXT)
         # Keep the heading slightly below the Back button's centre.
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
-                                                     self.back_button.rect.centery + 8)))
+                                                     screen.TITLE_Y)))
 
         sub = self.ctx.resources.text_surface(
             "Top students by speed or accuracy", self._subtitle_font, theme.COLOR_TEXT_MUTED)
-        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, 105)))
+        surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, screen.SUBTITLE_Y)))
 
         self.wpm_tab_btn.render(surface)
         self.acc_tab_btn.render(surface)
