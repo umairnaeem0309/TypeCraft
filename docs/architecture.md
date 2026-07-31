@@ -1,97 +1,65 @@
 # TypeCraft — Architecture
 
-**Status:** baseline v1.0, 2026-07-29. Sections marked **CURRENT** describe the code as
-audited today. Sections marked **TARGET** describe where the phased plan takes it.
-Anything not marked is true of both.
+How TypeCraft is put together and why. This describes the code as it stands; where a
+decision was contentious it is recorded as an ADR in §18, and where a compromise remains it
+is called out as an accepted exception rather than left implied.
 
 ---
 
 ## 1. Repository structure
 
-### 1.1 HISTORICAL — as inherited, before TC-002
+### 1.1 What was inherited, and why the layout changed
 
-> Superseded by §1.2 on 2026-07-29. Kept because several defect descriptions elsewhere in
-> this document refer to the original layout.
+Kept short because it is the whole justification for ADR-001 and ADR-002.
 
-The git repository root is `D:\CS\Projects\Type-Craft\TypeCraft` (`.git` lives there).
-That same directory is *also* the Python package `TypeCraft`, because every module imports
-absolutely as `from TypeCraft.core.game import Game`.
+The repository root was *also* the Python package: `.git` and `__init__.py` lived in the same
+directory, and every module imported absolutely as `from TypeCraft.core.game import Game`.
 
-```
-Type-Craft/                       (NOT a git repo — just a container folder)
-└─ TypeCraft/                     <- git root AND the importable package
-   ├─ __init__.py  main.py  README.md  requirements.txt (0 bytes)
-   ├─ TypeCraft_Master_Blueprint.md
-   ├─ TypeCraft Khidmat Proposal.pdf
-   ├─ core/     app_context.py game.py paths.py scene.py state_manager.py
-   ├─ engine/   input_modes.py metrics.py typing_engine.py
-   ├─ managers/ badge_manager.py config_manager.py database.py lesson_manager.py
-   │            lesson_manager.py profile_manager.py progression.py streak_manager.py
-   ├─ models/   attempt.py lesson.py profile.py
-   ├─ scenes/   main_menu profile_select lesson_select mode_select lesson results
-   │            leaderboard teacher_dashboard settings
-   ├─ ui/       widget button text_input keyboard_renderer hud progress_bar
-   │            star_rating audio_manager resource_manager theme
-   ├─ data/     lessons.json badges.json messages.json settings.default.json
-   └─ _dev_data/ lessons.json badges.json messages.json settings.json typecraft.db
-```
+Because the package name equalled the repository directory name, `import TypeCraft.*`
+resolved only when the repo's *parent* was on `sys.path`. So `python main.py` failed from the
+repo root, `pytest` could not import the code, and the repo could not be cloned to a
+differently-named folder. There was also no `tests/`, no `assets/`, no `.gitignore`, and
+`requirements.txt` was empty.
 
-**Structural defect.** The package name equals the repository root directory name, so
-`import TypeCraft.*` resolves only when the repo's *parent* directory is on `sys.path`.
-Consequences: `python main.py` from the repo root fails; the repo cannot be renamed or
-cloned to a differently-named folder; `pytest` from the repo root cannot import the code;
-`assets/` does not exist at all; there is no `tests/`, no `TypeCraft.spec`, no
-`.gitignore`, and `requirements.txt` is empty. `_dev_data/` is untracked but also
-un-ignored.
+### 1.2 Repository layout
 
-Also note blueprint §3.1 shows `core/`, `engine/`, … directly at the project root, which
-implies bare imports (`from core.game import Game`). The code deviates from the blueprint
-by adding the `TypeCraft.` prefix. Neither arrangement is currently runnable from the repo
-root.
-
-### 1.2 CURRENT — after TC-002 (ADR-001, ADR-002)
-
-Repository root stays where `.git` is. The application code moved one level down into a
-lowercase package, so the root is a normal Python project root. `✔` = exists today;
-`⬚` = created by a later task.
+The root is now an ordinary Python project root and the application lives one level down in a
+lowercase package (ADR-001, ADR-002).
 
 ```
-TypeCraft/                       <- git root, project root, sys.path[0]
-├─ typecraft/                 ✔  <- the package (import prefix `typecraft.`)
-│  ├─ __init__.py  __main__.py  main.py                    ✔
-│  ├─ core/ engine/ managers/ models/ scenes/ ui/           ✔
-│  ├─ assets/{images,fonts,sounds}/                         ✔ (TC-017; fonts/ still empty)
-│  └─ data/{lessons,badges,messages,settings.default}.json  ✔
-├─ tests/{unit,db,scenes,conftest.py}                    ⬚  TC-004
-├─ docs/                      ✔  <- guides, requirements, architecture
-├─ main.py                    ✔  <- launcher: `from typecraft.main import main`
-├─ requirements.txt           ✔  (empty until TC-003)
-├─ TypeCraft.spec  pyproject.toml  requirements-dev.txt  ⬚  TC-003 / TC-020
-├─ .gitignore  .gitattributes  README.md                 ✔
-├─ docs/requirements.md  docs/architecture.md  (this file)              ✔
-├─ scripts/                   ✔  <- build_release.py, generate_assets.py
-└─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
+TypeCraft/                    <- git root, project root, sys.path[0]
+├─ typecraft/                 <- the package (import prefix `typecraft.`)
+│  ├─ __init__.py  __main__.py  main.py
+│  ├─ core/ engine/ managers/ models/ scenes/ ui/
+│  ├─ assets/{images,fonts,sounds}/   read-only, bundled into the build
+│  └─ data/{lessons,badges,messages,settings.default}.json
+├─ tests/{unit,db,scenes,integration,conftest.py}
+├─ docs/                      <- guides, requirements, architecture (this file)
+├─ scripts/                   <- build_release.py, generate_assets.py
+├─ main.py                    <- launcher: `from typecraft.main import main`
+├─ TypeCraft.spec             <- PyInstaller build definition
+├─ requirements.txt  requirements-dev.txt  pyproject.toml
+├─ .gitignore  .gitattributes  README.md
+└─ _dev_data/                 <- writable dev data, git-ignored, NOT in the package
 ```
 
-The blueprint and the Khidmat proposal sat at the root during the rebuild and have since been
-removed: `docs/requirements.md` carries everything the implementation is held to, so keeping
-two more copies of the same intent invited them to drift apart. References to "the blueprint"
-in older commit messages and in code comments below are historical, and point at decisions
-now recorded here as ADRs.
+`assets/fonts/` is deliberately empty: every call site passes `theme.FONT_DEFAULT`, so
+`ResourceManager.font()` takes its `pygame.font.Font(None, size)` branch. The directory and
+the `resource_path("assets/fonts/…")` branch beside it exist so a custom face can be dropped
+in without a code change.
 
-Three equivalent entry points, all reaching `typecraft.main:main` —
-`python main.py`, `python -m typecraft`, and (once built) `TypeCraft.exe`.
+Three equivalent entry points reach `typecraft.main:main` — `python main.py`,
+`python -m typecraft`, and the built `TypeCraft.exe`.
 
 Rationale: `python main.py` and `pytest` both work from the repo root with no `sys.path`
 manipulation; the package is relocatable; top-level generic names (`core`, `ui`, `models`)
 are not injected into the global module namespace, which matters for PyInstaller module
-collection and for test imports. Cost: one mechanical move plus a global
-`TypeCraft.` → `typecraft.` import rewrite (TC-002). `assets/` and `data/` move **inside**
-the package so `resource_path()` has a single, stable anchor whether frozen or not.
+collection and for test imports. `assets/` and `data/` sit **inside** the package so
+`resource_path()` has a single, stable anchor whether frozen or not.
 
-Rejected alternative: strip the prefix entirely (`from core.game import …`) to match
-blueprint §3.1 literally. Cheaper (no file moves) but pollutes the global namespace with
-`core`/`ui`/`models` and makes the code non-installable. Recorded as ADR-001-alt.
+Rejected alternative: strip the prefix entirely (`from core.game import …`). Cheaper — no
+file moves — but it pollutes the global namespace with `core`/`ui`/`models` and makes the
+code non-installable. Recorded as ADR-001-alt.
 
 ---
 
@@ -117,7 +85,7 @@ graph TD
     RM --> Paths
 ```
 
-Dependency rules (enforced by review, and by an import-direction test in TC-004):
+Dependency rules, enforced by an import-direction test rather than by review:
 
 1. `engine.metrics` imports nothing from the project. Pure functions only.
 2. `engine` may import `models`; never `managers`, `scenes`, `ui`, or `pygame`.
@@ -127,9 +95,10 @@ Dependency rules (enforced by review, and by an import-direction test in TC-004)
 6. `scenes` may import everything except other scenes (transitions go through `GameStateManager` by name).
 7. Only `core.paths` computes filesystem locations. Only `managers.database` imports `sqlite3`.
 
-CURRENT deviations: none of these are violated today except that `managers.lesson_manager`
-and `managers.profile_manager` import the `Database` *class* for type hints only (benign),
-and `managers.badge_manager` opens JSON directly through `core.paths` (allowed).
+Accepted exceptions: `managers.lesson_manager` and `managers.profile_manager` import the
+`Database` *class* for type hints only, and `managers.badge_manager` opens JSON directly
+through `core.paths`. Both are allowed by rule 7. `tests/unit/test_layering.py` enforces the
+rest by scanning imports, so a violation fails the suite rather than being caught in review.
 
 ---
 
@@ -159,16 +128,15 @@ stateDiagram-v2
     TeacherDashboard --> MainMenu
 ```
 
-**CURRENT:** scenes are constructed fresh on every transition, so no scene state leaks —
-but it also means per-entry rebuild cost (Lesson Select re-queries the database and
-re-lays out 20 cards on every entry; acceptable at 20, measured in TC-018).
+Scenes are constructed fresh on every transition, so no scene state can leak between
+visits. The cost is a per-entry rebuild — Lesson Select re-queries the database and re-lays
+out 20 cards each time it is entered, which was measured in TC-018 and is comfortable at 20
+lessons. It would not be at 200.
 
-**Added in TC-010:** `Scene.on_quit_requested()` so `Game` can let the active scene persist
-an incomplete attempt before the process exits (FR-071), plus a module-level
-`build_state_manager(ctx)` holding the single scene registry — it wires `ctx.states`, which
-scenes navigate through, so a scene can now be exercised without opening a window.
-
-**TARGET:** a `Scene.dirty_rects()` contract for the PR-002 dirty-rect rendering (TC-018).
+`Scene.on_quit_requested()` lets `Game` give the active scene a chance to persist an
+incomplete attempt before the process exits (FR-071). A module-level
+`build_state_manager(ctx)` holds the single scene registry and wires `ctx.states`, which is
+what makes a scene testable without opening a window.
 
 ---
 
@@ -195,17 +163,17 @@ Rules: input is read **only** in `handle_event`; `update` owns time-based state 
 cursor, elapsed-time display, the FR-073 checkpoint timer); `render` performs blits and
 cached-surface lookups only.
 
-**CURRENT violation (NFR-007/PR-002):** `Game._render()` does `screen.fill(bg)` then a
-full `pygame.display.flip()` every frame — the whole 1280×720 surface is re-pushed and
-every scene redraws itself unconditionally. `LessonScene._render_target_text()` also blits
-one surface per target character (~150 blits) per frame. Text surfaces *are* cached, so no
-rasterisation occurs per frame, but the blit and present cost is unnecessary.
+Presentation is dirty-rect (NFR-007/PR-002, TC-018): scenes accumulate changed rects and
+`Game` calls `pygame.display.update(dirty)` rather than re-pushing the whole 1280×720
+surface. Static scenes mark themselves fully dirty once on entry and stay clean after that;
+the Lesson scene marks only the HUD block, the characters whose status changed, and the two
+keyboard keys whose highlight moved. Full-surface repaint is still reachable behind
+`--full-repaint` for comparison when profiling.
 
-**TARGET:** `Scene.render(surface)` returns (or accumulates into `self._dirty`) a list of
-changed rects; `Game` calls `pygame.display.update(rects)`. Static scenes (menus, results)
-mark themselves fully dirty once on entry and clean thereafter. The Lesson scene marks
-only the HUD block, the changed characters of the target text, and the two keyboard keys
-whose highlight changed. Full-surface repaint remains available behind a debug flag.
+Accepted deviation: `LessonScene.update()` refreshes the HUD metrics every frame instead of
+only when a keystroke changes them. There is no I/O and no rasterisation on that path — the
+values come from cached surfaces — so it costs a dictionary read per frame and was left
+alone rather than adding a throttle whose invalidation logic could go wrong.
 
 ---
 
@@ -213,7 +181,7 @@ whose highlight changed. Full-surface repaint remains available behind a debug f
 
 | Component | Responsibility | Must not |
 |---|---|---|
-| `core.paths` | The only source of filesystem locations: `resource_path`, `writable_data_dir`, `ensure_seeded`. TARGET adds `log_path()`. | Open or parse files (other than the seeding copy) |
+| `core.paths` | The only source of filesystem locations: `resource_path`, `writable_data_dir`, `ensure_seeded`, `log_path` | Open or parse files (other than the seeding copy) |
 | `core.app_context` | Constructs and holds the manager singletons; seeds JSON on first run | Contain gameplay logic |
 | `core.game` | Window, clock, loop, display presentation, QUIT dispatch | Know any scene by behaviour |
 | `core.state_manager` | Registry + exactly one active scene + transitions | Touch the database |
@@ -230,17 +198,21 @@ whose highlight changed. Full-surface repaint remains available behind a debug f
 | `ui.resource_manager` | The only loader of images/fonts/sounds and the only caller of `font.render` | Know about scenes |
 | `ui.audio_manager` | `pygame.mixer` wrapper, volume/mute, silent when no device | Read settings from disk |
 
-**CURRENT gaps:** `AudioManager` is never actually asked to play anything and no
-`assets/sounds` exist; `ConfigManager` values are never applied to `AudioManager` at startup
-(FR-130); `ProgressionService` performs five separate auto-committed writes rather than one
-transaction (DR-010).
+`AudioManager` is driven by the scenes and seeded from `ConfigManager` at startup (FR-130),
+playing the four generated sounds in `assets/sounds/`. `ProgressionService` writes an attempt
+inside a single explicit transaction (DR-010) — see §13.
 
 `core/logging_setup.py` was added in TC-004 and is configured from `typecraft/main.py` at
 startup: one rotating file at `log_path()` (512 KB × 2 backups), plus a console handler only
 when not frozen. `configure_logging()` is idempotent and never raises — if the log file
 cannot be opened it degrades to console-only or a `NullHandler`, because losing diagnostics
-must never stop the app from starting. The FR-024/FR-134 **call sites** that should be using
-it do not yet (TC-011, TC-017, TC-023).
+must never stop the app from starting.
+
+One consequence worth knowing before writing a test: `configure_logging()` sets
+`propagate = False`, so records do not also reach the root logger. `caplog` captures through
+the root, which means a test that configures logging and does not restore it makes every
+later `caplog` assertion see an empty list. The autouse `restore_typecraft_logger` fixture in
+`tests/conftest.py` snapshots and restores that state.
 
 ---
 
@@ -335,22 +307,26 @@ base surface plus a highlight overlay.
 All colours, sizes, and the eight finger colours live in `ui.theme`. No scene or widget
 hard-codes a colour.
 
-**CURRENT gaps:** no scrollable container (blocks FR-014/FR-026/FR-124); `KeyboardRenderer`
-has only 4 rows × 10 keys (no Space, Shift, `'`, `-`, `?`, `[`, `]`, `\``), highlights the
-*key just typed* rather than the *next expected key* (FR-092), never indicates a finger
-(FR-093), and `highlight(None)` for Space means Space is never shown at all. `HUD` reads a
-metrics dict that omits `total_keystrokes`/`correct_keystrokes`.
+Three widgets carry most of the weight beyond the basics:
 
-**TARGET additions:** `ui.scroll_panel.ScrollPanel` (mouse wheel + drag + keyboard), a
-`ui.keyboard_renderer` extended layout with a `CHAR_TO_KEY` map covering every character in
-`lessons.json` plus shift-pair handling and a finger caption strip, and a
-`ui.notice.NoticeBar` for the FR-024/FR-134 teacher-visible warnings.
+- `ui.scroll_panel.ScrollPanel` — mouse wheel, drag, and keyboard scrolling for the profile
+  and lesson lists (FR-014/FR-026/FR-124). It translates between content space and screen
+  space; `translated()` returns `None` for anything outside the viewport, which is what keeps
+  hit-testing from firing on rows that are scrolled out of sight.
+- `ui.keyboard_renderer` — a full layout with a `CHAR_TO_KEY` map covering every character in
+  `lessons.json`, shift-pair handling, a finger caption strip (FR-093), and highlighting of
+  the *next expected* key rather than the key just typed (FR-092).
+- `ui.notice.NoticeBar` — the teacher-visible warning strip for FR-024/FR-134, used when
+  `lessons.json` is malformed and the built-in lessons are substituted.
+
+`ui.screen.PageHeader` holds the shared page chrome (title, subtitle, back affordance) so the
+scenes do not each re-derive the same layout constants.
 
 ---
 
 ## 8. SQLite schema
 
-### 8.1 CURRENT (verified against `_dev_data/typecraft.db`)
+### 8.1 Tables
 
 ```mermaid
 erDiagram
@@ -403,7 +379,7 @@ Present: `idx_attempts_lookup(profile_id, lesson_id, status)`, the two composite
 keys, `badges.code UNIQUE`, `PRAGMA foreign_keys = ON`. The dev database contains 10 badge
 rows and zero profiles/attempts/progress rows.
 
-### 8.2 CURRENT deltas — implemented in TC-008b as migration `v2`
+### 8.2 Columns added by migration `v2`
 
 - `lesson_attempts.total_keystrokes INTEGER NOT NULL DEFAULT 0` — required by FR-050/DR-003.
 - `lesson_attempts.correct_keystrokes INTEGER NOT NULL DEFAULT 0` — same.
@@ -436,10 +412,20 @@ deliberately not stored — `max_combo` is what an attempt is judged on).
 Criteria (when a badge is earned) are **code**, not content — only the display text and XP
 bonus are editable. Lesson `id` values are stable database keys and must never be reused.
 
-**CURRENT gaps:** `LessonManager` swallows the fallback silently (FR-024);
-`ResultsScene._pick_message` re-opens and re-parses `messages.json` on every entry rather
-than loading it once through a manager; there is no validation that a lesson's characters
-are renderable by the keyboard widget; `settings.json` writes are not atomic (FR-135).
+A malformed `lessons.json` no longer fails silently: `LessonManager` records the problem in
+`warnings`, `AppContext` collects it into `ctx.notices`, and `NoticeBar` puts it on screen for
+the teacher (FR-024). The teacher's own file is never rewritten or repaired, so the mistake
+stays findable. `settings.json` writes go through a temp file, `fsync`, and `os.replace`, so a
+power loss mid-write cannot truncate the PIN hash (FR-135).
+
+Two accepted exceptions remain:
+
+- `ResultsScene._pick_message` re-opens and re-parses `messages.json` on every entry rather
+  than loading it once through a manager. It is per-entry, not per-frame, so it never touches
+  the frame budget — but it is the one place that reads content JSON outside a manager.
+- Nothing validates that a lesson's characters are renderable by the keyboard widget. A
+  teacher who adds a character outside `CHAR_TO_KEY` gets a lesson that types correctly but
+  highlights no key for those characters.
 
 ---
 
@@ -458,24 +444,20 @@ flowchart TD
     G -- no --> P2[repo root / _dev_data]
 ```
 
-**CURRENT (after TC-002):** implemented in `typecraft/core/paths.py` with two distinct
-anchors, verified by execution:
+Implemented in `typecraft/core/paths.py` with two distinct anchors:
 
-- `_package_root()` = `typecraft/` — the anchor for `resource_path()` in dev, so `assets/`
-  and `data/` travel with the package. Verified: all four `data/*.json` files and
-  `assets/images` resolve.
-- `_repo_root()` = `_package_root().parent` — used **only** to place
-  `writable_data_dir()` at `<repo>/_dev_data` in dev, i.e. beside the package rather than
-  inside it, so dev data can never be swept into a PyInstaller build. Verified: resolves to
-  the pre-existing `_dev_data/` with `typecraft.db` intact, so the TC-008b migration fixture
-  was not orphaned by the move.
+- `_package_root()` = `typecraft/` — the anchor for `resource_path()` when running from
+  source, so `assets/` and `data/` travel with the package.
+- `_repo_root()` = `_package_root().parent` — used **only** to place `writable_data_dir()` at
+  `<repo>/_dev_data`, i.e. beside the package rather than inside it, so dev data can never be
+  swept into a PyInstaller build (D-24).
 
-Frozen behaviour is unchanged (`sys._MEIPASS` for read-only,
-`Path(sys.executable).parent` for writable). `ensure_seeded()` skips any file that already
-exists (DR-012) and maps `settings.json` to `settings.default.json`. `Database` puts the
-`.db` in the writable dir. No module bypasses these helpers.
-
-**TARGET:** a new `log_path()` returning `writable_data_dir()/"typecraft.log"` (TC-004).
+When frozen, `sys._MEIPASS` anchors read-only files and `Path(sys.executable).parent` anchors
+writable ones — which is what puts `typecraft.db` beside the exe, where a teacher can copy it
+to a USB stick and where replacing the application files leaves it untouched.
+`ensure_seeded()` skips any file that already exists (DR-012) and maps `settings.json` to
+`settings.default.json`. `log_path()` returns `writable_data_dir()/"typecraft.log"`. No module
+bypasses these helpers, and `tests/unit/test_layering.py` fails if one starts to.
 
 ---
 
@@ -495,18 +477,21 @@ Four tiers:
    a child-safe "Couldn't save that — tell your teacher" notice, and keep the app running.
    Never leave a half-applied write.
 
-**CURRENT:** tier 1 is right (`ValueError` for unknown scene/mode). Tier 2 catches the
-right exceptions but is silent — no notice, no log. Tier 3 is right for audio. Tier 4 exists
-only in `TeacherDashboardScene._reset_progress`, and its rollback is ineffective (§13).
-There is no logging module at all.
+All four tiers are in place. Logging is `core/logging_setup.py` (stdlib `logging`, rotating
+file handler at `log_path()`, INFO default), configured from `typecraft/main.py`. Notices
+accumulate on `AppContext.notices` and are drawn by `ui.notice.NoticeBar`, which `Game` owns
+so the banner survives scene transitions.
 
-**DONE in TC-004:** `core/logging_setup.py` (stdlib `logging`, rotating file handler at
-`log_path()`, INFO default), wired from `typecraft/main.py`.
+`except Exception` is permitted in exactly two places: `Game.run()`'s outermost guard, which
+logs, tries to save an incomplete attempt, and exits cleanly rather than vanishing; and inside
+transaction wrappers that re-raise after rollback. Anywhere else it is a bug —
+`tests/unit/test_layering.py` scans for it.
 
-**TARGET:** `core/notices.py` (`AppContext.notices` list rendered by a
-`NoticeBar` in every scene). `except Exception` remains permitted only in `Game.run()`'s
-outermost guard (log + attempt an incomplete-attempt save + exit cleanly) and inside
-transaction wrappers that re-raise after rollback.
+Native crashes are a separate problem, because an access violation inside SDL raises no Python
+exception for any of the above to catch. `typecraft/main.py` therefore enables `faulthandler`
+against `typecraft-crash.log` before pygame is initialised. That file has to be opened before
+a crash can happen, so a clean exit deletes it again if nothing was written — otherwise every
+launch would leave an alarming empty file beside the executable.
 
 ---
 
@@ -552,8 +537,8 @@ Key design points:
 - Aggregates are protected by construction: a single `completed_attempts_where()` SQL
   fragment helper is the only way any manager filters attempts.
 
-**CURRENT (after TC-009):** all of the above is implemented except the window-close path.
-`ProgressionService.checkpoint()` reserves one row and UPSERTs it, driven from
+All of the above is implemented, including the window-close path via
+`Scene.on_quit_requested()` (§3). `ProgressionService.checkpoint()` reserves one row and UPSERTs it, driven from
 `LessonScene.update()` on a 10 s timer — verified to cost **zero** database writes across 100
 keystrokes. `score(attempt, profile, row_id)` promotes that same row, so one attempt is always
 one row. `checkpoint()` builds its row from `engine.result(IN_PROGRESS)`, so the checkpoint and
@@ -582,7 +567,7 @@ their XP, recompute level, save the profile. All-or-nothing.
 **B. Reset one student** — delete attempts, delete progress, delete badges, zero
 XP/level/streaks, re-insert the first unlocked lesson. All-or-nothing.
 
-**CURRENT (after TC-008): both are atomic.** `Database` opens with `isolation_level=None`
+**Both are atomic.** `Database` opens with `isolation_level=None`
 (autocommit), so a single `execute()` commits on its own and a group is opened explicitly by
 `with db.transaction():` — `BEGIN IMMEDIATE`, commit on clean exit, rollback and **re-raise**
 on any exception, and a hard refusal to nest (a nested `with` would commit the outer block
@@ -611,19 +596,22 @@ without terminating.
 
 | Rule | Mechanism | Status |
 |---|---|---|
-| No per-frame rasterisation | `ResourceManager.text_surface()` caches by `(text, font id, colour)` | CURRENT ✔ (cache is unbounded — NFR-014) |
-| Convert images once at load | `convert()`/`convert_alpha()` in `ResourceManager.image()` | CURRENT ✔ (untested: no `assets/` exists) |
-| Pre-render the keyboard | `KeyboardRenderer.prerender()` builds one base surface per lesson entry | CURRENT ✔ |
-| Event-driven metrics | HUD updated on keystroke | CURRENT ✖ — `LessonScene.update()` also refreshes every frame; harmless (no I/O) but the elapsed-time string changes only once per second, so the HUD should be marked dirty at most 1 Hz |
-| No I/O on the frame path | — | CURRENT ✔ |
-| Dirty-rect presentation | `pygame.display.update(rects)` | CURRENT ✖ — full `fill()` + `flip()` |
-| Cheap per-char text | one cached glyph blit per character | CURRENT ✖ — ~150 blits/frame; TARGET pre-composites the target text into per-status line surfaces and re-composites only the changed line |
-| Bounded caches | cap or clear on scene exit | CURRENT ✖ — `clear_text_cache()` exists but is never called |
+| No per-frame rasterisation | `ResourceManager.text_surface()` caches by `(text, font id, colour)` | ✔ |
+| Bounded caches | `MAX_TEXT_CACHE = 512` with LRU eviction via `OrderedDict` (NFR-014) | ✔ |
+| Convert images once at load | `convert()`/`convert_alpha()` in `ResourceManager.image()` | ✔ |
+| Pre-render the keyboard | `KeyboardRenderer.prerender()` builds one base surface per lesson entry | ✔ |
+| Cheap per-char text | Target-text layout computed once per lesson entry and cached | ✔ |
+| Dirty-rect presentation | `pygame.display.update(dirty)`; `--full-repaint` restores the old path for comparison | ✔ |
+| No I/O on the frame path | Attempt checkpoints run on a 10 s timer, never per keystroke | ✔ |
+| Event-driven metrics | HUD refreshed from `LessonScene.update()` | ✖ accepted — every frame rather than on keystroke; no I/O or rasterisation involved, so it costs a dict read (§4) |
 
-Measurement protocol (TC-018): instrument `Game.run()` behind a `--profile` flag to log
-per-phase timings and blit counts to CSV, capture a 60-second Lesson-scene baseline, apply
-one change, re-measure, and record both numbers in the commit message. No optimisation
-lands without a before/after number, except the two obvious frame-loop violations above.
+`clear_text_cache()` exists but nothing calls it, and that is deliberate: the LRU cap already
+bounds the cache, so an explicit scene-exit flush would only throw away entries the next
+scene is likely to want.
+
+Measurement protocol: `Game.run()` behind `--profile` logs per-phase timings and blit counts
+to CSV. Capture a 60-second Lesson-scene baseline, apply one change, re-measure, and record
+both numbers in the commit message. No optimisation lands without a before/after number.
 
 ---
 
@@ -649,23 +637,21 @@ tests/
 
 Isolation rules: no test touches `_dev_data/` or the developer's real database — the
 `writable_data_dir` fixture monkeypatches `core.paths.writable_data_dir` to a `tmp_path`.
-No test sleeps for timing; `TypingEngine`'s clock is injected (TARGET: constructor takes a
-`clock=time.monotonic` callable) so WPM is deterministic. Streak tests inject `today`.
+No test sleeps for timing; `TypingEngine` takes a `clock=time.monotonic` callable so WPM is
+deterministic. Streak tests inject `today`.
 Property tests (`hypothesis` optional, else a seeded random loop) assert the FR-043/044/045
 invariants over random keystroke sequences in all three modes.
 
-Packaging tests (TC-020/TC-022) are a scripted checklist plus an automated smoke test that
-builds `onedir`, launches the exe with `SDL_VIDEODRIVER=dummy` and a self-exit flag,
-asserts the writable files appeared beside the exe and **not** under `_internal/`, then
-relaunches and asserts the profile row survived.
+`tests/integration/test_packaging.py` launches the built exe with `SDL_VIDEODRIVER=dummy`,
+polls for its log file to prove it reached startup, and asserts the writable files appeared
+beside the exe and **not** under `_internal/`. It skips rather than fails when no build is
+present, so a fresh clone is not red before its first build.
 
-**CURRENT (after TC-004):** `tests/conftest.py` and `tests/unit/` exist; 154 tests pass.
-Fixtures provided: `writable_dir` (redirects the writable data dir into `tmp_path`),
+Fixtures provided by `tests/conftest.py`: `writable_dir` (redirects the writable data dir into `tmp_path`),
 `seeded_dir` (same, after first-run seeding, so first-run behaviour stays separately
 testable), `db` (a `Database` on a throwaway file), `display` (headless 1280×720 via the
 dummy SDL driver), `app_ctx` (a fully-wired `AppContext` on isolated paths), `profile` (a
-created student with lesson 1 unlocked). `tests/db/` and `tests/scenes/` land in TC-007 and
-TC-019.
+created student with lesson 1 unlocked).
 
 **Isolation caveat worth knowing before writing a fixture.** Production modules use
 `from typecraft.core.paths import writable_data_dir`, which binds the *function object* into
@@ -677,10 +663,6 @@ such a binding, *plus* the `paths` module itself so modules imported later inher
 redirect. `tests/unit/test_data_isolation.py` asserts that no binding escaped.
 Calling `paths.writable_data_dir()` at each call site would need no patching at all — a
 worthwhile cleanup, but it touches five production modules and is not scheduled.
-
-Baseline coverage recorded at TC-004 (from import/layering/isolation/logging tests alone,
-before any behavioural test exists): **34 % overall**, `engine/` + `managers/` **29 %**.
-AC-02 requires `engine/` + `managers/` ≥ 85 %; Phase 2 and Phase 3 close that gap.
 
 ---
 
@@ -710,7 +692,13 @@ dist/TypeCraft/
   `_internal/` preserves it (PK-008).
 - Backup = copy `typecraft.db`. Restore = drop it back beside the exe.
 
-**CURRENT: no `.spec` file, no `assets/` directory, no build has ever been produced.**
+`TypeCraft.spec` defines the bundle and `scripts/build_release.py` drives it — the script
+cleans `build/` and `dist/`, runs PyInstaller, and copies `docs/release-readme.md` in as the
+folder's `README.md` so the end-user instructions ship with every build rather than being
+written into `dist/` by hand and lost on the next one.
+
+`tests/integration/test_packaging.py` asserts the produced folder is actually usable, which is
+the only check that catches a bundle whose resources resolve in dev and miss when frozen.
 
 ---
 
@@ -795,26 +783,27 @@ field names are part of the contract; `AttemptResult` must stay a superset of th
 | ADR-001 | Move code into a lowercase `typecraft/` package at the repo root; `main.py` launcher at root | **Accepted — implemented TC-002** | Repo now imports and tests from its own root; cost was an 88-statement import rewrite across 27 files |
 | ADR-002 | `assets/` and `data/` live *inside* the package; `_dev_data/` stays outside it | **Accepted — implemented TC-002** | One stable anchor for `resource_path()` in both dev and frozen modes; dev data cannot be swept into a build |
 | ADR-003 | `Database` uses `isolation_level=None` + an explicit `transaction()` context manager | **Accepted — implemented TC-008** | Per-statement autocommit made DR-010 unachievable; nesting is refused so an inner block cannot commit an outer one early |
-| ADR-004 | One row per attempt, reserved on the first keystroke, promoted from `in_progress` to `complete`/`incomplete` | Proposed (TC-009) | Prevents duplicate rows once checkpointing exists |
+| ADR-004 | One row per attempt, reserved on the first keystroke, promoted from `in_progress` to `complete`/`incomplete` | **Accepted — implemented** | Prevents duplicate rows once checkpointing exists |
 | ADR-005 | Ledger-style keystroke accounting; delete `_error_counted`; Backspace never edits a counter | **Accepted — implemented TC-006** | FR-043/044/045 now hold by construction; fixed D-07, D-08, D-29, D-30 |
-| ADR-006 | PIN uses `pbkdf2_hmac` with a per-install random salt, verified with `compare_digest` | Proposed (TC-011b) | A 4-digit unsalted SHA-256 has only 10 000 preimages |
-| ADR-007 | Dirty-rect presentation via a per-scene dirty-rect list; full repaint behind a debug flag | Proposed (TC-018) | PR-002; keeps a simple escape hatch for debugging |
+| ADR-006 | PIN uses `pbkdf2_hmac` with a per-install random salt, verified with `compare_digest` | **Accepted — implemented** | A 4-digit unsalted SHA-256 has only 10 000 preimages |
+| ADR-007 | Dirty-rect presentation via a per-scene dirty-rect list; full repaint behind a debug flag | **Accepted — implemented** | PR-002; keeps a simple escape hatch for debugging |
 | ADR-008 | Lessons joined with a single space; no Enter key mid-lesson | Accepted (in code) | Keeps the target a flat string and the keyboard free of an Enter highlight |
 | ADR-009 | Badge criteria in code, badge text/XP in JSON | Accepted (in code) | Teachers edit wording safely; criteria stay verifiable |
 | ADR-010 | Scenes are re-instantiated on every transition | Accepted (in code) | No stale state; re-entry cost measured in TC-018 |
-| ADR-011 | Leaderboard reads the `lesson_progress` cache, filtered by `times_completed > 0` | Proposed (TC-012) | One indexed row per lesson instead of scanning attempts; fixes FR-112 |
+| ADR-011 | Leaderboard reads the `lesson_progress` cache, filtered by `times_completed > 0` | **Accepted — implemented** | One indexed row per lesson instead of scanning attempts; fixes FR-112 |
 | ADR-012 | `synchronous = FULL` with the **default rollback journal — not WAL** | **Accepted — implemented TC-008** | WAL was specified in an earlier draft of §8.2 and is wrong for this deployment. In WAL mode recently-committed data can live in `typecraft.db-wal` rather than the main file, so after a crash **copying `typecraft.db` alone would silently lose it** — breaking DR-014's single-file backup story and the blueprint's "copy typecraft.db to your USB stick" instruction to teachers. The rollback journal deletes itself on commit, so the `.db` file is always a complete snapshot, and `synchronous = FULL` still fsyncs every commit. The cost is slower concurrent writes, which is irrelevant for one local single-user process. |
 
 ## 19. Architecture risks
 
-| Risk | Impact | Mitigation |
+The nine risks tracked during the rebuild are all closed; the git history holds the detail, and
+each one names the commit that closed it. What remains are the standing risks a future change
+could reintroduce, kept because each has a specific guard worth not deleting.
+
+| Risk | Impact if it returns | Guard |
 |---|---|---|
-| ~~R1 — the import-path/package defect blocks every test and the build~~ | — | **CLOSED by TC-002.** Both entry points resolve the full internal import graph from the repo root |
-| ~~R2 — auto-commit `Database` silently defeats every transaction~~ | — | **CLOSED by TC-008.** `transaction()` context manager; `score()` and the teacher reset are each atomic, proven by forced-failure rollback tests |
-| ~~R3 — keystroke accounting is wrong in two modes~~ | — | **CLOSED by TC-006.** Four defects fixed (D-07, D-08, D-29, D-30) and verified; `engine/` at 99 % coverage. Metrics are now trustworthy; persisting them is not yet (R2, R4) |
-| ~~R4 — no `in_progress` checkpoint and no window-close save~~ | — | **CLOSED by TC-009 + TC-010.** 10 s checkpoint, one row per attempt, and all three exit paths persisting identically |
-| R5 — `assets/` missing entirely | Any future `image()`/`sound()` call crashes; no audio at all | TC-017 with graceful fallbacks and a placeholder generator |
-| R6 — dirty-rect refactor destabilises working scenes | Visual regressions late in the project | Do it after TC-019 scene smoke tests exist; keep the full-repaint flag |
-| R7 — no logging | Field failures at the school are undiagnosable | **Facility CLOSED by TC-004** (`core/logging_setup.py`, wired at startup, tested). The FR-024/FR-134 call sites still need it — TC-011, TC-017, TC-023 |
-| ~~R8 — `_dev_data/` is untracked and un-ignored~~ | — | **CLOSED by TC-001.** `.gitignore` added and both `_dev_data/` and `__pycache__/` proven ignored |
-| ~~R9 — schema missing keystroke columns~~ | — | **CLOSED by TC-008b.** Migration v2 with `schema_meta` versioning; verified on the real inherited database |
+| A path is computed outside `core.paths` | Works from source, breaks once frozen — or worse, writes the database inside the bundle, so progress resets on every launch | `test_layering.py::test_only_paths_module_derives_locations_from_dunder_file`; `tests/unit/test_data_isolation.py` proves no module holds a stale binding to the real folder |
+| A private or version-fragile pygame API creeps back in | `pygame._sdl2.video.Window` closed the app on a profile click (D-33) because its finalizer destroys the display. No Python exception is raised, so nothing catches it | `tests/integration/test_no_native_crash.py` drives the real scenes in a subprocess under `faulthandler`, which is the only way an access violation shows up as a test failure |
+| Keystroke accounting drifts | Accuracy and stars silently misreport, and `correct + errors == total` can hold while both values are wrong (D-07, D-30 both did) | Property tests plus tests asserting exact expected values, not just the invariant |
+| An attempt is written outside `ProgressionService` | Partial writes; aggregates that disagree with the attempts table | `ProgressionService.score()` is the single writer and runs in one explicit transaction, with forced-failure rollback tests |
+| Test-order dependence | A suite that passes in one order and fails in another hides real regressions behind apparent flakiness | The autouse `restore_typecraft_logger` fixture; see §5 for the `propagate`/`caplog` interaction that caused it |
+| Per-frame cost grows unnoticed on target hardware | 30 FPS is a hard requirement on 4th-gen integrated graphics, and a regression is invisible on a dev machine | `--profile` CSV instrumentation; no optimisation lands without a before/after number (§14) |

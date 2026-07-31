@@ -142,8 +142,3 @@ Two rules that matter more than they look:
 | [`docs/architecture.md`](docs/architecture.md) | Developers — structure, decisions (ADRs), risks |
 | [`docs/testing-and-release-checklist.md`](docs/testing-and-release-checklist.md) | Developers — pre-release gate |
 
-Project tracking (task backlog, phase plan, running state) and the original requirement sources
-(the master blueprint and the Khidmat proposal) lived in the repo during the rebuild and have
-been retired — **`docs/requirements.md` and the git history are the record**. Each commit names
-the requirement ids it satisfies and the defects it closed, so `git log --grep=FR-073` still
-answers "how was this implemented, and why".
