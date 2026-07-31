@@ -53,8 +53,8 @@ _native_crash_probe.py
 _live_check.py
 typecraft-crash.log
 
-# --- Requirement sources: kept on disk, not in the repo ------------------------
-# The proposal and blueprint are reference material, not deliverables. Untracked so
-# the repo holds only what ships or builds; both remain in the working folder.
+# --- Requirement sources: retired, never to be committed -----------------------
+# Superseded by docs/requirements.md. Kept as patterns so dropping either file back
+# into the working folder cannot put it in the repo by accident.
 TypeCraft Khidmat Proposal.pdf
 TypeCraft_Master_Blueprint.md

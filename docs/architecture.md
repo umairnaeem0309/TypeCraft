@@ -60,7 +60,7 @@ TypeCraft/                       <- git root, project root, sys.path[0]
 ├─ typecraft/                 ✔  <- the package (import prefix `typecraft.`)
 │  ├─ __init__.py  __main__.py  main.py                    ✔
 │  ├─ core/ engine/ managers/ models/ scenes/ ui/           ✔
-│  ├─ assets/{images,fonts,sounds}/                         ✔ (empty, .gitkeep — TC-017)
+│  ├─ assets/{images,fonts,sounds}/                         ✔ (TC-017; fonts/ still empty)
 │  └─ data/{lessons,badges,messages,settings.default}.json  ✔
 ├─ tests/{unit,db,scenes,conftest.py}                    ⬚  TC-004
 ├─ docs/                      ✔  <- guides, requirements, architecture
@@ -69,9 +69,15 @@ TypeCraft/                       <- git root, project root, sys.path[0]
 ├─ TypeCraft.spec  pyproject.toml  requirements-dev.txt  ⬚  TC-003 / TC-020
 ├─ .gitignore  .gitattributes  README.md                 ✔
 ├─ docs/requirements.md  docs/architecture.md  (this file)              ✔
-├─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
-└─ TypeCraft_Master_Blueprint.md  "TypeCraft Khidmat Proposal.pdf"            ✔
+├─ scripts/                   ✔  <- build_release.py, generate_assets.py
+└─ _dev_data/                 ✔  <- writable dev data, git-ignored, NOT in the package
 ```
+
+The blueprint and the Khidmat proposal sat at the root during the rebuild and have since been
+removed: `docs/requirements.md` carries everything the implementation is held to, so keeping
+two more copies of the same intent invited them to drift apart. References to "the blueprint"
+in older commit messages and in code comments below are historical, and point at decisions
+now recorded here as ADRs.
 
 Three equivalent entry points, all reaching `typecraft.main:main` —
 `python main.py`, `python -m typecraft`, and (once built) `TypeCraft.exe`.

@@ -1,12 +1,13 @@
 # TypeCraft — Requirements Specification
 
-**Status:** Baseline v1.0 — derived 2026-07-29 from `TypeCraft_Master_Blueprint.md`,
-`TypeCraft Khidmat Proposal.pdf`, the existing source tree, `data/*.json`, and the
-schema of `_dev_data/typecraft.db`.
+**Status:** Baseline v1.0 — derived 2026-07-29 from the TypeCraft Master Blueprint and the
+Khidmat proposal (both since retired), the existing source tree, `data/*.json`, and the
+schema of `_dev_data/typecraft.db`. This document has since superseded both: it is the only
+requirement record the implementation is held to.
 
-**Authority rule:** where the blueprint and the code disagree, this document records the
-requirement. The implementation plus the automated test suite are the executable source of
-truth; git history records how each requirement was met and which defects were fixed.
+**Authority rule:** this document records the requirement. The implementation plus the
+automated test suite are the executable source of truth; git history records how each
+requirement was met and which defects were fixed.
 
 ---
 
