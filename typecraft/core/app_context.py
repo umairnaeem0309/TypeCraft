@@ -8,6 +8,7 @@ from typecraft.managers.progression import ProgressionService
 from typecraft.managers.badge_manager import BadgeManager
 from typecraft.managers.streak_manager import StreakManager
 from typecraft.managers.config_manager import ConfigManager
+from typecraft.managers.sync_manager import SyncManager
 from typecraft.ui.resource_manager import ResourceManager
 from typecraft.ui.audio_manager import AudioManager
 
@@ -17,6 +18,7 @@ class AppContext:
         ensure_seeded(["lessons.json", "badges.json", "messages.json", "settings.json"])
 
         self.db = Database()
+        self.sync = SyncManager(self.db)
         self.resources = ResourceManager()
         self.audio = AudioManager(self.resources)
         self.config = ConfigManager()

@@ -24,10 +24,10 @@ How to get a class typing in minutes, keep their progress safe, and manage stude
 
 1. On the Main Menu, click **Choose Profile**.
 2. Click **New Profile**.
-3. Type the student’s name and press Enter or click **Create**.
+3. Type the student’s unique code and name, for example `S001_Ali`, then press Enter or click **Create**.
 4. The new profile appears in the grid. Each student should use the same profile every time.
 
-Tip: keep profile names short — the cards fit better on screen.
+Use a unique code because profiles can be created on different offline computers and later imported into one teacher database. Keep profile names short — the cards fit better on screen.
 
 ---
 
@@ -65,7 +65,22 @@ Scroll up and down with the mouse wheel, Page Up/Page Down, or drag to see a lar
 
 ---
 
-## 5. Resetting a student
+## 5. Combining results from multiple computers
+
+Each offline computer keeps its own `typecraft.db`. To combine classroom results,
+use **Export Results** on each computer, copy the generated
+`typecraft_export_<database-id>.json` files to the teacher computer beside
+`TypeCraft.exe`, and click **Import Results** in the Teacher Dashboard. Profiles
+are matched by their normalized name/code, not by local SQLite IDs. Importing the
+same export again is safe; already imported attempts are skipped.
+
+Back up the teacher computer's `typecraft.db` before importing. Never replace it
+with a student computer's database, and do not copy `settings.json` between
+machines. See [`offline-sync.md`](offline-sync.md) for the complete USB workflow.
+
+---
+
+## 6. Resetting a student
 
 Resetting a student erases their lesson attempts and progress, but keeps their profile name and PIN. This cannot be undone.
 
@@ -79,7 +94,7 @@ A reset runs inside a database transaction. If anything goes wrong (power cut, d
 
 ---
 
-## 6. Locked and unlocked lessons
+## 7. Locked and unlocked lessons
 
 Students start with only the first lesson unlocked. A lesson unlocks when the previous one is completed. The unlocked status is saved in `typecraft.db`.
 

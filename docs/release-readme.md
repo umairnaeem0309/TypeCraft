@@ -20,7 +20,7 @@ The window can be resized or maximised. Press **F11** for fullscreen.
 
 1. Copy this whole **TypeCraft** folder onto the computer — anywhere is fine (Desktop, `C:\`, a
    USB stick). Keep the folder together; the `_internal` folder next to the .exe is required.
-2. Start it and choose **PLAY**, then **Create Profile** for each student.
+2. Start it and choose **PLAY**, then **Create Profile** for each student. Use a unique code in each name, for example `S001_Ali`.
 3. Optional but recommended: open **Teacher Dashboard** and use **Set PIN** on first launch.
    Once a PIN is set, the dashboard asks for it; use **Change PIN** inside the authenticated
    dashboard to replace it. Without a PIN, anyone can reset a student's progress.
@@ -54,6 +54,12 @@ attempts, XP, badges and streaks.
 To restore, copy it back beside `TypeCraft.exe`, replacing the file there.
 
 Do it at the end of each week. If that file is lost, the students' progress is lost with it.
+
+## Combine results from multiple offline computers
+
+Each computer has its own database. On each machine, open the authenticated Teacher Dashboard and click **Export Results**. Copy every generated `typecraft_export_*.json` file beside the teacher computer's `TypeCraft.exe`, back up the teacher's `typecraft.db`, then click **Import Results**. The app matches profiles by their unique names/codes and maps local database IDs safely. Re-importing the same export does not duplicate attempts.
+
+Never replace the teacher database with a student database, and never copy `settings.json` between machines. See `offline-sync.md` in the project documentation for the detailed USB workflow.
 
 ---
 

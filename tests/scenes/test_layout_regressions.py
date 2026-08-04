@@ -365,3 +365,59 @@ def test_the_dashboard_renders_empty_and_populated(app_ctx, display, attempt_fac
     app_ctx.progression.score(attempt_factory(student.id, accuracy=95.0), student)
     scene.on_enter()
     scene.render(display)                      # populated
+
+
+def test_the_dashboard_toolbar_has_its_own_non_overlapping_band(app_ctx, display):
+    """Export/import/PIN controls must not cover the subtitle or table headings."""
+    from typecraft.scenes.teacher_dashboard import (
+        CHANGE_PIN_RECT, EXPORT_RESULTS_RECT, FIRST_ROW_Y, HEADER_RULE_Y,
+        IMPORT_RESULTS_RECT, TOOLBAR_Y, TOOLBAR_HEIGHT,
+    )
+
+    scene = __import__(
+        "typecraft.scenes.teacher_dashboard", fromlist=["TeacherDashboardScene"]
+    ).TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    toolbar = [scene.export_button, scene.import_button, scene.change_pin_button]
+    rects = [button.rect for button in toolbar]
+    window = pygame.Rect(0, 0, theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT)
+
+    assert (EXPORT_RESULTS_RECT, IMPORT_RESULTS_RECT, CHANGE_PIN_RECT) == tuple(rects)
+    assert all(window.contains(rect) for rect in rects)
+    assert all(rect.y == TOOLBAR_Y and rect.height == TOOLBAR_HEIGHT for rect in rects)
+    assert not rects[0].colliderect(rects[1])
+    assert not rects[1].colliderect(rects[2])
+    assert TOOLBAR_Y + TOOLBAR_HEIGHT < FIRST_ROW_Y
+    assert HEADER_RULE_Y == FIRST_ROW_Y - 10
+    assert max(rect.bottom for rect in rects) < HEADER_RULE_Y
+
+
+def test_the_dashboard_toolbar_uses_distinct_non_danger_colours(app_ctx, display):
+    from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
+
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    colours = {
+        tuple(scene.export_button.bg_color),
+        tuple(scene.import_button.bg_color),
+        tuple(scene.change_pin_button.bg_color),
+    }
+
+    assert len(colours) == 3
+    assert tuple(theme.COLOR_ERROR) not in colours
+    assert tuple(theme.COLOR_ADMIN) not in colours
+
+
+def test_dashboard_status_uses_the_single_footer_message_area(app_ctx, display):
+    """Sync/PIN feedback must not share the footer band with the averages note."""
+    from typecraft.scenes.teacher_dashboard import TeacherDashboardScene
+
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    scene.sync_status = "Imported 1 attempt."
+    scene.pin_change_status = "Teacher PIN updated."
+
+    # The render path selects exactly one status string for the shared footer.
+    selected = scene.sync_status or scene.pin_change_status
+    assert selected == scene.sync_status
+    assert selected

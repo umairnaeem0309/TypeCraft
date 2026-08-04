@@ -1,6 +1,9 @@
-"""scenes/teacher_dashboard.py — PIN gate, per-student overview, reset-progress."""
+"""scenes/teacher_dashboard.py — PIN gate, class overview, sync, and reset-progress."""
 
 import pygame
+
+from typecraft.core.paths import writable_data_dir
+from typecraft.managers.sync_manager import SyncError
 
 from typecraft.core.scene import Scene
 from typecraft.ui import screen, theme
@@ -9,15 +12,23 @@ from typecraft.ui.scroll_panel import ScrollPanel
 from typecraft.ui.text_input import TextInput
 
 ROW_HEIGHT = 52
-FIRST_ROW_Y = 180
+
+#: The dashboard header has three deliberate bands: page title/subtitle, the
+#: teacher toolbar, then the table headings. Keeping the toolbar out of the table
+#: band prevents the action buttons from covering headings at the design size.
+TOOLBAR_Y = 146
+TOOLBAR_HEIGHT = 48
+FIRST_ROW_Y = 252
 
 #: Column headings sit above the scrolling rows, with a rule separating the two.
 HEADER_Y = FIRST_ROW_Y - 40
 HEADER_RULE_Y = FIRST_ROW_Y - 10
 
-#: Authenticated teacher-only control. PIN changes are deliberately not exposed in
-#: Settings; this button is only handled after the dashboard PIN gate has passed.
-CHANGE_PIN_RECT = pygame.Rect(theme.SCREEN_WIDTH - 240, 118, 200, 48)
+#: Authenticated teacher-only controls. These are grouped in one toolbar row and
+#: use calm secondary colours so routine actions do not compete with the table.
+EXPORT_RESULTS_RECT = pygame.Rect(520, TOOLBAR_Y, 190, TOOLBAR_HEIGHT)
+IMPORT_RESULTS_RECT = pygame.Rect(730, TOOLBAR_Y, 190, TOOLBAR_HEIGHT)
+CHANGE_PIN_RECT = pygame.Rect(940, TOOLBAR_Y, 200, TOOLBAR_HEIGHT)
 
 #: PIN-change dialog geometry, kept separate from the table and its reset modal.
 PIN_CHANGE_PANEL = pygame.Rect(theme.SCREEN_WIDTH // 2 - 300, 155, 600, 440)
@@ -59,7 +70,9 @@ class TeacherDashboardScene(Scene):
         self.pin_change_open = False
         self.pin_change_error = ""
         self.pin_change_status = ""
-        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 430))
+        self.sync_status = ""
+        self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH,
+                                              theme.SCREEN_HEIGHT - FIRST_ROW_Y - 64))
         # Reusable italic fonts for consistent page subtitles and bottom notes.
         self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
         self._subtitle_font.set_italic(True)
@@ -73,6 +86,7 @@ class TeacherDashboardScene(Scene):
         self._column_x = self._measure_columns()
         self._build_pin_widgets()
         self._build_pin_change_widgets()
+        self._build_sync_widgets()
         self._build_dashboard_widgets()
 
     def _measure_columns(self) -> list:
@@ -126,7 +140,7 @@ class TeacherDashboardScene(Scene):
             "Set PIN" if not self.ctx.config.has_pin() else "Change PIN",
             self._open_pin_change,
             self.ctx.resources,
-            bg_color=theme.COLOR_ADMIN,
+            bg_color=theme.COLOR_SECONDARY_DARK,
             font_size=theme.FONT_SIZE_SMALL,
         )
         self.current_pin_input = TextInput(
@@ -216,6 +230,62 @@ class TeacherDashboardScene(Scene):
             field.text = ""
             field.focused = False
             field.visible = True
+
+    def _build_sync_widgets(self) -> None:
+        """Build offline JSON export/import controls.
+
+        Export files are written beside the app's writable data. For an existing
+        release, the teacher copies the files from each machine into this same
+        folder and clicks Import; no file dialog or external dependency is needed.
+        """
+        self.export_button = Button(
+            EXPORT_RESULTS_RECT.copy(), "Export Results", self._export_results,
+            self.ctx.resources, bg_color=theme.COLOR_ACCENT,
+            font_size=theme.FONT_SIZE_SMALL,
+        )
+        self.import_button = Button(
+            IMPORT_RESULTS_RECT.copy(), "Import Results", self._import_results,
+            self.ctx.resources, bg_color=theme.COLOR_SECONDARY,
+            font_size=theme.FONT_SIZE_SMALL,
+        )
+
+    def _export_results(self) -> None:
+        target = writable_data_dir() / f"typecraft_export_{self.ctx.db.database_id()}.json"
+        try:
+            self.ctx.sync.export_results(target)
+        except (OSError, SyncError) as exc:
+            self.sync_status = f"Export failed: {exc}"
+            return
+        self.sync_status = f"Exported results: {target.name}"
+
+    def _import_results(self) -> None:
+        """Import every copied TypeCraft export in the writable app folder."""
+        files = sorted(writable_data_dir().glob("typecraft_export_*.json"))
+        if not files:
+            self.sync_status = "No export files found beside the app."
+            return
+
+        profiles_created = attempts_imported = attempts_skipped = 0
+        failures = []
+        for path in files:
+            try:
+                result = self.ctx.sync.import_results(path)
+            except SyncError as exc:
+                # The teacher's own export, or one malformed file, should not
+                # prevent the other USB files from importing.
+                failures.append(f"{path.name}: {exc}")
+                continue
+            profiles_created += result["profiles_created"]
+            attempts_imported += result["attempts_imported"]
+            attempts_skipped += result["attempts_skipped"]
+
+        self._build_dashboard_widgets()
+        self.sync_status = (
+            f"Imported {attempts_imported} attempts, {profiles_created} new profiles "
+            f"({attempts_skipped} already imported)."
+        )
+        if failures:
+            self.sync_status += " " + " ".join(failures)
 
     def _build_dashboard_widgets(self) -> None:
         """One row per student inside a scrolling viewport (FR-124).
@@ -343,6 +413,10 @@ class TeacherDashboardScene(Scene):
                 self._try_pin()
             return
 
+        if self.export_button.handle_event(event):
+            return
+        if self.import_button.handle_event(event):
+            return
         if self.change_pin_button.handle_event(event):
             return
         if self.panel.handle_event(event):
@@ -378,6 +452,8 @@ class TeacherDashboardScene(Scene):
             return
 
         self.back_button.render(surface)
+        self.export_button.render(surface)
+        self.import_button.render(surface)
         self.change_pin_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
@@ -388,11 +464,6 @@ class TeacherDashboardScene(Scene):
         surface.blit(sub, sub.get_rect(center=(theme.SCREEN_WIDTH // 2, screen.SUBTITLE_Y)))
 
         self._render_table(surface)
-
-        if self.pin_change_status:
-            status = self.ctx.resources.text_surface(
-                self.pin_change_status, self._note_font, theme.COLOR_PRIMARY_DARK)
-            surface.blit(status, status.get_rect(midright=(theme.SCREEN_WIDTH - 40, 680)))
 
         if self.pending_reset is not None:
             self._render_confirmation(surface)
@@ -436,11 +507,17 @@ class TeacherDashboardScene(Scene):
                 y += ROW_HEIGHT
         self.panel.render_scrollbar(surface, theme.COLOR_PRIMARY, theme.COLOR_LOCKED)
 
-        # Averages cover completed attempts only, so say so — a dash means "nothing
-        # finished yet", which is different from zero (FR-123).
+        # Use one footer message area. A sync/PIN status temporarily replaces the
+        # generic averages note, so the two long italic lines can never overlap.
+        note_text = self.sync_status or self.pin_change_status
+        if not note_text:
+            # Averages cover completed attempts only, so say so — a dash means
+            # "nothing finished yet", which is different from zero (FR-123).
+            note_text = "Averages use completed lessons only. — means nothing finished yet."
         note = self.ctx.resources.text_surface(
-            "Averages use completed lessons only. — means nothing finished yet.",
-            self._note_font, theme.COLOR_TEXT_MUTED)
+            note_text, self._note_font,
+            theme.COLOR_PRIMARY_DARK if (self.sync_status or self.pin_change_status)
+            else theme.COLOR_TEXT_MUTED)
         surface.blit(note, note.get_rect(center=(theme.SCREEN_WIDTH // 2,
                                                  theme.SCREEN_HEIGHT - 30)))
 
