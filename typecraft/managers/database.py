@@ -10,12 +10,13 @@ progress from vanishing between runs.
 """
 
 import sqlite3
+import uuid
 from contextlib import contextmanager
 
 from typecraft.core.paths import writable_data_dir
 
 #: Bumped whenever _migrate() gains a step. v1 = the inherited schema.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS profiles (
@@ -80,6 +81,16 @@ CREATE TABLE IF NOT EXISTS profile_badges (
     earned_at TEXT NOT NULL,
     PRIMARY KEY (profile_id, badge_id)
 );
+
+-- Records which source attempts have already been imported. Local attempt IDs
+-- are only unique inside one database, so the source database identity is part
+-- of the key and repeated USB imports remain idempotent.
+CREATE TABLE IF NOT EXISTS sync_records (
+    source_database_id TEXT NOT NULL,
+    source_attempt_id INTEGER NOT NULL,
+    target_attempt_id INTEGER NOT NULL REFERENCES lesson_attempts(id),
+    PRIMARY KEY (source_database_id, source_attempt_id)
+);
 """
 
 
@@ -115,6 +126,7 @@ class Database:
         # executescript() manages its own transaction, so it runs outside ours.
         self._conn.executescript(SCHEMA)
         self._migrate()
+        self.database_id()
         self._reclassify_orphaned_attempts()
 
     # --- Migrations --------------------------------------------------------
@@ -126,6 +138,22 @@ class Database:
     def schema_version(self) -> int:
         rows = self.query("SELECT value FROM schema_meta WHERE key='schema_version'")
         return int(rows[0]["value"]) if rows else 1
+
+    def database_id(self) -> str:
+        """Stable identity for this local database, used by export/import.
+
+        It is stored in schema_meta rather than in a separate file, so copying
+        an export does not accidentally change the identity of its source.
+        """
+        rows = self.query("SELECT value FROM schema_meta WHERE key='database_id'")
+        if rows:
+            return rows[0]["value"]
+        value = uuid.uuid4().hex
+        self.execute(
+            "INSERT INTO schema_meta (key, value) VALUES ('database_id', ?)",
+            (value,),
+        )
+        return value
 
     def _migrate(self) -> None:
         current = self.schema_version()
@@ -144,6 +172,8 @@ class Database:
                                  "INTEGER NOT NULL DEFAULT 0")
                 self._add_column("lesson_attempts", "corrections_made",
                                  "INTEGER NOT NULL DEFAULT 0")
+            # Version 3 adds sync_records through the idempotent CREATE TABLE
+            # above. No existing student data is rewritten.
             self._set_schema_version(SCHEMA_VERSION)
 
     def _add_column(self, table: str, column: str, definition: str) -> None:
