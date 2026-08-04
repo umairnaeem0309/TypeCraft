@@ -15,6 +15,15 @@ FIRST_ROW_Y = 180
 HEADER_Y = FIRST_ROW_Y - 40
 HEADER_RULE_Y = FIRST_ROW_Y - 10
 
+#: Authenticated teacher-only control. PIN changes are deliberately not exposed in
+#: Settings; this button is only handled after the dashboard PIN gate has passed.
+CHANGE_PIN_RECT = pygame.Rect(theme.SCREEN_WIDTH - 240, 118, 200, 48)
+
+#: PIN-change dialog geometry, kept separate from the table and its reset modal.
+PIN_CHANGE_PANEL = pygame.Rect(theme.SCREEN_WIDTH // 2 - 300, 155, 600, 440)
+
+
+
 #: Column layout: (heading, key, formatter). Positions are **measured**, not written
 #: down — see `_measure_columns()`. Hard-coded x values collided the moment the
 #: headings became bold and upper-case, because they got wider than the numbers
@@ -47,6 +56,9 @@ class TeacherDashboardScene(Scene):
         #: The student awaiting reset confirmation, or None. Reset is destructive and
         #: irreversible, so it never happens on a single click (FR-125).
         self.pending_reset = None
+        self.pin_change_open = False
+        self.pin_change_error = ""
+        self.pin_change_status = ""
         self.panel = ScrollPanel(pygame.Rect(0, FIRST_ROW_Y, theme.SCREEN_WIDTH, 430))
         # Reusable italic fonts for consistent page subtitles and bottom notes.
         self._subtitle_font = pygame.font.Font(None, theme.FONT_SIZE_HEADING)
@@ -60,6 +72,7 @@ class TeacherDashboardScene(Scene):
         self._header_font.set_bold(True)
         self._column_x = self._measure_columns()
         self._build_pin_widgets()
+        self._build_pin_change_widgets()
         self._build_dashboard_widgets()
 
     def _measure_columns(self) -> list:
@@ -99,6 +112,110 @@ class TeacherDashboardScene(Scene):
         self.submit_button = Button(pygame.Rect(cx - 110, 350, 220, 54), "Unlock",
                                      self._try_pin, self.ctx.resources)
         self.back_button = screen.back_button(self.ctx, "main_menu")
+
+    def _build_pin_change_widgets(self) -> None:
+        """Build the teacher-only PIN-change dialog.
+
+        The dialog is not reachable until ``authenticated`` is true. Existing PIN
+        verification is intentionally delegated to ConfigManager so the storage,
+        salted hash format, and legacy upgrade path remain unchanged.
+        """
+        cx = theme.SCREEN_WIDTH // 2
+        self.change_pin_button = Button(
+            CHANGE_PIN_RECT.copy(),
+            "Set PIN" if not self.ctx.config.has_pin() else "Change PIN",
+            self._open_pin_change,
+            self.ctx.resources,
+            bg_color=theme.COLOR_ADMIN,
+            font_size=theme.FONT_SIZE_SMALL,
+        )
+        self.current_pin_input = TextInput(
+            pygame.Rect(cx - 180, PIN_CHANGE_PANEL.y + 82, 360, 52),
+            self.ctx.resources,
+            placeholder="Current PIN",
+            max_length=4,
+            is_password=True,
+        )
+        self.new_pin_input = TextInput(
+            pygame.Rect(cx - 180, PIN_CHANGE_PANEL.y + 150, 360, 52),
+            self.ctx.resources,
+            placeholder="New 4-digit PIN",
+            max_length=4,
+            is_password=True,
+        )
+        self.confirm_pin_input = TextInput(
+            pygame.Rect(cx - 180, PIN_CHANGE_PANEL.y + 218, 360, 52),
+            self.ctx.resources,
+            placeholder="Confirm new PIN",
+            max_length=4,
+            is_password=True,
+            on_submit=self._save_pin_change,
+        )
+        self.save_pin_button = Button(
+            pygame.Rect(cx - 190, PIN_CHANGE_PANEL.bottom - 64, 180, 50),
+            "Save PIN",
+            self._save_pin_change,
+            self.ctx.resources,
+            bg_color=theme.COLOR_PRIMARY,
+        )
+        self.cancel_pin_button = Button(
+            pygame.Rect(cx + 10, PIN_CHANGE_PANEL.bottom - 64, 180, 50),
+            "Cancel",
+            self._cancel_pin_change,
+            self.ctx.resources,
+            bg_color=theme.COLOR_NEUTRAL,
+        )
+
+    def _open_pin_change(self) -> None:
+        if not self.authenticated:
+            return
+        self.pin_change_open = True
+        self.pin_change_error = ""
+        for field in (self.current_pin_input, self.new_pin_input, self.confirm_pin_input):
+            field.text = ""
+            field.focused = False
+        # A first-time setup has no current PIN to verify. Subsequent changes do.
+        self.current_pin_input.visible = self.ctx.config.has_pin()
+        self.new_pin_input.focused = not self.current_pin_input.visible
+
+    def _cancel_pin_change(self) -> None:
+        self.pin_change_open = False
+        self.pin_change_error = ""
+        for field in (self.current_pin_input, self.new_pin_input, self.confirm_pin_input):
+            field.text = ""
+            field.focused = False
+            field.visible = True
+
+    def _save_pin_change(self) -> None:
+        """Verify the old PIN, validate both new entries, then hash and persist."""
+        if not self.pin_change_open:
+            return
+
+        if self.ctx.config.has_pin() and not self.ctx.config.verify_pin(
+                self.current_pin_input.text.strip()):
+            self.pin_change_error = "Incorrect current PIN."
+            self.current_pin_input.text = ""
+            return
+
+        new_pin = self.new_pin_input.text.strip()
+        confirmation = self.confirm_pin_input.text.strip()
+        if len(new_pin) != 4 or not new_pin.isdigit():
+            self.pin_change_error = "New PIN must be 4 digits."
+            return
+        if new_pin != confirmation:
+            self.pin_change_error = "New PINs do not match."
+            self.confirm_pin_input.text = ""
+            return
+
+        self.ctx.config.set_pin(new_pin)
+        self.change_pin_button.label = "Change PIN"
+        self.pin_change_open = False
+        self.pin_change_error = ""
+        self.pin_change_status = "Teacher PIN updated."
+        for field in (self.current_pin_input, self.new_pin_input, self.confirm_pin_input):
+            field.text = ""
+            field.focused = False
+            field.visible = True
 
     def _build_dashboard_widgets(self) -> None:
         """One row per student inside a scrolling viewport (FR-124).
@@ -191,6 +308,19 @@ class TeacherDashboardScene(Scene):
     # --- event / update / render ------------------------------------------
 
     def handle_event(self, event) -> None:
+        if self.pin_change_open:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self._cancel_pin_change()
+                return
+            for field in (self.current_pin_input, self.new_pin_input, self.confirm_pin_input):
+                if field.handle_event(event):
+                    return
+            if self.save_pin_button.handle_event(event):
+                return
+            if self.cancel_pin_button.handle_event(event):
+                return
+            return
+
         if self.pending_reset is not None:
             # The confirmation is modal: nothing behind it can be clicked, so a
             # stray click cannot reset the wrong child.
@@ -213,6 +343,8 @@ class TeacherDashboardScene(Scene):
                 self._try_pin()
             return
 
+        if self.change_pin_button.handle_event(event):
+            return
         if self.panel.handle_event(event):
             return
         local = self.panel.translated(event) if hasattr(event, "pos") else event
@@ -225,6 +357,9 @@ class TeacherDashboardScene(Scene):
     def update(self, dt: float) -> None:
         if not self.authenticated:
             self.pin_input.update(dt)
+        if self.pin_change_open:
+            for field in (self.current_pin_input, self.new_pin_input, self.confirm_pin_input):
+                field.update(dt)
 
     def render(self, surface) -> None:
         font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_PAGE_TITLE)
@@ -243,6 +378,7 @@ class TeacherDashboardScene(Scene):
             return
 
         self.back_button.render(surface)
+        self.change_pin_button.render(surface)
         title = self.ctx.resources.text_surface("Class Overview", font_h, theme.COLOR_TEXT)
         surface.blit(title, title.get_rect(center=(theme.SCREEN_WIDTH // 2,
                                                      screen.TITLE_Y)))
@@ -253,8 +389,15 @@ class TeacherDashboardScene(Scene):
 
         self._render_table(surface)
 
+        if self.pin_change_status:
+            status = self.ctx.resources.text_surface(
+                self.pin_change_status, self._note_font, theme.COLOR_PRIMARY_DARK)
+            surface.blit(status, status.get_rect(midright=(theme.SCREEN_WIDTH - 40, 680)))
+
         if self.pending_reset is not None:
             self._render_confirmation(surface)
+        if self.pin_change_open:
+            self._render_pin_change(surface)
 
     def _render_table(self, surface) -> None:
         font_small = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
@@ -328,6 +471,39 @@ class TeacherDashboardScene(Scene):
         title, title_rect, hint, hint_rect = self.empty_state_layout()
         surface.blit(title, title_rect)
         surface.blit(hint, hint_rect)
+
+    def _render_pin_change(self, surface) -> None:
+        """Render the modal PIN-change flow above the authenticated dashboard."""
+        shade = pygame.Surface((theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT), pygame.SRCALPHA)
+        shade.fill((0, 0, 0, 150))
+        surface.blit(shade, (0, 0))
+
+        panel = PIN_CHANGE_PANEL
+        pygame.draw.rect(surface, theme.COLOR_CARD_BG, panel, border_radius=14)
+        pygame.draw.rect(surface, theme.COLOR_ADMIN, panel, width=3, border_radius=14)
+
+        font_h = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        font_body = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        heading = self.ctx.resources.text_surface("Change Teacher PIN", font_h, theme.COLOR_TEXT)
+        surface.blit(heading, heading.get_rect(center=(panel.centerx, panel.y + 36)))
+
+        if self.ctx.config.has_pin():
+            hint_text = "Verify the current PIN before saving a new one."
+            self.current_pin_input.render(surface)
+        else:
+            hint_text = "No PIN is set yet. Create one for the Teacher Dashboard."
+        hint = self.ctx.resources.text_surface(hint_text, font_body, theme.COLOR_TEXT_MUTED)
+        surface.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 66)))
+
+        self.new_pin_input.render(surface)
+        self.confirm_pin_input.render(surface)
+        self.save_pin_button.render(surface)
+        self.cancel_pin_button.render(surface)
+
+        if self.pin_change_error:
+            error = self.ctx.resources.text_surface(
+                self.pin_change_error, font_body, theme.COLOR_ERROR)
+            surface.blit(error, error.get_rect(center=(panel.centerx, panel.bottom - 94)))
 
     def _render_confirmation(self, surface) -> None:
         summary = self.pending_reset

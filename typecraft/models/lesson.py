@@ -18,14 +18,17 @@ class Lesson:
 
     def target_text(self) -> str:
         """
-        Join this lesson's drill lines into one continuous typing target.
+        Join this lesson's content paragraphs into one continuous typing target.
 
-        Locked decision: lines are joined with a single space. The student
+        A lesson normally stores one long paragraph in `lines[0]`; the list
+        remains supported so teacher-edited files from earlier versions keep
+        working. Each entry is joined with one space. The student
         never presses Enter mid-lesson — the cursor flows straight through
         from one line into the next, and the WPM clock (T in blueprint §2.4)
         runs continuously from the first keystroke to the last, uninterrupted
         by line boundaries. This keeps the engine's target a single flat
         string and keeps KeyboardRenderer free of any need to highlight
-        an Enter key.
+        an Enter key. LessonScene presents long targets through a clipped,
+        automatically scrolling viewport.
         """
         return " ".join(self.lines)

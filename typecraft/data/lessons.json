@@ -2,48 +2,398 @@
   "schema_version": 1,
   "tiers": [
     {
-      "tier": 1, "name": "Home Row", "color": "#4CAF50",
+      "tier": 1,
+      "name": "Home Row",
+      "color": "#4CAF50",
       "lessons": [
-        {"id": "t1l1", "order": 1, "title": "Home Row: f and j", "finger_focus": ["left_index", "right_index"], "default_mode": "lock_on_error", "target_wpm": 8, "lines": ["fff jjj fff jjj", "fj fj jf jf fjfj", "jff jjf fjj fff"]},
-        {"id": "t1l2", "order": 2, "title": "Home Row: d and k", "finger_focus": ["left_middle", "right_middle"], "default_mode": "lock_on_error", "target_wpm": 8, "lines": ["ddd kkk ddd kkk", "dk dk kd kd dkdk", "dkk dkd kdd ddd"]},
-        {"id": "t1l3", "order": 3, "title": "Home Row: a s d f j k l ;", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "lock_on_error", "target_wpm": 10, "lines": ["asdf jkl; asdf jkl;", "a sad lad asks dad", "all fall; a flask"]},
-        {"id": "t1l4", "order": 4, "title": "Home Row Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "lock_on_error", "target_wpm": 10, "lines": ["ask a lad; add a flask", "sad dad falls; a jak", "salad flask jak all"]}
+        {
+          "id": "t1l1",
+          "order": 1,
+          "title": "Home Row: f and j",
+          "finger_focus": [
+            "left_index",
+            "right_index"
+          ],
+          "default_mode": "lock_on_error",
+          "target_wpm": 8,
+          "lines": [
+            "f j f j fj jf fff jjj fj jf fj fj j f f j j f j fj jf fff jjj fj jf fj fj j f f j j fj jf f j fj jf fff jjj f j fj jf fj jf f j j f f j j fj jf fj fj f j f j fj jf fff jjj fj jf f j fj jf"
+          ]
+        },
+        {
+          "id": "t1l2",
+          "order": 2,
+          "title": "Home Row: d and k",
+          "finger_focus": [
+            "left_middle",
+            "right_middle"
+          ],
+          "default_mode": "lock_on_error",
+          "target_wpm": 8,
+          "lines": [
+            "d k dk kd ddd kkk ddk kkd dk kd ddd kkk dkd kdd dkk ddd dk kd ddk kkd ddd kkk dk kd ddk kkd dkd kdd dkk ddd dk kd ddd kkk dk kd ddk kkd ddd kkk dkd kdd dk kd ddd kkk dk kd ddk kkd"
+          ]
+        },
+        {
+          "id": "t1l3",
+          "order": 3,
+          "title": "Home Row: a s d f j k l ;",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "lock_on_error",
+          "target_wpm": 10,
+          "lines": [
+            "a sad lad asks dad a lad falls a flask falls sad dad asks a lad a sad lad asks dad all fall a flask falls a lad asks dad sad lads ask dad adds a salad a flask falls a lad falls dad asks a sad lad a lad adds a salad all fall a sad lad asks dad a flask falls sad lads ask a lad"
+          ]
+        },
+        {
+          "id": "t1l4",
+          "order": 4,
+          "title": "Home Row Words",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "lock_on_error",
+          "target_wpm": 10,
+          "lines": [
+            "ask a lad add a salad sad dad falls a lad asks dad all fall a flask falls a lad adds a salad dad asks a sad lad add a salad all fall a flask falls a lad falls dad asks salad a lad a flask a sad lad asks add a lad ask a lad fall fall ask a lad asks dad"
+          ]
+        }
       ]
     },
     {
-      "tier": 2, "name": "Top Row", "color": "#2196F3",
+      "tier": 2,
+      "name": "Top Row",
+      "color": "#2196F3",
       "lessons": [
-        {"id": "t2l1", "order": 5, "title": "Top Row: q w e r t y", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index"], "default_mode": "backspace", "target_wpm": 12, "lines": ["qwe rty qwe rty", "we try to write", "type the query quietly"]},
-        {"id": "t2l2", "order": 6, "title": "Top Row: u i o p", "finger_focus": ["right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 12, "lines": ["uio p uio p", "our pupil quit", "you type it up"]},
-        {"id": "t2l3", "order": 7, "title": "Top Row Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 14, "lines": ["water your quiet pet", "we wrote our story", "the query typed out true"]},
-        {"id": "t2l4", "order": 8, "title": "Home + Top Row Mix", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 14, "lines": ["your quiet dad asks all", "we type stories together", "just add a little salt"]}
+        {
+          "id": "t2l1",
+          "order": 5,
+          "title": "Top Row: q w e r t y",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 12,
+          "lines": [
+            "we write we read we type we try we write quiet words you type your words we read your words we write a quiet story you type a story we read our story you try we write quiet words you read your words we type your story you write it we read it you type it up we try to write it well"
+          ]
+        },
+        {
+          "id": "t2l2",
+          "order": 6,
+          "title": "Top Row: u i o p",
+          "finger_focus": [
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 12,
+          "lines": [
+            "you type your quiet word you write your word we read your story our pupil will type it up you put your word up you will write a little story you type it up you read it you keep your pupil story you type your word you write it well you read your word you type well you read it well"
+          ]
+        },
+        {
+          "id": "t2l3",
+          "order": 7,
+          "title": "Top Row Words",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 14,
+          "lines": [
+            "our pupil will write a little story you type your words you read your story you try to write it up your pupil will type it up you write your paper you read it our quiet pupil will write a story you type your word you read your word you keep at it we write little ideas you type ideas up"
+          ]
+        },
+        {
+          "id": "t2l4",
+          "order": 8,
+          "title": "Home + Top Row Mix",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 14,
+          "lines": [
+            "your quiet pupil asks us to write a little story you write your story you type your word you read your words you try to write a quiet story you type your story you read your story you write your words you try to type it well we write your story you read it you type it up you try to write it"
+          ]
+        }
       ]
     },
     {
-      "tier": 3, "name": "Bottom Row", "color": "#FF9800",
+      "tier": 3,
+      "name": "Bottom Row",
+      "color": "#FF9800",
       "lessons": [
-        {"id": "t3l1", "order": 9, "title": "Bottom Row: z x c v", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index"], "default_mode": "backspace", "target_wpm": 14, "lines": ["zxc v zxc v", "a lazy cat can zoom", "vex a fox next"]},
-        {"id": "t3l2", "order": 10, "title": "Bottom Row: b n m", "finger_focus": ["left_index", "right_index", "right_index"], "default_mode": "backspace", "target_wpm": 14, "lines": ["bnm bnm bnm", "many men can jump", "a numb thumb bends"]},
-        {"id": "t3l3", "order": 11, "title": "Full Alphabet Words", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["every zebra can jump quickly", "many black cats nap by day", "next week we visit our town"]},
-        {"id": "t3l4", "order": 12, "title": "Sentences I", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["the quick fox runs by the barn", "we planted seeds in our garden", "birds sing softly at dawn"]}
+        {
+          "id": "t3l1",
+          "order": 9,
+          "title": "Bottom Row: z x c v",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 14,
+          "lines": [
+            "a lazy cat can zoom past a fox. the clever cat visits a quiet village and looks for a warm place. every exact move helps your fingers remember the keys. we can mix old words with new words and keep the rhythm steady. careful practice helps every learner type with calm focus. careful practice keeps each new sentence clear and steady."
+          ]
+        },
+        {
+          "id": "t3l2",
+          "order": 10,
+          "title": "Bottom Row: b n m",
+          "finger_focus": [
+            "left_index",
+            "right_index",
+            "right_index"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 14,
+          "lines": [
+            "many men can jump and run by the green bank. a numb thumb bends slowly but practice makes movement easy. remember to keep both hands calm while you type. small mistakes are normal so notice them and continue. careful practice makes each new move easier. careful practice makes each new move easier. practice each day."
+          ]
+        },
+        {
+          "id": "t3l3",
+          "order": 11,
+          "title": "Full Alphabet Words",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 16,
+          "lines": [
+            "every zebra can jump quickly while many black cats nap by day. next week we visit our town and bring a small green bag. bright clouds move above the quiet road. each new sentence gives your fingers another chance to learn. careful typing helps each learner build a steady rhythm. practice each day."
+          ]
+        },
+        {
+          "id": "t3l4",
+          "order": 12,
+          "title": "Sentences I",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 16,
+          "lines": [
+            "the quick fox runs by the barn while birds sing softly at dawn. we planted seeds in our garden and watched the green leaves grow. a gentle breeze moved across the bright field. typing a full sentence takes patience attention and practice. practice each day at school. careful practice helps each learner type with calm focus. practice each day at school."
+          ]
+        }
       ]
     },
     {
-      "tier": 4, "name": "Capitals & Punctuation", "color": "#9C27B0",
+      "tier": 4,
+      "name": "Capitals & Punctuation",
+      "color": "#9C27B0",
       "lessons": [
-        {"id": "t4l1", "order": 13, "title": "Shift Keys: Capitals", "finger_focus": ["left_pinky", "right_pinky"], "default_mode": "backspace", "target_wpm": 16, "lines": ["My Name Is Sam", "The Sun Is Bright Today", "We Live In Karachi"]},
-        {"id": "t4l2", "order": 14, "title": "Commas and Periods", "finger_focus": ["right_middle", "right_ring"], "default_mode": "backspace", "target_wpm": 16, "lines": ["I like apples, pears, and plums.", "First we run, then we jump.", "She reads, writes, and draws."]},
-        {"id": "t4l3", "order": 15, "title": "Full Sentences", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 18, "lines": ["The Bridge School has bright, curious students.", "We practice typing every single day.", "Good habits build strong, lasting skills."]},
-        {"id": "t4l4", "order": 16, "title": "Question Practice", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 18, "lines": ["Where did you put my book?", "Why is the sky so blue today?", "Who wants to play outside?"]}
+        {
+          "id": "t4l1",
+          "order": 13,
+          "title": "Shift Keys: Capitals",
+          "finger_focus": [
+            "left_pinky",
+            "right_pinky"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 16,
+          "lines": [
+            "My name is Sam. The sun is bright today, and we live in Karachi. Every new sentence begins with a capital letter. Use the opposite Shift hand, keep your eyes on the text, and type slowly. Good habits grow when we practise with care. Keep typing with care. Type each capital with care. Read each sentence first. Keep each space clear."
+          ]
+        },
+        {
+          "id": "t4l2",
+          "order": 14,
+          "title": "Commas and Periods",
+          "finger_focus": [
+            "right_middle",
+            "right_ring"
+          ],
+          "default_mode": "backspace",
+          "target_wpm": 16,
+          "lines": [
+            "I like apples, pears, and plums. First we run, then we jump. She reads, writes, and draws. A comma gives a sentence a small pause, while a period brings it to a stop. Type each mark carefully and keep the spaces in place. Type with calm care. Read each sentence before you move on. Check each mark. Type each comma with care."
+          ]
+        },
+        {
+          "id": "t4l3",
+          "order": 15,
+          "title": "Full Sentences",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 18,
+          "lines": [
+            "The Bridge School has bright, curious students. We practise typing every single day, because good habits build strong, lasting skills. Each careful sentence improves accuracy, rhythm, and confidence. Look at the next word, use the right finger, and let your hands learn the path. Practise each sentence with patience. Read ahead and keep the rhythm steady."
+          ]
+        },
+        {
+          "id": "t4l4",
+          "order": 16,
+          "title": "Question Practice",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 18,
+          "lines": [
+            "Where did you put my book? Why is the sky so blue today? Who wants to play outside? Questions begin with curiosity and end with a question mark. Read each question in your mind, then type it with care. Keep the spaces, capitals, and punctuation accurate. Read each question before you begin. Type with care. Check each space and mark."
+          ]
+        }
       ]
     },
     {
-      "tier": 5, "name": "Speed & Fluency", "color": "#F44336",
+      "tier": 5,
+      "name": "Speed & Fluency",
+      "color": "#F44336",
       "lessons": [
-        {"id": "t5l1", "order": 17, "title": "Speed Drill I", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 22, "lines": ["Practice makes progress, not perfection.", "Every keystroke builds a stronger habit.", "Speed comes naturally after accuracy."]},
-        {"id": "t5l2", "order": 18, "title": "Speed Drill II", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 24, "lines": ["Reading and typing go hand in hand.", "Focus on the words, not the keys.", "Small daily practice adds up quickly."]},
-        {"id": "t5l3", "order": 19, "title": "Paragraph Challenge", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 26, "lines": ["Learning to type well takes patience and practice.", "Each lesson adds a new skill to your fingers.", "Soon you will type without even looking down."]},
-        {"id": "t5l4", "order": 20, "title": "Final Challenge", "finger_focus": ["left_pinky", "left_ring", "left_middle", "left_index", "right_index", "right_middle", "right_ring", "right_pinky"], "default_mode": "free_advance", "target_wpm": 30, "lines": ["Congratulations on reaching the final lesson.", "You have worked hard to build this skill.", "Keep practicing and your speed will keep growing."]}
+        {
+          "id": "t5l1",
+          "order": 17,
+          "title": "Speed Drill I",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 22,
+          "lines": [
+            "Practice makes progress, not perfection. Every keystroke builds a stronger habit, and every accurate sentence helps your hands move with confidence. Focus on your words, not the keys. Keep a steady rhythm, breathe normally, and let your fingers remember what they have learned. Read the next sentence before you type it. Let accuracy lead the way, and allow speed to grow from calm practice."
+          ]
+        },
+        {
+          "id": "t5l2",
+          "order": 18,
+          "title": "Speed Drill II",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 24,
+          "lines": [
+            "Reading and typing go hand in hand. Look a few words ahead, keep your hands in position, and allow the next letter to arrive naturally. Small daily practice adds up quickly. When a mistake appears, stay calm, correct it when the mode allows, and continue the paragraph. Keep your eyes moving forward, use both hands evenly, and let each careful sentence become smoother."
+          ]
+        },
+        {
+          "id": "t5l3",
+          "order": 19,
+          "title": "Paragraph Challenge",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 26,
+          "lines": [
+            "Learning to type well takes patience and practice. Each lesson adds a new skill to your fingers, but real fluency grows when you connect those skills in complete thoughts. Read the paragraph first, notice its rhythm, and then type without looking down. Accuracy gives speed a strong foundation, while calm attention helps every sentence become smoother. Read ahead, keep your shoulders relaxed, and trust the fingers that have practised each row."
+          ]
+        },
+        {
+          "id": "t5l4",
+          "order": 20,
+          "title": "Final Challenge",
+          "finger_focus": [
+            "left_pinky",
+            "left_ring",
+            "left_middle",
+            "left_index",
+            "right_index",
+            "right_middle",
+            "right_ring",
+            "right_pinky"
+          ],
+          "default_mode": "free_advance",
+          "target_wpm": 30,
+          "lines": [
+            "Congratulations on reaching the final lesson. You have worked hard to build this skill, from finding the home row to typing complete paragraphs with capitals and punctuation. Keep practising, trust the correct fingers, and remember that accuracy comes first. With steady effort, your hands will grow faster, calmer, and more confident every day. Continue to practise a little each day, read ahead, and stay relaxed when a sentence feels challenging. Your careful work has built a skill you can use in every school subject and every new idea you write."
+          ]
+        }
       ]
     }
   ]

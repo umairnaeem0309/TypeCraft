@@ -189,6 +189,96 @@ def test_reset_buttons_are_unreachable_before_authentication(app_ctx, display, a
     assert app_ctx.db.query("SELECT COUNT(*) AS c FROM lesson_attempts")[0]["c"] == 1
 
 
+# --------------------------------------------------------------------- teacher PIN change
+
+def test_pin_change_is_available_only_after_dashboard_authentication(app_ctx, display):
+    """PIN mutation is a teacher-dashboard action, never an unauthenticated action."""
+    app_ctx.config.set_pin("2468")
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+
+    assert scene.authenticated is False
+    scene._open_pin_change()
+    assert scene.pin_change_open is False
+
+    scene.pin_input.text = "2468"
+    scene._try_pin()
+    assert scene.authenticated is True
+    scene._open_pin_change()
+    assert scene.pin_change_open is True
+
+
+def test_pin_change_requires_current_pin_and_preserves_old_pin_on_failure(app_ctx, display):
+    app_ctx.config.set_pin("2468")
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    scene.pin_input.text = "2468"
+    scene._try_pin()
+    scene._open_pin_change()
+
+    scene.current_pin_input.text = "1357"
+    scene.new_pin_input.text = "9753"
+    scene.confirm_pin_input.text = "9753"
+    scene._save_pin_change()
+
+    assert scene.pin_change_open is True
+    assert scene.pin_change_error == "Incorrect current PIN."
+    assert app_ctx.config.verify_pin("2468") is True
+    assert app_ctx.config.verify_pin("9753") is False
+
+
+def test_pin_change_requires_matching_four_digit_confirmation_and_hashes_new_pin(app_ctx, display):
+    app_ctx.config.set_pin("2468")
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    scene.pin_input.text = "2468"
+    scene._try_pin()
+    scene._open_pin_change()
+
+    scene.current_pin_input.text = "2468"
+    scene.new_pin_input.text = "9753"
+    scene.confirm_pin_input.text = "9754"
+    scene._save_pin_change()
+    assert scene.pin_change_open is True
+    assert scene.pin_change_error == "New PINs do not match."
+    assert app_ctx.config.verify_pin("2468") is True
+
+    scene.confirm_pin_input.text = "9753"
+    scene._save_pin_change()
+    assert scene.pin_change_open is False
+    assert app_ctx.config.verify_pin("9753") is True
+    assert app_ctx.config.verify_pin("2468") is False
+
+
+def test_first_dashboard_pin_setup_does_not_require_a_current_pin(app_ctx, display):
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    assert scene.authenticated is True
+
+    scene._open_pin_change()
+    assert scene.current_pin_input.visible is False
+    scene.new_pin_input.text = "2468"
+    scene.confirm_pin_input.text = "2468"
+    scene._save_pin_change()
+
+    assert scene.pin_change_open is False
+    assert app_ctx.config.verify_pin("2468") is True
+
+
+def test_pin_change_dialog_is_modal_and_escape_cancels(app_ctx, display):
+    app_ctx.config.set_pin("2468")
+    scene = TeacherDashboardScene(app_ctx)
+    scene.on_enter()
+    scene.pin_input.text = "2468"
+    scene._try_pin()
+    scene._open_pin_change()
+
+    scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE, unicode=""))
+
+    assert scene.pin_change_open is False
+    assert scene.pending_reset is None
+
+
 # --------------------------------------------------------------------- confirmed reset
 
 def test_clicking_reset_only_asks_and_writes_nothing(app_ctx, display, attempt_factory):

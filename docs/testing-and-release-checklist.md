@@ -49,7 +49,7 @@ On a machine with no Python installed:
  [ ] Start a lesson and type at least one character.
 - [ ] Close the window, reopen, and confirm the incomplete attempt was saved.
 - [ ] Complete a lesson and confirm stars, XP, and badge messages appear.
-- [ ] Open the Teacher Dashboard, set a PIN, and view the student summary.
+- [ ] Open the Teacher Dashboard, set a PIN, leave and reopen it, enter the current PIN, change the PIN, and view the student summary.
 - [ ] Reset a student and confirm the dashboard refreshes.
 - [ ] Restart the computer, reopen the app, and confirm data persists.
 

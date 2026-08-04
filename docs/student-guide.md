@@ -35,15 +35,21 @@ Ask your teacher which mode to use. Newer students usually start with **Lock on 
 
 ---
 
-## 4. Reading the lesson screen
+## 4. Keyboard instructions and the lesson screen
+
+When a lesson opens, an instruction window explains how to use the on-screen keyboard.
+Read it once, then click **Start Typing** or press **Enter**/**Space**. You can also
+begin immediately by pressing the first printable key; that key is not lost.
 
 The screen shows:
 
-- **Target text** — the line(s) you are typing.
+- **Target text** — early lessons use key drills and simple words; later lessons use sentences and longer paragraphs.
 - **Cursor** — a caret and a soft block mark the next character to type.
 - **Keyboard** — the on-screen keyboard highlights the next key and the finger to use.
 - **HUD** (top of the screen) — timer, accuracy, WPM, combo, and stars earned so far.
 - **Hint** — a caption above the keyboard names the finger for the next key.
+- **Scrolling text window** — longer lessons move automatically so the next character
+  stays visible while you type.
 
 A space is shown as a small middle dot so you always know it is there.
 
@@ -67,14 +73,14 @@ When you finish a lesson you earn:
 - **Badges** when you meet special goals (first lesson, 100 % accuracy, 30 WPM, etc.).
 - **Streak bonus** on the first lesson you finish each day (5–25 XP, up to 5 days in a row).
 
-Your level grows from 1 to 10 as you collect XP. The only way to reach Level 10 is to practise regularly — replaying lessons, earning badges, and keeping a daily streak.
+Your lesson path grows from home-row drills to words, sentences, punctuation, and finally paragraphs. Your player level grows from 1 to 10 as you collect XP. The only way to reach Level 10 is to practise regularly — replaying lessons, earning badges, and keeping a daily streak.
 
 ---
 
 ## 7. Finishing and leaving a lesson
 
 - **Completing the lesson** shows the Results screen with stars, XP, and a message.
-- **Pressing Escape** saves your progress as an incomplete attempt. You can continue later.
+- **Pressing Escape** saves your progress as an incomplete attempt after you have typed. Pressing Escape from the opening instruction window simply returns to the lesson list without creating an attempt.
 - **Closing the window** also saves your incomplete attempt, as long as you have typed at least one key.
 
 If the computer loses power, a checkpoint is saved automatically every few seconds, so most of your work is preserved.

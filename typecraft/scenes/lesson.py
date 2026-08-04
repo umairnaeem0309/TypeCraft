@@ -14,6 +14,7 @@ from typecraft.engine.input_modes import create_mode
 from typecraft.engine.typing_engine import TypingEngine
 from typecraft.models.attempt import AttemptStatus, CharStatus
 from typecraft.ui import theme
+from typecraft.ui.button import Button
 from typecraft.ui.hud import HUD
 from typecraft.ui.keyboard_renderer import KeyboardRenderer
 from typecraft.ui.target_text import TargetTextLayout
@@ -22,12 +23,16 @@ from typecraft.ui.target_text import TargetTextLayout
 # commas, periods, question marks — not just lowercase home-row characters.
 TYPABLE = set(string.ascii_letters + string.digits + string.punctuation + " ")
 
+INSTRUCTION_PANEL = pygame.Rect(210, 120, 860, 430)
+INSTRUCTION_START_RECT = pygame.Rect(500, 470, 280, 58)
+
 # --- Vertical rhythm -------------------------------------------------------
 # Derived rather than hand-picked, because the keyboard used to overlap the footer
 # hint by 5 px: the board is 245 px tall and started at y=440, ending at 685, while
 # the hint sat at 680. Measured: the drill text never needs more than 2 lines
 # (74 px) even for the longest bundled lesson, so the space it had reserved was
-# spent on the overlap instead.
+# spent on the overlap instead. Paragraph lessons now use the same viewport with a
+# virtual layout and a small automatic scroll as the cursor advances.
 
 #: Where the drill text is laid out. The layout is clamped to it so nothing can be
 #: drawn past the window edge (FR-102).
@@ -74,9 +79,21 @@ class LessonScene(Scene):
         # Pre-composite the target text into per-line surfaces. Only the line
         # containing the cursor is re-rendered on a keystroke, so we avoid
         # ~150 individual glyph blits per frame (NFR-007, TC-018).
-        self._line_sprites = []  # list of (rect, surface)
+        self._line_sprites = []  # list of (virtual rect, surface)
         self._build_line_sprites()
         self._last_cursor_line = 0
+        self.text_scroll_y = 0
+
+        self._instruction_visible = True
+        self._instruction_shade = pygame.Surface(
+            (theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT), pygame.SRCALPHA)
+        self._instruction_shade.fill((20, 25, 35, 150))
+        self._instruction_surfaces = self._build_instruction_surfaces()
+        self.start_button = Button(
+            INSTRUCTION_START_RECT, "Start Typing", self._dismiss_instructions,
+            self.ctx.resources, bg_color=theme.COLOR_PRIMARY,
+            font_size=theme.FONT_SIZE_BODY,
+        )
 
         self._quit_requested = False
         self._update_keyboard_hint()
@@ -102,6 +119,56 @@ class LessonScene(Scene):
 
     def on_exit(self) -> None:
         pass
+
+    def _build_instruction_surfaces(self):
+        """Cache the static keyboard guide so the overlay is cheap to redraw."""
+        title_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_HEADING)
+        body_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_BODY)
+        small_font = self.ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_SMALL)
+        return {
+            "title": self.ctx.resources.text_surface(
+                "Before you start", title_font, theme.COLOR_TEXT),
+            "intro": self.ctx.resources.text_surface(
+                "Use the on-screen keyboard to learn the right finger.",
+                body_font, theme.COLOR_TEXT_MUTED),
+            "lines": [self.ctx.resources.text_surface(text, small_font, theme.COLOR_TEXT)
+                      for text in (
+                          "• Type the key outlined on the keyboard next.",
+                          "• Use the finger named above the keyboard.",
+                          "• For a capital, hold the opposite hand's Shift key.",
+                          "• Backspace corrects mistakes in Backspace mode.",
+                          "• Press Escape to save and leave the lesson.",
+                      )],
+            "prompt": self.ctx.resources.text_surface(
+                "Press Enter, Space, or click Start Typing",
+                small_font, theme.COLOR_TEXT_MUTED),
+            "start": self.ctx.resources.text_surface(
+                "Start Typing", body_font, theme.COLOR_BUTTON_TEXT),
+        }
+
+    def _dismiss_instructions(self) -> None:
+        self._instruction_visible = False
+        self.start_button._hovered = False
+        self.mark_dirty(pygame.Rect(0, 0, theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT))
+
+    def _update_text_scroll(self) -> None:
+        """Keep the next character visible while typing a long paragraph."""
+        current = self.layout.rect_for(self.engine.cursor)
+        if current is None:
+            current = self.layout.rect_for(max(0, self.engine.cursor - 1))
+        if current is None:
+            return
+
+        viewport_top = TEXT_AREA.top
+        viewport_bottom = TEXT_AREA.bottom
+        if current.top - self.text_scroll_y < viewport_top:
+            self.text_scroll_y = current.top - viewport_top
+        elif current.bottom - self.text_scroll_y > viewport_bottom:
+            self.text_scroll_y = current.bottom - viewport_bottom
+
+        content_bottom = self.layout.bounds().bottom if self.layout.glyphs else viewport_bottom
+        max_scroll = max(0, content_bottom - viewport_bottom)
+        self.text_scroll_y = max(0, min(self.text_scroll_y, max_scroll))
 
     def _update_keyboard_hint(self) -> None:
         """Point the keyboard at the character the student must type next (FR-092).
@@ -146,6 +213,25 @@ class LessonScene(Scene):
         self.ctx.states.change("lesson_select")
 
     def handle_event(self, event) -> None:
+        if self._instruction_visible:
+            if self.start_button.handle_event(event):
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    # Escape keeps its established meaning: leave and save.
+                    self._quit_lesson()
+                    return
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    self._dismiss_instructions()
+                    return
+                if event.unicode in TYPABLE:
+                    # A child can begin immediately; do not lose that first key.
+                    self._dismiss_instructions()
+                else:
+                    return
+            elif event.type != pygame.MOUSEMOTION:
+                return
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 self._quit_lesson()
@@ -154,6 +240,7 @@ class LessonScene(Scene):
             if event.key == pygame.K_BACKSPACE:
                 self.engine.feed_key("\b")
                 self.ctx.audio.play("key_click.wav")
+                self._update_text_scroll()
                 self._update_target_text_sprite()
                 self._update_keyboard_hint()
                 return
@@ -168,6 +255,7 @@ class LessonScene(Scene):
                 else:
                     self.ctx.audio.play("key_click.wav")
 
+                self._update_text_scroll()
                 self._update_target_text_sprite()
                 self._update_keyboard_hint()
 
@@ -196,6 +284,8 @@ class LessonScene(Scene):
         self._render_target_text(surface)
 
         self._render_footer(surface)
+        if self._instruction_visible:
+            self._render_instructions(surface)
 
     def _render_footer(self, surface) -> None:
         """A distinct band at the bottom holding the quit hint.
@@ -265,13 +355,19 @@ class LessonScene(Scene):
         current_line = self._line_index_for_cursor(self.engine.cursor)
         for line_index in {self._last_cursor_line, current_line}:
             self._render_line_sprite(line_index)
-            rect, _surf = self._line_sprites[line_index]
-            self.mark_dirty(rect)
+        # Scrolling can move many cached lines at once, so the viewport—not a
+        # single virtual line rect—is the correct dirty region.
+        self.mark_dirty(TEXT_AREA)
         self._last_cursor_line = current_line
 
     def _render_target_text(self, surface) -> None:
         """Draw the pre-computed layout. Positions never change during an attempt \u2014
         only the per-character colours \u2014 so nothing is measured here."""
+        old_clip = surface.get_clip()
+        surface.set_clip(TEXT_AREA)
+        pygame.draw.rect(surface, theme.COLOR_CARD_BG, TEXT_AREA, border_radius=10)
+        pygame.draw.rect(surface, theme.COLOR_LOCKED, TEXT_AREA, width=2, border_radius=10)
+
         cursor = self.engine.cursor
 
         # A soft block behind the current character, plus the caret on its left
@@ -279,11 +375,35 @@ class LessonScene(Scene):
         # glyph is narrow (FR-101).
         current = self.layout.rect_for(cursor)
         if current is not None:
+            current = current.move(0, -self.text_scroll_y)
             pygame.draw.rect(surface, theme.COLOR_CARD_BG, current, border_radius=4)
 
         # Blit the cached line surfaces instead of each glyph every frame.
         for rect, surf in self._line_sprites:
             if surf is not None:
-                surface.blit(surf, (rect.x, rect.y))
+                surface.blit(surf, (rect.x, rect.y - self.text_scroll_y))
 
-        pygame.draw.rect(surface, theme.COLOR_ACCENT, self.layout.caret_rect(cursor))
+        caret = self.layout.caret_rect(cursor).move(0, -self.text_scroll_y)
+        pygame.draw.rect(surface, theme.COLOR_ACCENT, caret)
+        surface.set_clip(old_clip)
+
+    def _render_instructions(self, surface) -> None:
+        """Render a modal-looking, child-readable keyboard guide."""
+        surface.blit(self._instruction_shade, (0, 0))
+        pygame.draw.rect(surface, theme.COLOR_CARD_BG, INSTRUCTION_PANEL, border_radius=18)
+        pygame.draw.rect(surface, theme.COLOR_ACCENT, INSTRUCTION_PANEL, width=3,
+                         border_radius=18)
+
+        surfaces = self._instruction_surfaces
+        cx = INSTRUCTION_PANEL.centerx
+        surface.blit(surfaces["title"], surfaces["title"].get_rect(center=(cx, 165)))
+        surface.blit(surfaces["intro"], surfaces["intro"].get_rect(center=(cx, 215)))
+        for index, line in enumerate(surfaces["lines"]):
+            surface.blit(line, line.get_rect(midleft=(300, 270 + index * 36)))
+        surface.blit(surfaces["prompt"], surfaces["prompt"].get_rect(center=(cx, 445)))
+        button_color = self.start_button.bg_color
+        if self.start_button._hovered:
+            button_color = tuple(max(0, channel - 20) for channel in button_color)
+        pygame.draw.rect(surface, button_color, self.start_button.rect, border_radius=10)
+        start_label = surfaces["start"]
+        surface.blit(start_label, start_label.get_rect(center=self.start_button.rect.center))

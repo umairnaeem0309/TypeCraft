@@ -182,6 +182,54 @@ def test_the_board_fits_the_window():
 
 # --------------------------------------------------------------------- lesson integration
 
+def test_instruction_overlay_blocks_typing_until_dismissed(app_ctx, display):
+    from typecraft.scenes.lesson import LessonScene
+
+    student = app_ctx.profiles.create("Amina", "avatar_fox")
+    app_ctx.active_profile = student
+    scene = LessonScene(app_ctx)
+    scene.on_enter(lesson=app_ctx.lessons.first_lesson(), mode_key="lock_on_error")
+
+    scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F1, unicode=""))
+    assert scene._instruction_visible is True
+    assert scene.engine.total_keystrokes == 0
+
+    scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, unicode="\r"))
+    assert scene._instruction_visible is False
+    assert scene.engine.total_keystrokes == 0
+
+
+def test_first_printable_key_dismisses_instructions_and_is_typed(app_ctx, display):
+    from typecraft.scenes.lesson import LessonScene
+
+    student = app_ctx.profiles.create("Amina", "avatar_fox")
+    app_ctx.active_profile = student
+    scene = LessonScene(app_ctx)
+    scene.on_enter(lesson=app_ctx.lessons.first_lesson(), mode_key="free_advance")
+    first = scene.engine.target[0]
+
+    scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=ord(first), unicode=first))
+
+    assert scene._instruction_visible is False
+    assert scene.engine.total_keystrokes == 1
+    assert scene.engine.cursor == 1
+
+
+def test_escape_from_the_instruction_overlay_leaves_without_saving(app_ctx, display):
+    from typecraft.scenes.lesson import LessonScene
+
+    student = app_ctx.profiles.create("Amina", "avatar_fox")
+    app_ctx.active_profile = student
+    scene = LessonScene(app_ctx)
+    scene.on_enter(lesson=app_ctx.lessons.first_lesson(), mode_key="lock_on_error")
+
+    scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE, unicode=""))
+
+    assert scene.engine.total_keystrokes == 0
+    assert app_ctx.states.current.__class__.__name__ == "LessonSelectScene"
+    assert app_ctx.db.query("SELECT * FROM lesson_attempts") == []
+
+
 def test_the_lesson_scene_guides_the_next_character_from_the_start(app_ctx, display):
     from typecraft.scenes.lesson import LessonScene
 

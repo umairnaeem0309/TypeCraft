@@ -54,6 +54,45 @@ def test_every_lesson_has_typable_content(app_ctx):
         assert lesson.default_mode in {"lock_on_error", "backspace", "free_advance"}
 
 
+def test_curriculum_uses_balanced_progressive_content(app_ctx):
+    """Early lessons are substantial without asking for untaught keys (school UX).
+
+    The course moves from key drills to words/sentences and finally to fluency
+    paragraphs. This prevents a future content edit from reintroducing the old
+    repeated suffix or making lesson one unexpectedly require the full keyboard.
+    """
+    allowed = {
+        1: set("asdfjkl "),
+        2: set("asdfjklqwertyuiop "),
+        3: set("abcdefghijklmnopqrstuvwxyz ."),
+        4: set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ .,?"),
+        5: set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ .,?"),
+    }
+    minimum = {1: 120, 2: 160, 3: 220, 4: 240, 5: 350}
+
+    lengths_by_tier = {tier: [] for tier in allowed}
+    for lesson in app_ctx.lessons._ordered:
+        text = lesson.target_text()
+        unsupported = set(text) - allowed[lesson.tier]
+        assert not unsupported, f"{lesson.id} uses untaught characters: {unsupported}"
+        assert len(text) >= minimum[lesson.tier], (
+            f"{lesson.id} is too short for tier {lesson.tier}: {len(text)}"
+        )
+        lengths_by_tier[lesson.tier].append(len(text))
+
+    tier_averages = {
+        tier: sum(lengths) / len(lengths)
+        for tier, lengths in lengths_by_tier.items()
+    }
+    assert all(
+        tier_averages[tier] < tier_averages[tier + 1]
+        for tier in range(1, 5)
+    ), f"tier averages should grow progressively: {tier_averages}"
+    assert "Keep your hands ready" not in " ".join(
+        lesson.target_text() for lesson in app_ctx.lessons._ordered
+    )
+
+
 # --------------------------------------------------------------------- the 85 % gate
 
 @pytest.mark.parametrize("accuracy,should_unlock", [

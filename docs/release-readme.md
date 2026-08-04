@@ -21,8 +21,9 @@ The window can be resized or maximised. Press **F11** for fullscreen.
 1. Copy this whole **TypeCraft** folder onto the computer — anywhere is fine (Desktop, `C:\`, a
    USB stick). Keep the folder together; the `_internal` folder next to the .exe is required.
 2. Start it and choose **PLAY**, then **Create Profile** for each student.
-3. Optional but recommended: **Settings → Set Teacher PIN**. Once a PIN is set, the Teacher
-   Dashboard asks for it. Without one, anyone can reset a student's progress.
+3. Optional but recommended: open **Teacher Dashboard** and use **Set PIN** on first launch.
+   Once a PIN is set, the dashboard asks for it; use **Change PIN** inside the authenticated
+   dashboard to replace it. Without a PIN, anyone can reset a student's progress.
 
 Students then pick their own name each time they sit down.
 
@@ -101,7 +102,7 @@ is more below.
 **I forgot the teacher PIN.**
 Close TypeCraft, open `settings.json` in Notepad, and change the
 `"teacher_pin_hash"` line to `"teacher_pin_hash": null`. Save, restart, and set a new PIN in
-Settings. This does not affect any student's progress.
+ the Teacher Dashboard. This does not affect any student's progress.
 
 **A student's progress needs clearing.**
 Teacher Dashboard → **Reset** on their row → confirm. Their name and avatar are kept; attempts,
