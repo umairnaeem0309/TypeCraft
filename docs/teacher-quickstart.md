@@ -31,15 +31,17 @@ Tip: keep profile names short — the cards fit better on screen.
 
 ---
 
-## 3. Setting the teacher PIN
+## 3. Setting or changing the teacher PIN
 
-The PIN protects the Teacher Dashboard and the Settings screen.
+The PIN protects the Teacher Dashboard. PIN changes are available only inside that dashboard;
+Settings is reserved for classroom audio preferences.
 
-1. From the Main Menu, click **Teacher Dashboard** or **Settings**.
-2. Enter a 4-digit PIN.
-3. Confirm it when asked.
+1. From the Main Menu, click **Teacher Dashboard**.
+2. On a first launch, click **Set PIN**. On later visits, enter the current PIN to unlock the dashboard, then click **Change PIN**.
+3. Enter a new 4-digit PIN and confirm it. When changing an existing PIN, the current PIN is verified first.
 
-The PIN is stored securely in `settings.json` and cannot be read from that file. If you forget it, see the *Lost PIN* section in [`troubleshooting.md`](troubleshooting.md).
+The PIN is stored securely as a salted hash in `settings.json`; the raw PIN is never written there.
+If you forget it, see the *Lost PIN* section in [`troubleshooting.md`](troubleshooting.md).
 
 ---
 

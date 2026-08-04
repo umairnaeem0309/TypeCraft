@@ -67,10 +67,10 @@ selections; only the teacher area is PIN-gated.
 
 - **FR-020** Lesson content is loaded from `lessons.json`, which is teacher-editable in a plain text editor.
 - **FR-021** At least 20 lessons exist, grouped into exactly 5 progressive tiers.
-- **FR-022** Each lesson declares: stable `id`, `order`, `title`, `finger_focus`, `default_mode`, `target_wpm`, `lines`.
+- **FR-022** Each lesson declares: stable `id`, `order`, `title`, `finger_focus`, `default_mode`, `target_wpm`, and `lines`; `lines` is retained for schema compatibility and contains substantial tier-appropriate content, from early key drills to advanced paragraphs.
 - **FR-023** The loader validates `schema_version`; a mismatched, malformed, or missing file falls back to the bundled default.
 - **FR-024** When a fallback occurs, a teacher-visible warning is surfaced in the application **and** a diagnostic is written to a log file. Silent fallback is a defect.
-- **FR-025** A lesson's target text is the lesson's `lines` joined with a single space; the student never presses Enter mid-lesson.
+- **FR-025** A lesson's target text is the lesson's `lines` joined with a single space; bundled content progresses from substantial key-restricted drills to meaningful sentences and longer fluency paragraphs, the student never presses Enter mid-lesson, and the lesson screen displays the target through a clipped viewport that automatically scrolls vertically as needed.
 - **FR-026** Lesson Select shows every lesson grouped by tier, with lock state, title, and best-star badge, and no card may be clipped by the window edge.
 - **FR-027** A locked lesson cannot be started.
 
@@ -154,9 +154,11 @@ selections; only the teacher area is PIN-gated.
 
 - **FR-100** Correct characters render green, incorrect red, pending neutral.
 - **FR-101** The cursor position is unambiguously marked.
-- **FR-102** Target text wraps at word boundaries within the available width and is never clipped by the window edge.
+- **FR-102** Target text wraps at word boundaries within the available width, is clipped to the lesson viewport, and automatically scrolls vertically so long paragraphs are never clipped from the active typing position or the window edge.
 - **FR-103** Space characters are visibly represented in the target text.
 - **FR-104** Text sizing and contrast are legible for children at 1280×720 (body text >= 24 px, target text >= 32 px).
+
+The bundled curriculum uses a balanced progression: substantial key-restricted drills in Tiers 1–2, sentence practice in Tiers 3–4, and longer meaningful paragraphs in Tier 5. Early content never requires characters before their teaching tier.
 
 ### 3.12 Leaderboard
 
@@ -177,12 +179,12 @@ selections; only the teacher area is PIN-gated.
 - **FR-126** Reset is atomic: attempts, progress, badges, XP, level, and streak data are removed and the first lesson re-unlocked in a single transaction; a failure mid-way leaves the database exactly as before.
 - **FR-127** Reset preserves the profile row identity (id, name, avatar, created_at).
 
-### 3.14 Settings
+### 3.14 Settings and teacher PIN
 
 - **FR-130** Volume and mute state are read from `settings.json` at startup and applied to the audio subsystem.
 - **FR-131** The Settings screen displays the currently persisted volume and mute values on entry.
 - **FR-132** Changing volume or mute writes to `settings.json` and survives a restart.
-- **FR-133** A 4-digit teacher PIN can be set; only a hash is stored. Non-4-digit input is rejected with a message.
+- **FR-133** A 4-digit teacher PIN can be set from the Teacher Dashboard only; changing an existing PIN requires the current PIN to verify first. Only a hash is stored, and non-4-digit input is rejected with a message.
 - **FR-134** A missing, malformed, or partially corrupt `settings.json` falls back to bundled defaults, surfaces a visible warning, and logs a diagnostic; it never crashes startup.
 - **FR-135** Settings writes are atomic (temp file + replace) so a power loss cannot leave a truncated `settings.json`.
 

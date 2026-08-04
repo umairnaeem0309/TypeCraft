@@ -110,7 +110,7 @@ def test_the_lesson_hint_sits_inside_the_footer_band(app_ctx, display):
 def test_no_lesson_element_overlaps_another(app_ctx, display):
     """One assertion covering the whole screen: HUD, drill text, keyboard and footer
     must occupy four separate horizontal bands."""
-    from typecraft.scenes.lesson import FOOTER_RECT, LessonScene
+    from typecraft.scenes.lesson import FOOTER_RECT, TEXT_AREA, LessonScene
     from typecraft.ui.keyboard_renderer import KeyboardRenderer
 
     student = app_ctx.profiles.create("Amina", "avatar_fox")
@@ -121,7 +121,7 @@ def test_no_lesson_element_overlaps_another(app_ctx, display):
     kb_h = KeyboardRenderer.size()[1]
     bands = [
         ("hud", scene.hud.rect.top, scene.hud.rect.bottom),
-        ("text", scene.layout.bounds().top, scene.layout.bounds().bottom),
+        ("text", TEXT_AREA.top, TEXT_AREA.bottom),
         ("keyboard", scene.keyboard.origin[1], scene.keyboard.origin[1] + kb_h),
         ("footer", FOOTER_RECT.top, FOOTER_RECT.bottom),
     ]
@@ -131,16 +131,22 @@ def test_no_lesson_element_overlaps_another(app_ctx, display):
     assert bands[-1][2] <= theme.SCREEN_HEIGHT
 
 
-def test_the_longest_lesson_still_fits_the_narrowed_text_area(app_ctx, display):
-    """The text area was shortened to make room. Measured: no bundled lesson needs
-    more than 2 lines — but assert it rather than trusting the measurement."""
-    from typecraft.scenes.lesson import TEXT_AREA
-    from typecraft.ui.target_text import TargetTextLayout
+def test_paragraph_lessons_scroll_beyond_the_fixed_text_viewport(app_ctx, display):
+    """Long lessons use a clipped virtual viewport rather than rendering off-screen."""
+    from typecraft.scenes.lesson import LessonScene, TEXT_AREA
 
-    font = app_ctx.resources.font(theme.FONT_DEFAULT, theme.FONT_SIZE_TARGET_TEXT)
-    for lesson in app_ctx.lessons._ordered:
-        layout = TargetTextLayout(lesson.target_text(), font, TEXT_AREA)
-        assert TEXT_AREA.contains(layout.bounds()), f"{lesson.id} no longer fits"
+    student = app_ctx.profiles.create("Amina", "avatar_fox")
+    app_ctx.active_profile = student
+    scene = LessonScene(app_ctx)
+    scene.on_enter(lesson=app_ctx.lessons.get("t5l4"), mode_key="free_advance")
+
+    assert scene.layout.bounds().bottom > TEXT_AREA.bottom
+    for ch in scene.engine.target:
+        scene.handle_event(pygame.event.Event(pygame.KEYDOWN, key=ord(ch), unicode=ch))
+        if scene.__class__.__name__ != "LessonScene" or scene.text_scroll_y > 0:
+            break
+    assert scene.text_scroll_y > 0, "typing through the paragraph never scrolled the viewport"
+    scene.render(display)
 
 
 def test_the_lesson_screen_renders_after_the_reflow(app_ctx, display):
@@ -179,33 +185,38 @@ def test_the_reset_confirmation_says_whose_data_not_whose_person(app_ctx, displa
 
 def test_the_settings_cards_use_most_of_the_window(app_ctx, display):
     """The controls used to sit in a ~360 px strip of a 1280 px window."""
-    from typecraft.scenes.settings import PIN_CARD, SOUND_CARD
+    from typecraft.scenes.settings import SOUND_CARD
 
     assert SOUND_CARD.width >= theme.SCREEN_WIDTH * 0.75
-    assert PIN_CARD.width == SOUND_CARD.width
-    covered = SOUND_CARD.union(PIN_CARD)
-    assert covered.height >= theme.SCREEN_HEIGHT * 0.6
 
 
-def test_the_settings_cards_do_not_overlap_and_stay_on_screen(app_ctx, display):
-    from typecraft.scenes.settings import PIN_CARD, SOUND_CARD
+def test_the_settings_card_stays_on_screen(app_ctx, display):
+    from typecraft.scenes.settings import SOUND_CARD
 
     window = pygame.Rect(0, 0, theme.SCREEN_WIDTH, theme.SCREEN_HEIGHT)
-    assert window.contains(SOUND_CARD) and window.contains(PIN_CARD)
-    assert not SOUND_CARD.colliderect(PIN_CARD)
+    assert window.contains(SOUND_CARD)
 
 
-def test_every_settings_control_sits_inside_its_card(app_ctx, display):
+def test_every_settings_control_sits_inside_the_sound_card(app_ctx, display):
     """A control drifting outside its panel is the visual bug this screen had."""
-    from typecraft.scenes.settings import PIN_CARD, SOUND_CARD, SettingsScene
+    from typecraft.scenes.settings import SOUND_CARD, SettingsScene
 
     scene = SettingsScene(app_ctx)
     scene.on_enter()
 
     for widget in (scene.vol_down, scene.volume_bar, scene.vol_up, scene.mute_button):
         assert SOUND_CARD.contains(widget.rect), f"{widget} escapes the Sound card"
-    for widget in (scene.pin_input, scene.set_pin_button):
-        assert PIN_CARD.contains(widget.rect), f"{widget} escapes the PIN card"
+
+
+def test_the_settings_screen_has_no_pin_mutation_controls(app_ctx, display):
+    """Changing a teacher PIN is available only inside the authenticated dashboard."""
+    from typecraft.scenes.settings import SettingsScene
+
+    scene = SettingsScene(app_ctx)
+    scene.on_enter()
+
+    assert not hasattr(scene, "pin_input")
+    assert not hasattr(scene, "set_pin_button")
 
 
 def test_the_settings_controls_are_large_enough_for_a_child_to_hit(app_ctx, display):
@@ -214,8 +225,7 @@ def test_the_settings_controls_are_large_enough_for_a_child_to_hit(app_ctx, disp
     scene = SettingsScene(app_ctx)
     scene.on_enter()
 
-    for widget in (scene.vol_down, scene.vol_up, scene.mute_button,
-                   scene.set_pin_button, scene.pin_input, scene.back_button):
+    for widget in (scene.vol_down, scene.vol_up, scene.mute_button, scene.back_button):
         assert widget.rect.height >= 50, f"{widget.rect} is too short to tap reliably"
     assert scene.volume_bar.rect.width >= 400, "the volume bar is still a thin strip"
 
@@ -244,8 +254,6 @@ def test_the_settings_screen_renders_in_both_mute_states(app_ctx, display):
     scene.on_enter()
     scene.render(display)
     scene._toggle_mute()
-    scene.render(display)
-    scene._set_pin()               # populates pin_status, which renders in place of the hint
     scene.render(display)
 
 

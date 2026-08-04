@@ -76,14 +76,14 @@ If you cannot fix it, delete the offending JSON file. TypeCraft will re-seed it 
 
 ## 5. Lost PIN
 
-Symptom: you forgot the teacher PIN and cannot open the Teacher Dashboard or Settings.
+Symptom: you forgot the teacher PIN and cannot open the Teacher Dashboard.
 
 The PIN is stored in `settings.json` as a hash — it cannot be read directly. To reset it:
 
 1. Close TypeCraft.
 2. Delete `settings.json` beside `TypeCraft.exe`.
 3. Restart TypeCraft.
-4. The app creates a fresh `settings.json` with no PIN. Set a new one from the Teacher Dashboard or Settings screen.
+4. The app creates a fresh `settings.json` with no PIN. Set a new one from the Teacher Dashboard.
 
 **Important:** deleting `settings.json` only resets the PIN, volume, and mute. It does not touch student profiles or attempts in `typecraft.db`.
 

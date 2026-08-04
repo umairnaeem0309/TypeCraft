@@ -14,6 +14,8 @@ Do not edit the bundled default inside `_internal/data/lessons.json` — it is r
 
 ## 2. File structure
 
+The short snippet below is **illustrative JSON structure**, not a complete production lesson. Bundled lessons follow the tier length and character rules in Section 4.
+
 ```json
 {
   "schema_version": 1,
@@ -31,9 +33,7 @@ Do not edit the bundled default inside `_internal/data/lessons.json` — it is r
           "default_mode": "lock_on_error",
           "target_wpm": 8,
           "lines": [
-            "fff jjj fff jjj",
-            "fj fj jf jf fjfj",
-            "jff jjf fjj fff"
+            "f j fj jf fff jjj fj jf fj fj f j f j fj jf fff jjj fj jf"
           ]
         }
       ]
@@ -60,7 +60,7 @@ Do not edit the bundled default inside `_internal/data/lessons.json` — it is r
 | `finger_focus` | Yes | List of finger names from the supported set (see below). |
 | `default_mode` | Yes | One of `lock_on_error`, `backspace`, `free_advance`. |
 | `target_wpm` | Yes | Suggested WPM for that lesson. Does not block progress. |
-| `lines` | Yes | Array of strings. The student must type each line exactly. |
+| `lines` | Yes | Array of strings joined with spaces into one continuous target. Keep each lesson substantial but appropriate to its tier: early lessons use key-restricted drills and words, middle lessons use sentences, and advanced lessons use longer paragraphs. Multiple strings remain supported for backward compatibility. |
 
 Supported finger names:
 
@@ -70,7 +70,19 @@ Supported finger names:
 
 ---
 
-## 4. The “never change an id” rule
+## 4. Curriculum content rules
+
+TypeCraft uses a gradual school-friendly sequence. Do not append the same generic paragraph to every lesson.
+
+- **Tier 1 — Home Row:** substantial key drills and home-row words using only `a s d f j k l` and spaces. Target roughly 120–280 characters.
+- **Tier 2 — Top Row:** meaningful words and short sentences using only the home and top rows. Target roughly 160–320 characters.
+- **Tier 3 — Bottom Row:** several simple lowercase sentences with periods. Target roughly 220–320 characters.
+- **Tier 4 — Capitals & Punctuation:** medium-length school sentences introducing capitals, commas, and question marks. Target roughly 240–320 characters.
+- **Tier 5 — Speed & Fluency:** varied, meaningful paragraphs. Target roughly 350–600 characters.
+
+A lesson must not require a letter or symbol before the tier that teaches it. The 85% accuracy unlock rule remains the progression gate; `target_wpm` is guidance, not a barrier.
+
+## 5. The “never change an id” rule
 
 Student progress is linked to lesson `id`s inside `typecraft.db`. If you change an id, the app treats it as a brand new lesson.
 
@@ -81,7 +93,7 @@ If you must rename an id, reset the affected students (see [`teacher-quickstart.
 
 ---
 
-## 5. Worked example: adding a new lesson
+## 6. Worked example: adding a new lesson
 
 Add a new lesson to Tier 1 after `t1l4`:
 
@@ -94,9 +106,7 @@ Add a new lesson to Tier 1 after `t1l4`:
   "default_mode": "lock_on_error",
   "target_wpm": 10,
   "lines": [
-    "faf jaf faf jaf",
-    "a sad lad asks dad",
-    "all fall; a flask"
+    "a sad lad asks dad all fall a flask falls sad lads ask dad a lad adds a salad dad asks a sad lad all fall a flask falls a lad asks dad sad lads ask a lad add a salad a sad lad asks dad a flask falls all fall a lad adds a salad sad dad asks a lad"
   ]
 }
 ```
@@ -107,7 +117,7 @@ Save the file and restart TypeCraft. The new lesson appears in the lesson grid. 
 
 ---
 
-## 6. What happens if the file is malformed
+## 7. What happens if the file is malformed
 
 If `lessons.json` is invalid JSON or misses required fields:
 
